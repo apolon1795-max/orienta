@@ -125,7 +125,7 @@ const ImageWithSkeleton: React.FC<{ src: string; alt: string; className?: string
             <img 
                 src={src} 
                 alt={alt} 
-                className={`w-full h-full object-cover transition-opacity duration-700 ease-in-out ${loaded ? 'opacity-100' : 'opacity-0'}`}
+                className={`w-full h-full object-contain transition-opacity duration-700 ease-in-out ${loaded ? 'opacity-100' : 'opacity-0'}`}
                 loading="eager"
             />
             {error && (
