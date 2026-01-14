@@ -18,26 +18,49 @@ import { generateGraduationSummary } from './services/geminiService';
 import { saveUserDataToSheet } from './services/storageService';
 
 const CLOUD_STORAGE_KEY = 'user_progress_v1';
+const LOCAL_STORAGE_KEY = 'appState_ru';
 
 const App: React.FC = () => {
   const [view, setView] = useState<AppView>(AppView.LANDING);
   
-  // Инициализация состояния (загрузка из LocalStorage как fallback для быстрого старта)
+  // Инициализация состояния: Пробуем загрузить LocalStorage
   const [userState, setUserState] = useState<UserState>(() => {
-    const saved = localStorage.getItem('appState_ru');
-    return saved ? JSON.parse(saved) : {
+    try {
+      const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {
+      console.error("Local storage parse error", e);
+    }
+    // Default state
+    return {
       hasOnboarded: false,
       telegramId: null,
       firstName: null,
       testResult: null,
       courseProgress: INITIAL_COURSE_MODULES,
-      aiSummary: null
+      aiSummary: null,
+      lastUpdated: 0 
     };
   });
   
   const [isGeneratingAi, setIsGeneratingAi] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(true); // Индикатор синхронизации
 
-  // 1. Инициализация Telegram WebApp и СИНХРОНИЗАЦИЯ С ОБЛАКОМ
+  // Helper to update state and timestamp
+  const updateUserState = (updates: Partial<UserState>) => {
+    setUserState(prev => {
+      const newState = { 
+        ...prev, 
+        ...updates,
+        lastUpdated: Date.now() // Always update timestamp on change
+      };
+      return newState;
+    });
+  };
+
+  // 1. Инициализация Telegram WebApp и УМНАЯ СИНХРОНИЗАЦИЯ
   useEffect(() => {
     if (window.Telegram && window.Telegram.WebApp) {
       const tg = window.Telegram.WebApp;
@@ -52,63 +75,78 @@ const App: React.FC = () => {
       const user = tg.initDataUnsafe?.user;
 
       if (user) {
-        console.log("Telegram User Detected:", user);
-        
         // Проверка версии для CloudStorage (доступен с версии 6.9)
         const isCloudStorageSupported = tg.isVersionAtLeast && tg.isVersionAtLeast('6.9');
 
         if (isCloudStorageSupported) {
-          // 1.1 Сначала пытаемся загрузить данные из CloudStorage (синхронизация между устройствами)
           tg.CloudStorage.getItem(CLOUD_STORAGE_KEY, (err, value) => {
             if (!err && value) {
               try {
-                const cloudState = JSON.parse(value);
+                const cloudState = JSON.parse(value) as UserState;
                 console.log("Cloud state loaded:", cloudState);
                 
-                // Объединяем данные: берем Telegram ID из текущей сессии, а прогресс из облака
-                setUserState(prev => ({
-                  ...prev,
-                  ...cloudState,
-                  telegramId: user.id,
-                  firstName: user.first_name,
-                }));
+                // === ЛОГИКА СЛИЯНИЯ (MERGE) ===
+                setUserState(localState => {
+                  // Если в облаке данные свежее, чем локально -> берем из облака
+                  if (cloudState.lastUpdated > (localState.lastUpdated || 0)) {
+                    console.log("Sync: Cloud is newer. Using Cloud data.");
+                    return {
+                      ...cloudState,
+                      telegramId: user.id, // Всегда актуализируем ID текущего пользователя
+                      firstName: user.first_name,
+                    };
+                  } 
+                  // Если локально данные свежее (или равны) -> оставляем локальные
+                  // Но обновляем ID, если вдруг зашли с другого аккаунта (хотя это редкость в WebApp)
+                  else {
+                    console.log("Sync: Local is newer or equal. Keeping Local data.");
+                    return {
+                      ...localState,
+                      telegramId: user.id,
+                      firstName: user.first_name,
+                    };
+                  }
+                });
+
               } catch (e) {
                 console.error("Error parsing cloud state", e);
               }
             } else {
-              // Если в облаке пусто или ошибка, обновляем текущие данные пользователя
-              setUserState(prev => ({
-                ...prev,
+              // В облаке пусто (первый запуск). Просто обновляем ID в текущем локальном стейте.
+              updateUserState({
                 telegramId: user.id,
                 firstName: user.first_name
-              }));
+              });
             }
+            setIsSyncing(false);
           });
         } else {
-          console.warn("CloudStorage is not supported in this Telegram version (requires 6.9+). Using localStorage only.");
-          // Fallback для старых версий: просто обновляем ID и имя
-          setUserState(prev => ({
-            ...prev,
+          // CloudStorage не поддерживается
+          updateUserState({
             telegramId: user.id,
             firstName: user.first_name
-          }));
+          });
+          setIsSyncing(false);
         }
+      } else {
+        setIsSyncing(false); // Browser mode
       }
+    } else {
+      setIsSyncing(false); // Browser mode
     }
   }, []);
 
-  // 2. Сохранение состояния: LocalStorage (быстро) + CloudStorage (синхронизация) + Google Sheets (бекап/админка)
+  // 2. Сохранение состояния: LocalStorage + CloudStorage
   useEffect(() => {
     // 2.1 Локально
-    localStorage.setItem('appState_ru', JSON.stringify(userState));
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(userState));
 
-    // 2.2 В облако Telegram
+    // 2.2 В облако Telegram (только если есть изменения и поддержка)
     if (window.Telegram && window.Telegram.WebApp) {
       const tg = window.Telegram.WebApp;
       const isCloudStorageSupported = tg.isVersionAtLeast && tg.isVersionAtLeast('6.9');
 
-      if (isCloudStorageSupported && tg.CloudStorage) {
-        // CloudStorage принимает только строки.
+      if (isCloudStorageSupported && tg.CloudStorage && userState.lastUpdated > 0) {
         tg.CloudStorage.setItem(
           CLOUD_STORAGE_KEY, 
           JSON.stringify(userState), 
@@ -120,9 +158,6 @@ const App: React.FC = () => {
     }
   }, [userState]);
 
-  // Отдельный эффект для сохранения в Google Sheets при важных событиях (смена ID, тест, итог)
-  // Мы не можем ставить это в основной useEffect, иначе будем спамить таблицу при каждом чихе
-  // Поэтому вызовы saveUserDataToSheet остаются в хендлерах событий ниже.
 
   // --- Actions ---
 
@@ -135,27 +170,25 @@ const App: React.FC = () => {
   };
 
   const handleOnboardingComplete = () => {
-    const newState = { ...userState, hasOnboarded: true };
-    setUserState(newState);
+    const updates = { hasOnboarded: true };
+    updateUserState(updates);
     setView(AppView.DASHBOARD);
-    // Сохраняем факт регистрации
-    saveUserDataToSheet(newState);
+    // Для сохранения в таблицу передаем смерженный стейт
+    saveUserDataToSheet({ ...userState, ...updates });
   };
 
   const handleTestComplete = (result: TestResult) => {
-    const newState = { ...userState, testResult: result };
-    setUserState(newState);
-    saveUserDataToSheet(newState);
+    const updates = { testResult: result };
+    updateUserState(updates);
+    saveUserDataToSheet({ ...userState, ...updates });
     setView(AppView.GUIDE);
   };
 
   const handleCourseProgress = (moduleId: number) => {
-    setUserState(prev => ({
-      ...prev,
-      courseProgress: prev.courseProgress.map(m => 
-        m.id === moduleId ? { ...m, isCompleted: true } : m
-      )
-    }));
+    const newProgress = userState.courseProgress.map(m => 
+      m.id === moduleId ? { ...m, isCompleted: true } : m
+    );
+    updateUserState({ courseProgress: newProgress });
   };
 
   const handleGenerateSummary = async () => {
@@ -163,9 +196,9 @@ const App: React.FC = () => {
     setIsGeneratingAi(true);
     const summary = await generateGraduationSummary(userState.testResult, userState.courseProgress);
     
-    const newState = { ...userState, aiSummary: summary };
-    setUserState(newState);
-    saveUserDataToSheet(newState);
+    const updates = { aiSummary: summary };
+    updateUserState(updates);
+    saveUserDataToSheet({ ...userState, ...updates });
     
     setIsGeneratingAi(false);
     setView(AppView.AI_SUMMARY);
@@ -181,10 +214,8 @@ const App: React.FC = () => {
 
   // Блокировка курса
   const handleCourseLocked = () => {
-    // Сначала переходим в дашборд (если мы не там), потом показываем алерт
     if (view !== AppView.DASHBOARD) {
         setView(AppView.DASHBOARD);
-        // Небольшая задержка, чтобы успел отрендериться переход
         setTimeout(showCourseLockedPopup, 300);
     } else {
         showCourseLockedPopup();
@@ -193,8 +224,6 @@ const App: React.FC = () => {
 
   const showCourseLockedPopup = () => {
     const tg = window.Telegram?.WebApp;
-    
-    // showPopup доступен начиная с версии 6.2
     if (tg && tg.showPopup && tg.isVersionAtLeast && tg.isVersionAtLeast('6.2')) {
        tg.showPopup({
            title: "Скоро открытие! 🚀",
@@ -202,15 +231,12 @@ const App: React.FC = () => {
            buttons: [{type: "ok"}]
        });
     } else {
-       // Fallback для старых версий Telegram или браузера
        alert("🚀 Курс скоро запустится!\nМы готовим для тебя что-то особенное.");
     }
   };
 
-  // Блокировка сообщества
   const handleCommunityLocked = () => {
     const tg = window.Telegram?.WebApp;
-    
     if (tg && tg.showPopup && tg.isVersionAtLeast && tg.isVersionAtLeast('6.2')) {
        tg.showPopup({
            title: "Скоро открытие! 🔒",
@@ -223,6 +249,17 @@ const App: React.FC = () => {
   };
 
   // --- Views ---
+
+  if (isSyncing) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-white">
+        <div className="flex flex-col items-center gap-4">
+          <Sparkles className="w-10 h-10 text-amber-400 animate-spin" />
+          <p className="animate-pulse text-sm text-slate-400">Синхронизация миров...</p>
+        </div>
+      </div>
+    );
+  }
 
   const renderLanding = () => (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center relative overflow-hidden">
