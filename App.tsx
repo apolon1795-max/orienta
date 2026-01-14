@@ -7,9 +7,12 @@ import {
   ChevronRight, 
   Sparkles,
   ExternalLink,
-  Bot
+  Bot,
+  Cloud,
+  CloudOff,
+  RefreshCw
 } from 'lucide-react';
-import { AppView, UserState, INITIAL_COURSE_MODULES, TestResult } from './types';
+import { AppView, UserState, INITIAL_COURSE_MODULES, TestResult, ARCHETYPES } from './types';
 import { Button } from './components/Button';
 import { TestView } from './components/TestView';
 import { CourseView } from './components/CourseView';
@@ -19,6 +22,73 @@ import { saveUserDataToSheet } from './services/storageService';
 
 const CLOUD_STORAGE_KEY = 'user_progress_v1';
 const LOCAL_STORAGE_KEY = 'appState_ru';
+
+// Helper types for minified cloud state
+interface MinifiedCloudState {
+    v: number; // version
+    ts: number; // timestamp
+    tId: string | number | null; // telegramId
+    nm: string | null; // name
+    onb: boolean; // onboarded
+    res: { t: string, s: string, d: string } | null; // testResult (title, scoreType, timestamp)
+    crs: number[]; // completed module IDs
+    ai: string | null; // aiSummary
+}
+
+const packState = (state: UserState): string => {
+    const minified: MinifiedCloudState = {
+        v: 1,
+        ts: state.lastUpdated,
+        tId: state.telegramId,
+        nm: state.firstName,
+        onb: state.hasOnboarded,
+        res: state.testResult ? {
+            t: state.testResult.title,
+            s: state.testResult.scoreType,
+            d: state.testResult.timestamp
+        } : null,
+        crs: state.courseProgress.filter(m => m.isCompleted).map(m => m.id),
+        ai: state.aiSummary
+    };
+    return JSON.stringify(minified);
+};
+
+const unpackState = (jsonStr: string, currentLocal: UserState): UserState | null => {
+    try {
+        const min: MinifiedCloudState = JSON.parse(jsonStr);
+        
+        // Rehydrate Course Progress
+        const hydratedCourse = INITIAL_COURSE_MODULES.map(m => ({
+            ...m,
+            isCompleted: min.crs.includes(m.id)
+        }));
+
+        // Rehydrate Test Result
+        let hydratedResult: TestResult | null = null;
+        if (min.res) {
+            const archData = ARCHETYPES[min.res.s]; // Get static description
+            hydratedResult = {
+                title: min.res.t,
+                scoreType: min.res.s,
+                timestamp: min.res.d,
+                description: archData ? archData.description.join('\n\n') : "Описание загружается..."
+            };
+        }
+
+        return {
+            hasOnboarded: min.onb,
+            telegramId: min.tId || currentLocal.telegramId,
+            firstName: min.nm || currentLocal.firstName,
+            testResult: hydratedResult,
+            courseProgress: hydratedCourse,
+            aiSummary: min.ai,
+            lastUpdated: min.ts
+        };
+    } catch (e) {
+        console.error("Failed to unpack cloud state", e);
+        return null;
+    }
+};
 
 const App: React.FC = () => {
   const [view, setView] = useState<AppView>(AppView.LANDING);
@@ -46,112 +116,119 @@ const App: React.FC = () => {
   });
   
   const [isGeneratingAi, setIsGeneratingAi] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(true); // Индикатор синхронизации
+  const [isSyncing, setIsSyncing] = useState(true);
+  const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'error'>('syncing');
 
-  // Helper to update state and timestamp
   const updateUserState = (updates: Partial<UserState>) => {
     setUserState(prev => {
       const newState = { 
         ...prev, 
         ...updates,
-        lastUpdated: Date.now() // Always update timestamp on change
+        lastUpdated: Date.now() 
       };
       return newState;
     });
   };
 
-  // 1. Инициализация Telegram WebApp и УМНАЯ СИНХРОНИЗАЦИЯ
+  // 1. Инициализация Telegram WebApp и СИНХРОНИЗАЦИЯ
   useEffect(() => {
     if (window.Telegram && window.Telegram.WebApp) {
       const tg = window.Telegram.WebApp;
       tg.ready();
       
-      try {
-        tg.expand();
-      } catch (e) {
-        console.log("Expand not supported");
-      }
+      try { tg.expand(); } catch (e) {}
 
       const user = tg.initDataUnsafe?.user;
 
       if (user) {
-        // Проверка версии для CloudStorage (доступен с версии 6.9)
         const isCloudStorageSupported = tg.isVersionAtLeast && tg.isVersionAtLeast('6.9');
 
         if (isCloudStorageSupported) {
+          console.log("CloudStorage supported, fetching...");
           tg.CloudStorage.getItem(CLOUD_STORAGE_KEY, (err, value) => {
             if (!err && value) {
-              try {
-                const cloudState = JSON.parse(value) as UserState;
-                console.log("Cloud state loaded:", cloudState);
-                
-                // === ЛОГИКА СЛИЯНИЯ (MERGE) ===
-                setUserState(localState => {
-                  // Если в облаке данные свежее, чем локально -> берем из облака
-                  if (cloudState.lastUpdated > (localState.lastUpdated || 0)) {
-                    console.log("Sync: Cloud is newer. Using Cloud data.");
+              console.log("Cloud data found");
+              setUserState(localState => {
+                  const cloudState = unpackState(value, localState);
+                  if (!cloudState) return localState;
+
+                  // MERGE LOGIC
+                  // 1. If cloud has result and local doesn't -> use Cloud
+                  // 2. If cloud is newer -> use Cloud
+                  const shouldUseCloud = 
+                      (cloudState.testResult && !localState.testResult) ||
+                      (cloudState.lastUpdated > (localState.lastUpdated || 0));
+
+                  if (shouldUseCloud) {
+                    console.log("Using Cloud State");
+                    setSyncStatus('synced');
                     return {
                       ...cloudState,
-                      telegramId: user.id, // Всегда актуализируем ID текущего пользователя
+                      telegramId: user.id, 
                       firstName: user.first_name,
                     };
-                  } 
-                  // Если локально данные свежее (или равны) -> оставляем локальные
-                  // Но обновляем ID, если вдруг зашли с другого аккаунта (хотя это редкость в WebApp)
-                  else {
-                    console.log("Sync: Local is newer or equal. Keeping Local data.");
+                  } else {
+                    console.log("Using Local State");
+                    setSyncStatus('synced');
                     return {
                       ...localState,
                       telegramId: user.id,
                       firstName: user.first_name,
                     };
                   }
-                });
-
-              } catch (e) {
-                console.error("Error parsing cloud state", e);
-              }
-            } else {
-              // В облаке пусто (первый запуск). Просто обновляем ID в текущем локальном стейте.
-              updateUserState({
-                telegramId: user.id,
-                firstName: user.first_name
               });
+            } else {
+              console.log("No cloud data or empty");
+              // Initialize ID if needed
+              updateUserState({ telegramId: user.id, firstName: user.first_name });
+              setSyncStatus('synced');
             }
             setIsSyncing(false);
           });
         } else {
-          // CloudStorage не поддерживается
-          updateUserState({
-            telegramId: user.id,
-            firstName: user.first_name
-          });
+          updateUserState({ telegramId: user.id, firstName: user.first_name });
           setIsSyncing(false);
+          setSyncStatus('error');
         }
       } else {
-        setIsSyncing(false); // Browser mode
+        setIsSyncing(false);
+        setSyncStatus('synced');
       }
     } else {
-      setIsSyncing(false); // Browser mode
+      setIsSyncing(false);
+      setSyncStatus('synced');
     }
   }, []);
 
-  // 2. Сохранение состояния: LocalStorage + CloudStorage
+  // 2. Сохранение (Debounced via Effect)
   useEffect(() => {
-    // 2.1 Локально
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(userState));
 
-    // 2.2 В облако Telegram (только если есть изменения и поддержка)
-    if (window.Telegram && window.Telegram.WebApp) {
+    if (window.Telegram && window.Telegram.WebApp && userState.lastUpdated > 0) {
       const tg = window.Telegram.WebApp;
       const isCloudStorageSupported = tg.isVersionAtLeast && tg.isVersionAtLeast('6.9');
 
-      if (isCloudStorageSupported && tg.CloudStorage && userState.lastUpdated > 0) {
+      if (isCloudStorageSupported) {
+        setSyncStatus('syncing');
+        const packed = packState(userState);
+        
+        // Safety check for size (limit is 4096 chars)
+        if (packed.length > 4000) {
+            console.error("State too large for CloudStorage!", packed.length);
+            setSyncStatus('error');
+            return;
+        }
+
         tg.CloudStorage.setItem(
           CLOUD_STORAGE_KEY, 
-          JSON.stringify(userState), 
+          packed, 
           (err, stored) => {
-            if (err) console.error("Cloud save error:", err);
+            if (err) {
+                console.error("Cloud save error:", err);
+                setSyncStatus('error');
+            } else {
+                setSyncStatus('synced');
+            }
           }
         );
       }
@@ -173,7 +250,6 @@ const App: React.FC = () => {
     const updates = { hasOnboarded: true };
     updateUserState(updates);
     setView(AppView.DASHBOARD);
-    // Для сохранения в таблицу передаем смерженный стейт
     saveUserDataToSheet({ ...userState, ...updates });
   };
 
@@ -212,39 +288,20 @@ const App: React.FC = () => {
     }
   };
 
-  // Блокировка курса
   const handleCourseLocked = () => {
-    if (view !== AppView.DASHBOARD) {
-        setView(AppView.DASHBOARD);
-        setTimeout(showCourseLockedPopup, 300);
-    } else {
-        showCourseLockedPopup();
-    }
-  };
-
-  const showCourseLockedPopup = () => {
-    const tg = window.Telegram?.WebApp;
-    if (tg && tg.showPopup && tg.isVersionAtLeast && tg.isVersionAtLeast('6.2')) {
-       tg.showPopup({
-           title: "Скоро открытие! 🚀",
-           message: "Этот курс сейчас готовится. Мы сообщим, когда он станет доступен!",
-           buttons: [{type: "ok"}]
-       });
-    } else {
-       alert("🚀 Курс скоро запустится!\nМы готовим для тебя что-то особенное.");
-    }
+    showPopup("Скоро открытие! 🚀", "Этот курс сейчас готовится. Мы сообщим, когда он станет доступен!");
   };
 
   const handleCommunityLocked = () => {
+    showPopup("Скоро открытие! 🔒", "Закрытый клуб для твоего архетипа сейчас формируется.");
+  };
+
+  const showPopup = (title: string, message: string) => {
     const tg = window.Telegram?.WebApp;
     if (tg && tg.showPopup && tg.isVersionAtLeast && tg.isVersionAtLeast('6.2')) {
-       tg.showPopup({
-           title: "Скоро открытие! 🔒",
-           message: "Закрытый клуб для твоего архетипа сейчас формируется. Мы сообщим, когда он откроется!",
-           buttons: [{type: "ok"}]
-       });
+       tg.showPopup({ title, message, buttons: [{type: "ok"}] });
     } else {
-       alert("🔒 Это сообщество скоро появится!");
+       alert(`${title}\n${message}`);
     }
   };
 
@@ -261,9 +318,17 @@ const App: React.FC = () => {
     );
   }
 
+  const CloudIndicator = () => (
+      <div className="absolute top-4 right-4 z-50 transition-opacity opacity-70 hover:opacity-100" title="Cloud Sync Status">
+          {syncStatus === 'synced' && <Cloud className="w-5 h-5 text-green-500" />}
+          {syncStatus === 'syncing' && <RefreshCw className="w-5 h-5 text-amber-400 animate-spin" />}
+          {syncStatus === 'error' && <CloudOff className="w-5 h-5 text-red-500" />}
+      </div>
+  );
+
   const renderLanding = () => (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center relative overflow-hidden">
-      {/* Background blobs */}
+      <CloudIndicator />
       <div className="absolute top-0 left-0 w-96 h-96 bg-purple-600/20 rounded-full blur-[100px] -translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
       <div className="absolute bottom-0 right-0 w-96 h-96 bg-indigo-600/20 rounded-full blur-[100px] translate-x-1/2 translate-y-1/2 pointer-events-none"></div>
 
@@ -292,7 +357,8 @@ const App: React.FC = () => {
   );
 
   const renderOnboarding = () => (
-    <div className="min-h-screen flex flex-col p-6 max-w-md mx-auto">
+    <div className="min-h-screen flex flex-col p-6 max-w-md mx-auto relative">
+      <CloudIndicator />
       <div className="flex-1 flex flex-col justify-end space-y-4 pb-8">
         <div className="flex items-start gap-3 animate-fade-in">
           <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center shrink-0 border border-indigo-400">
@@ -308,9 +374,8 @@ const App: React.FC = () => {
             <Bot className="w-6 h-6 text-white" />
           </div>
           <div className="bg-slate-800 p-4 rounded-2xl rounded-tl-none text-slate-200 shadow-lg border border-slate-700 space-y-2">
-            <p>Твой Telegram ID: <span className="font-mono text-amber-400">{userState.telegramId || 'Не определен (Browser)'}</span></p>
+            <p>Твой Telegram ID: <span className="font-mono text-amber-400">{userState.telegramId || 'Browser'}</span></p>
             <p>Здесь ты узнаешь свой архетип, прокачаешь навыки и найдешь единомышленников.</p>
-            <p>Ты готов начать?</p>
           </div>
         </div>
       </div>
@@ -322,7 +387,8 @@ const App: React.FC = () => {
   );
 
   const renderDashboard = () => (
-    <div className="min-h-screen p-6 pb-24">
+    <div className="min-h-screen p-6 pb-24 relative">
+      <CloudIndicator />
       <header className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-2xl font-bold text-white font-serif">Твой Хаб</h1>
@@ -335,7 +401,6 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      {/* Main Status Card */}
       <div 
         onClick={handleOpenResult}
         className="bg-gradient-to-r from-indigo-900 to-purple-900 rounded-2xl p-6 mb-8 text-white relative overflow-hidden shadow-xl shadow-indigo-900/20 border border-white/10 cursor-pointer active:scale-95 transition-transform"
@@ -360,11 +425,9 @@ const App: React.FC = () => {
             </div>
           )}
         </div>
-        {/* Decor */}
         <BrainCircuit className="absolute -bottom-4 -right-4 w-40 h-40 text-white/5 rotate-12" />
       </div>
 
-      {/* Grid Menu */}
       <div className="grid grid-cols-2 gap-4">
         <DashboardCard 
           title="Курс" 
@@ -437,7 +500,6 @@ const App: React.FC = () => {
   );
 
   const renderConsultation = () => {
-    // Подготовка ссылки с предзаполненным сообщением
     const message = "Привет! 👋 Хочу на консультацию. Помоги разобраться с результатами теста!";
     const tgLink = `https://t.me/Daniil_Borisov?text=${encodeURIComponent(message)}`;
 
@@ -456,17 +518,11 @@ const App: React.FC = () => {
               <p className="text-slate-400 mt-2">Готов применить результаты теста "{userState.testResult?.title || 'Тест'}" в реальной жизни? Запишись на частную сессию.</p>
             </div>
             
-            <a 
-              href={tgLink}
-              target="_blank" 
-              rel="noreferrer"
-              className="block w-full"
-            >
+            <a href={tgLink} target="_blank" rel="noreferrer" className="block w-full">
               <Button fullWidth variant="fantasy">
                 Написать Ментору <ExternalLink className="w-4 h-4 ml-2" />
               </Button>
             </a>
-            <p className="text-xs text-slate-500">Откроется Telegram с готовым сообщением</p>
           </div>
       </div>
     );
@@ -481,7 +537,6 @@ const App: React.FC = () => {
         <h2 className="text-2xl font-serif font-bold text-white mb-6">Вступай в Племя</h2>
         
         <div className="space-y-4">
-          {/* Общее сообщество - Работающая ссылка */}
           <a href="https://t.me/sense_house" target="_blank" rel="noreferrer" className="block group">
              <div className="bg-slate-900 p-6 rounded-xl border border-slate-800 flex items-center justify-between hover:border-indigo-500 transition-all">
                 <div className="flex items-center gap-4">
@@ -497,7 +552,6 @@ const App: React.FC = () => {
              </div>
           </a>
 
-          {/* Твоё сообщество - Временно закрыто */}
           {userState.testResult && (
             <div 
                 onClick={handleCommunityLocked}
@@ -522,8 +576,6 @@ const App: React.FC = () => {
     </div>
   );
 
-  // --- Router Switch ---
-
   return (
     <div className="min-h-screen text-slate-200 font-sans selection:bg-indigo-500/30">
       {view === AppView.LANDING && renderLanding()}
@@ -545,7 +597,6 @@ const App: React.FC = () => {
       {view === AppView.COURSE && (
         <CourseView 
           modules={userState.courseProgress}
-          onUpdateProgress={handleCourseProgress}
           onCompleteCourse={handleGenerateSummary}
           onBack={() => setView(AppView.DASHBOARD)}
           isGeneratingAi={isGeneratingAi}
@@ -557,8 +608,6 @@ const App: React.FC = () => {
     </div>
   );
 };
-
-// --- Subcomponents ---
 
 const DashboardCard: React.FC<{ 
   title: string; 
