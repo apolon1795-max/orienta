@@ -265,7 +265,7 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel }) => {
         await wait(300); 
         
         if (newHistoryItem) {
-            setHistory(prev => [...prev, newHistoryItem]);
+            setHistory((prev: any) => [...prev, newHistoryItem]);
         }
         
         setStep(nextStep);
@@ -290,7 +290,7 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel }) => {
         setScores(previousState.scores); 
         setHeroData(previousState.heroData); 
         
-        setHistory(prev => prev.slice(0, -1)); 
+        setHistory((prev: any) => prev.slice(0, -1)); 
         setIsTransitioning(false);
     };
 
@@ -318,7 +318,7 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel }) => {
     
     const handleRaceSelect = (race: string) => {
         const snapshot = createSnapshot();
-        setHeroData(prev => ({ ...prev, race }));
+        setHeroData((prev: any) => ({ ...prev, race }));
         changeStep(Step.ChooseName, snapshot);
     };
 
@@ -475,7 +475,7 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel }) => {
                                 autoFocus
                                 placeholder="Введи имя героя..."
                                 value={heroData.name}
-                                onChange={(e) => setHeroData(prev => ({ ...prev, name: e.target.value }))}
+                                onChange={(e) => setHeroData((prev: any) => ({ ...prev, name: e.target.value }))}
                                 className="w-full bg-slate-900/80 border-2 border-slate-600 focus:border-purple-500 outline-none rounded-lg p-4 text-white text-center text-xl placeholder-slate-600 transition-colors"
                             />
                             <Button type="submit" disabled={!heroData.name} variant="fantasy" fullWidth>Подтвердить имя</Button>
