@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from './Button';
-import { TestResult } from '../types';
+import { TestResult, ARCHETYPES } from '../types';
 import { ExternalLink, Image as ImageIcon } from 'lucide-react';
 
 const STORAGE_KEY = 'hero_game_progress_v2'; 
@@ -116,23 +116,18 @@ const ImageWithSkeleton: React.FC<{ src: string; alt: string; className?: string
 
     return (
         <div className={`relative overflow-hidden bg-slate-800 ${className}`}>
-            {/* Skeleton / Loading State */}
             {!loaded && !error && (
                 <div className="absolute inset-0 flex items-center justify-center bg-slate-800 animate-pulse">
                     <ImageIcon className="w-8 h-8 text-slate-600 opacity-50" />
                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent skew-x-12 animate-[shimmer_1.5s_infinite]"></div>
                 </div>
             )}
-            
-            {/* Actual Image */}
             <img 
                 src={src} 
                 alt={alt} 
                 className={`w-full h-full object-cover transition-opacity duration-700 ease-in-out ${loaded ? 'opacity-100' : 'opacity-0'}`}
-                loading="eager" // Force priority
+                loading="eager"
             />
-
-            {/* Error State Fallback */}
             {error && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900 text-slate-500 text-xs p-2 text-center">
                     <ImageIcon className="w-6 h-6 mb-1" />
@@ -201,48 +196,6 @@ const QUESTIONS: any = {
     },
 };
 
-const RESULTS: any = {
-    [Archetype.Commander]: {
-        title: "Командир",
-        description: [
-            "Ты умеешь видеть цель, собирать людей и вести их вперёд — с уверенностью и чёткостью.",
-            "Твой мозг — это операционный центр. Вокруг хаос? Ты наводишь порядок.",
-            "Ты не просто идёшь первым — ты тащишь всех за собой и строишь из них команду.",
-            "Ты умеешь принимать решения. Даже когда нет времени. Даже когда ставки высоки."
-        ],
-        professions: "Предприниматель, продюсер, менеджер проектов, организатор мероприятий, бизнес-архитектор."
-    },
-    [Archetype.Creator]: {
-        title: "Творец",
-        description: [
-            "Ты не можешь не придумывать. В твоей голове каждый день рождается сериал, стартап и новые миры.",
-            "Ты видишь нестандартное, чувствуешь красоту и мыслишь образами. Ты — человек концептов и глубины.",
-            "Ты не боишься делать по-своему — потому что «как все» тебе неинтересно."
-        ],
-        professions: "Дизайнер, сценарист, режиссёр, арт-директор, копирайтер, геймдизайнер, креативный продюсер."
-    },
-    [Archetype.Researcher]: {
-        title: "Мыслитель",
-        description: [
-            "Ты не просто отвечаешь на вопросы. Ты копаешься в сути.",
-            "Ты умеешь анализировать, сравнивать, выстраивать логические цепочки там, где другие сдаются.",
-            "Где паника — у тебя схема и закономерности.",
-            "Ты не боишься сложного. Для тебя это просто интересный пазл."
-        ],
-        professions: "Программист, инженер, аналитик, учёный, врач, архитектор ИИ, юрист, финансовый стратег."
-    },
-    [Archetype.Communicator]: {
-        title: "Дипломат",
-        description: [
-            "Ты — человек, с которым хочется быть рядом. Ты открываешь любые двери.",
-            "Ты заряжаешь, поддерживаешь и находишь подход к каждому — от дракона до камня.",
-            "У тебя есть суперсила, которая ценится везде — ты строишь мосты между людьми.",
-            "Ты не всегда центр внимания, но ты — тот самый клей, на котором всё держится."
-        ],
-        professions: "Психолог, педагог, ведущий, HR, коуч, актёр, блогер, наставник, ивент-менеджер, переговорщик."
-    }
-};
-
 interface TestViewProps {
   onComplete: (result: TestResult) => void;
   onCancel: () => void;
@@ -280,12 +233,10 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel }) => {
     const scrollRef = useRef<HTMLDivElement>(null);
 
     // BACKGROUND PRELOADING
-    // We do not want to block the UI. We fire this off to let the browser cache them.
     useEffect(() => {
-        const priorityImages = [IMAGES.general.allCharacters]; // Load this first
+        const priorityImages = [IMAGES.general.allCharacters];
         const otherImages: string[] = [];
 
-        // Gather all other URLs
         Object.values(IMAGES.general).forEach(url => { 
             if (url !== IMAGES.general.allCharacters) otherImages.push(url); 
         });
@@ -300,25 +251,21 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel }) => {
             });
         };
 
-        // Execute
         loadList(priorityImages);
-        // Delay the rest slightly to allow UI to render first
         setTimeout(() => loadList(otherImages), 1000);
 
     }, []);
 
-    // Save to LocalStorage
     useEffect(() => {
         const stateToSave = { step, heroData, scores, history };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
     }, [step, heroData, scores, history]);
 
-    // Force scroll to top on step change and reset selection
     useEffect(() => {
         if (scrollRef.current) {
             scrollRef.current.scrollTo(0, 0);
         }
-        setSelectedOptionIdx(null); // Reset selected option on step change
+        setSelectedOptionIdx(null);
     }, [step]);
 
     const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -333,12 +280,11 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel }) => {
         
         setStep(nextStep);
         setIsTransitioning(false);
-        // Scroll reset is handled by useEffect
     };
 
     const handleBack = async () => {
         if (history.length === 0) {
-             onCancel(); // Exit to dashboard if at start
+             onCancel(); 
              return;
         }
         
@@ -412,7 +358,7 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel }) => {
 
     const handleComplete = () => {
          const winner = getWinner();
-         const resultData = RESULTS[winner];
+         const resultData = ARCHETYPES[winner];
          
          const finalResult: TestResult = {
              scoreType: winner,
@@ -681,7 +627,7 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel }) => {
 
             case Step.Result:
                 const winner = getWinner();
-                const result = RESULTS[winner];
+                const result = ARCHETYPES[winner];
                 // @ts-ignore
                 const resultImage = IMAGES.races[heroData.race]?.[winner];
 
