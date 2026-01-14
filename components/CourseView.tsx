@@ -133,7 +133,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
   const [s3Learning, setS3Learning] = useState('');
   const [s3CrisisIdx, setS3CrisisIdx] = useState(0);
   const [s3Timer, setS3Timer] = useState(20);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<any>(null); // Fixed type for build
 
   // Helper: Open Stage
   const openStage = (idx: number) => {
