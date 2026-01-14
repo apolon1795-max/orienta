@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from './Button';
 import { TestResult } from '../types';
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, Image as ImageIcon } from 'lucide-react';
 
 const STORAGE_KEY = 'hero_game_progress_v2'; 
 
@@ -100,6 +100,47 @@ const IMAGES = {
             [Archetype.Communicator]: "https://i.postimg.cc/y8tVhhrs/Trol'-dusa-kompanii.png"
         }
     }
+};
+
+// --- NEW COMPONENT: Image with Skeleton Loader ---
+const ImageWithSkeleton: React.FC<{ src: string; alt: string; className?: string }> = ({ src, alt, className }) => {
+    const [loaded, setLoaded] = useState(false);
+    const [error, setError] = useState(false);
+
+    useEffect(() => {
+        const img = new Image();
+        img.src = src;
+        img.onload = () => setLoaded(true);
+        img.onerror = () => setError(true);
+    }, [src]);
+
+    return (
+        <div className={`relative overflow-hidden bg-slate-800 ${className}`}>
+            {/* Skeleton / Loading State */}
+            {!loaded && !error && (
+                <div className="absolute inset-0 flex items-center justify-center bg-slate-800 animate-pulse">
+                    <ImageIcon className="w-8 h-8 text-slate-600 opacity-50" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent skew-x-12 animate-[shimmer_1.5s_infinite]"></div>
+                </div>
+            )}
+            
+            {/* Actual Image */}
+            <img 
+                src={src} 
+                alt={alt} 
+                className={`w-full h-full object-cover transition-opacity duration-700 ease-in-out ${loaded ? 'opacity-100' : 'opacity-0'}`}
+                loading="eager" // Force priority
+            />
+
+            {/* Error State Fallback */}
+            {error && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900 text-slate-500 text-xs p-2 text-center">
+                    <ImageIcon className="w-6 h-6 mb-1" />
+                    <span>Failed to load</span>
+                </div>
+            )}
+        </div>
+    );
 };
 
 const QUESTIONS: any = {
@@ -238,21 +279,32 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel }) => {
     const [isTransitioning, setIsTransitioning] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
 
-    // PRELOAD IMAGES
+    // BACKGROUND PRELOADING
+    // We do not want to block the UI. We fire this off to let the browser cache them.
     useEffect(() => {
-        const preloadImages = async () => {
-            const allUrls: string[] = [];
-            Object.values(IMAGES.general).forEach(url => allUrls.push(url));
-            Object.values(IMAGES.races).forEach((raceObj: any) => {
-                Object.values(raceObj).forEach((url: any) => allUrls.push(url));
-            });
-            
-            allUrls.forEach(url => {
+        const priorityImages = [IMAGES.general.allCharacters]; // Load this first
+        const otherImages: string[] = [];
+
+        // Gather all other URLs
+        Object.values(IMAGES.general).forEach(url => { 
+            if (url !== IMAGES.general.allCharacters) otherImages.push(url); 
+        });
+        Object.values(IMAGES.races).forEach((raceObj: any) => {
+            Object.values(raceObj).forEach((url: any) => otherImages.push(url));
+        });
+
+        const loadList = (list: string[]) => {
+            list.forEach(url => {
                 const img = new Image();
                 img.src = url;
             });
         };
-        preloadImages();
+
+        // Execute
+        loadList(priorityImages);
+        // Delay the rest slightly to allow UI to render first
+        setTimeout(() => loadList(otherImages), 1000);
+
     }, []);
 
     // Save to LocalStorage
@@ -443,8 +495,8 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel }) => {
                 return (
                     <div className="text-center space-y-6">
                         <h2 className="text-3xl font-serif text-white">Выбор происхождения</h2>
-                        <div className="rounded-xl overflow-hidden shadow-2xl border border-slate-600 max-w-lg mx-auto mb-6">
-                            <img src={IMAGES.general.allCharacters} alt="Races" className="w-full h-auto object-cover" />
+                        <div className="rounded-xl overflow-hidden shadow-2xl border border-slate-600 max-w-lg mx-auto mb-6 h-64 md:h-80 w-full">
+                            <ImageWithSkeleton src={IMAGES.general.allCharacters} alt="Races" className="w-full h-full" />
                         </div>
                         <p className="text-slate-300">В Ориенте 4 великие расы. У каждой — свой стиль и подход к жизни. Кто ты?</p>
                         <p className="text-xs text-slate-500 uppercase tracking-widest">(Это только визуал)</p>
@@ -525,8 +577,8 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel }) => {
                         </div>
                         
                         {questionImage && (
-                            <div className="rounded-xl overflow-hidden shadow-2xl border border-indigo-500/30 max-w-md mx-auto">
-                                <img src={questionImage} alt="Situation" className="w-full h-auto object-cover" />
+                            <div className="rounded-xl overflow-hidden shadow-2xl border border-indigo-500/30 max-w-md mx-auto h-64 md:h-72 w-full">
+                                <ImageWithSkeleton src={questionImage} alt="Situation" className="w-full h-full" />
                             </div>
                         )}
 
@@ -608,8 +660,8 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel }) => {
                     <div className="flex flex-col h-full justify-center items-center text-center space-y-8">
                         <h2 className="text-3xl md:text-4xl font-serif text-amber-100">О, {heroData.name}!</h2>
                         
-                        <div className="rounded-xl overflow-hidden shadow-2xl border border-amber-500/30 max-w-md mx-auto">
-                            <img src={IMAGES.general.pigeon} alt="Messenger Pigeon" className="w-full h-auto object-cover" />
+                        <div className="rounded-xl overflow-hidden shadow-2xl border border-amber-500/30 max-w-md mx-auto h-64 w-full">
+                            <ImageWithSkeleton src={IMAGES.general.pigeon} alt="Messenger Pigeon" className="w-full h-full" />
                         </div>
 
                         <div className="space-y-4 text-slate-300 max-w-lg mx-auto">
@@ -640,8 +692,8 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel }) => {
                         </h2>
                         
                         {resultImage && (
-                            <div className="rounded-xl overflow-hidden shadow-2xl border-2 border-amber-500/50 max-w-md mx-auto mb-6 transform hover:scale-[1.02] transition-transform duration-500">
-                                <img src={resultImage} alt={result.title} className="w-full h-auto object-cover" />
+                            <div className="rounded-xl overflow-hidden shadow-2xl border-2 border-amber-500/50 max-w-md mx-auto mb-6 transform hover:scale-[1.02] transition-transform duration-500 h-80 w-full">
+                                <ImageWithSkeleton src={resultImage} alt={result.title} className="w-full h-full" />
                             </div>
                         )}
                         
