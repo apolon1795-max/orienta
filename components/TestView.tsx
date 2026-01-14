@@ -232,6 +232,9 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel }) => {
         return saved ? JSON.parse(saved).history || [] : [];
     });
 
+    // New state for selection confirmation
+    const [selectedOptionIdx, setSelectedOptionIdx] = useState<number | null>(null);
+
     const [isTransitioning, setIsTransitioning] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -258,6 +261,14 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel }) => {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
     }, [step, heroData, scores, history]);
 
+    // Force scroll to top on step change and reset selection
+    useEffect(() => {
+        if (scrollRef.current) {
+            scrollRef.current.scrollTo(0, 0);
+        }
+        setSelectedOptionIdx(null); // Reset selected option on step change
+    }, [step]);
+
     const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
     const changeStep = async (nextStep: Step, newHistoryItem: any = null) => {
@@ -270,10 +281,7 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel }) => {
         
         setStep(nextStep);
         setIsTransitioning(false);
-        
-        if (scrollRef.current) {
-            scrollRef.current.scrollTo(0, 0);
-        }
+        // Scroll reset is handled by useEffect
     };
 
     const handleBack = async () => {
@@ -525,21 +533,52 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel }) => {
                         <h3 className="text-xl md:text-2xl font-serif text-white text-center leading-relaxed">
                             {question.text}
                         </h3>
+                        
+                        {/* Options */}
                         <div className="grid gap-3 pt-2">
-                            {question.options.map((option: any, idx: number) => (
-                                <button
-                                    key={idx}
-                                    onClick={() => handleAnswer(option.archetype, question.nextStep)}
-                                    className="w-full bg-slate-800/50 hover:bg-slate-700/80 text-left border border-slate-600 hover:border-purple-400 text-slate-200 hover:text-white group p-4 rounded-lg transition-all"
-                                >
-                                    <span className="flex items-start">
-                                        <span className="bg-slate-700 text-slate-300 w-6 h-6 rounded flex items-center justify-center text-xs mr-3 mt-1 flex-shrink-0 group-hover:bg-purple-600 group-hover:text-white transition-colors font-sans">
-                                            {String.fromCharCode(65 + idx)}
-                                        </span>
-                                        {option.text}
-                                    </span>
-                                </button>
-                            ))}
+                            {question.options.map((option: any, idx: number) => {
+                                const isSelected = selectedOptionIdx === idx;
+                                return (
+                                    <button
+                                        key={idx}
+                                        onClick={() => setSelectedOptionIdx(idx)}
+                                        className={`w-full text-left border p-4 rounded-lg transition-all duration-200 group relative overflow-hidden ${
+                                            isSelected 
+                                                ? 'bg-purple-600/30 border-purple-400 text-white shadow-[0_0_15px_rgba(168,85,247,0.3)]' 
+                                                : 'bg-slate-800/50 hover:bg-slate-700/80 border-slate-600 hover:border-purple-400 text-slate-200'
+                                        }`}
+                                    >
+                                        <div className="flex items-start relative z-10">
+                                            <span className={`w-6 h-6 rounded flex items-center justify-center text-xs mr-3 mt-1 flex-shrink-0 font-sans transition-colors ${
+                                                isSelected 
+                                                    ? 'bg-purple-500 text-white' 
+                                                    : 'bg-slate-700 text-slate-300 group-hover:bg-purple-600 group-hover:text-white'
+                                            }`}>
+                                                {String.fromCharCode(65 + idx)}
+                                            </span>
+                                            {option.text}
+                                        </div>
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        {/* Confirmation Button */}
+                        <div className="pt-4 sticky bottom-0 bg-gradient-to-t from-slate-950 pt-6 pb-2 -mx-2 px-2">
+                            <Button 
+                                variant="fantasy" 
+                                fullWidth 
+                                disabled={selectedOptionIdx === null}
+                                onClick={() => {
+                                    if (selectedOptionIdx !== null) {
+                                        const option = question.options[selectedOptionIdx];
+                                        handleAnswer(option.archetype, question.nextStep);
+                                    }
+                                }}
+                                className="shadow-2xl"
+                            >
+                                Подтвердить выбор {EMOJI.SWORDS}
+                            </Button>
                         </div>
                     </div>
                 );
