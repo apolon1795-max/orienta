@@ -17,10 +17,12 @@ import { GuideView } from './components/GuideView';
 import { generateGraduationSummary } from './services/geminiService';
 import { saveUserDataToSheet } from './services/storageService';
 
+const CLOUD_STORAGE_KEY = 'user_progress_v1';
+
 const App: React.FC = () => {
   const [view, setView] = useState<AppView>(AppView.LANDING);
   
-  // Инициализация состояния (загрузка из LocalStorage если есть)
+  // Инициализация состояния (загрузка из LocalStorage как fallback для быстрого старта)
   const [userState, setUserState] = useState<UserState>(() => {
     const saved = localStorage.getItem('appState_ru');
     return saved ? JSON.parse(saved) : {
@@ -35,47 +37,92 @@ const App: React.FC = () => {
   
   const [isGeneratingAi, setIsGeneratingAi] = useState(false);
 
-  // 1. Инициализация Telegram WebApp при запуске
+  // 1. Инициализация Telegram WebApp и СИНХРОНИЗАЦИЯ С ОБЛАКОМ
   useEffect(() => {
-    // Проверяем, доступны ли объекты Telegram
     if (window.Telegram && window.Telegram.WebApp) {
       const tg = window.Telegram.WebApp;
       tg.ready();
       
       try {
-        tg.expand(); // Разворачиваем на весь экран
+        tg.expand();
       } catch (e) {
         console.log("Expand not supported");
       }
 
-      // Получаем данные пользователя
       const user = tg.initDataUnsafe?.user;
 
       if (user) {
         console.log("Telegram User Detected:", user);
-        setUserState(prev => {
-          const newState = {
+        
+        // Проверка версии для CloudStorage (доступен с версии 6.9)
+        const isCloudStorageSupported = tg.isVersionAtLeast && tg.isVersionAtLeast('6.9');
+
+        if (isCloudStorageSupported) {
+          // 1.1 Сначала пытаемся загрузить данные из CloudStorage (синхронизация между устройствами)
+          tg.CloudStorage.getItem(CLOUD_STORAGE_KEY, (err, value) => {
+            if (!err && value) {
+              try {
+                const cloudState = JSON.parse(value);
+                console.log("Cloud state loaded:", cloudState);
+                
+                // Объединяем данные: берем Telegram ID из текущей сессии, а прогресс из облака
+                setUserState(prev => ({
+                  ...prev,
+                  ...cloudState,
+                  telegramId: user.id,
+                  firstName: user.first_name,
+                }));
+              } catch (e) {
+                console.error("Error parsing cloud state", e);
+              }
+            } else {
+              // Если в облаке пусто или ошибка, обновляем текущие данные пользователя
+              setUserState(prev => ({
+                ...prev,
+                telegramId: user.id,
+                firstName: user.first_name
+              }));
+            }
+          });
+        } else {
+          console.warn("CloudStorage is not supported in this Telegram version (requires 6.9+). Using localStorage only.");
+          // Fallback для старых версий: просто обновляем ID и имя
+          setUserState(prev => ({
             ...prev,
-            telegramId: user.id, // Сохраняем ID
-            firstName: user.first_name // Сохраняем Имя
-          };
-          
-          // Если это новый вход (ID изменился), сохраняем факт входа в таблицу
-          if (newState.telegramId !== prev.telegramId) {
-             saveUserDataToSheet(newState);
-          }
-          return newState;
-        });
-      } else {
-        console.log("Приложение открыто вне Telegram или данные пользователя недоступны.");
+            telegramId: user.id,
+            firstName: user.first_name
+          }));
+        }
       }
     }
   }, []);
 
-  // 2. Сохранение состояния в LocalStorage при каждом изменении
+  // 2. Сохранение состояния: LocalStorage (быстро) + CloudStorage (синхронизация) + Google Sheets (бекап/админка)
   useEffect(() => {
+    // 2.1 Локально
     localStorage.setItem('appState_ru', JSON.stringify(userState));
+
+    // 2.2 В облако Telegram
+    if (window.Telegram && window.Telegram.WebApp) {
+      const tg = window.Telegram.WebApp;
+      const isCloudStorageSupported = tg.isVersionAtLeast && tg.isVersionAtLeast('6.9');
+
+      if (isCloudStorageSupported && tg.CloudStorage) {
+        // CloudStorage принимает только строки.
+        tg.CloudStorage.setItem(
+          CLOUD_STORAGE_KEY, 
+          JSON.stringify(userState), 
+          (err, stored) => {
+            if (err) console.error("Cloud save error:", err);
+          }
+        );
+      }
+    }
   }, [userState]);
+
+  // Отдельный эффект для сохранения в Google Sheets при важных событиях (смена ID, тест, итог)
+  // Мы не можем ставить это в основной useEffect, иначе будем спамить таблицу при каждом чихе
+  // Поэтому вызовы saveUserDataToSheet остаются в хендлерах событий ниже.
 
   // --- Actions ---
 
@@ -88,18 +135,17 @@ const App: React.FC = () => {
   };
 
   const handleOnboardingComplete = () => {
-    setUserState(prev => ({ ...prev, hasOnboarded: true }));
+    const newState = { ...userState, hasOnboarded: true };
+    setUserState(newState);
     setView(AppView.DASHBOARD);
+    // Сохраняем факт регистрации
+    saveUserDataToSheet(newState);
   };
 
   const handleTestComplete = (result: TestResult) => {
-    setUserState(prev => {
-      const newState = { ...prev, testResult: result };
-      // Сохраняем в таблицу после прохождения теста
-      saveUserDataToSheet(newState);
-      return newState;
-    });
-    // Сразу открываем гайд после теста
+    const newState = { ...userState, testResult: result };
+    setUserState(newState);
+    saveUserDataToSheet(newState);
     setView(AppView.GUIDE);
   };
 
@@ -117,12 +163,9 @@ const App: React.FC = () => {
     setIsGeneratingAi(true);
     const summary = await generateGraduationSummary(userState.testResult, userState.courseProgress);
     
-    setUserState(prev => {
-      const newState = { ...prev, aiSummary: summary };
-      // Сохраняем в таблицу после генерации ИИ-итога (завершение курса)
-      saveUserDataToSheet(newState);
-      return newState;
-    });
+    const newState = { ...userState, aiSummary: summary };
+    setUserState(newState);
+    saveUserDataToSheet(newState);
     
     setIsGeneratingAi(false);
     setView(AppView.AI_SUMMARY);
