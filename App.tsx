@@ -288,6 +288,33 @@ const App: React.FC = () => {
     }
   };
 
+  const handleRetakeTest = () => {
+      const doReset = () => {
+          const updates = { testResult: null, aiSummary: null };
+          updateUserState(updates);
+          saveUserDataToSheet({ ...userState, ...updates });
+          setView(AppView.TEST);
+      };
+  
+      const tg = window.Telegram?.WebApp;
+      if (tg && tg.showPopup && tg.isVersionAtLeast && tg.isVersionAtLeast('6.2')) {
+          tg.showPopup({
+              title: 'Начать заново?',
+              message: 'Твой текущий результат и ИИ-вывод будут удалены. Ты уверен?',
+              buttons: [
+                  {id: 'yes', type: 'destructive', text: 'Да, сбросить'},
+                  {id: 'no', type: 'cancel', text: 'Отмена'}
+              ]
+          }, (btnId) => {
+              if (btnId === 'yes') doReset();
+          });
+      } else {
+          if (window.confirm('Сбросить результат и пройти тест заново?')) {
+              doReset();
+          }
+      }
+  };
+
   const handleCourseLocked = () => {
     showPopup("Скоро открытие! 🚀", "Этот курс сейчас готовится. Мы сообщим, когда он станет доступен!");
   };
@@ -427,6 +454,17 @@ const App: React.FC = () => {
         </div>
         <BrainCircuit className="absolute -bottom-4 -right-4 w-40 h-40 text-white/5 rotate-12" />
       </div>
+
+      {userState.testResult && (
+          <div className="text-center mb-8">
+              <button 
+                  onClick={handleRetakeTest}
+                  className="text-xs text-slate-500 hover:text-red-400 underline transition-colors"
+              >
+                  Сбросить результат и пройти заново
+              </button>
+          </div>
+      )}
 
       <div className="grid grid-cols-2 gap-4">
         <DashboardCard 
