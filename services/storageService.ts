@@ -11,6 +11,9 @@ import { UserState } from "../types";
 // Value: https://script.google.com/macros/s/.......
 // =============================================================================================
 
+// Fix for TypeScript finding "process" in browser env
+declare var process: any;
+
 const getScriptUrl = () => {
   // 1. Попытка получить из process.env (стандарт Node.js / Create React App)
   if (typeof process !== 'undefined' && process.env?.REACT_APP_GOOGLE_SCRIPT_URL) {
