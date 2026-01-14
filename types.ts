@@ -76,6 +76,13 @@ declare global {
           };
         };
         expand: () => void;
+        // CloudStorage API
+        CloudStorage: {
+          setItem: (key: string, value: string, callback?: (error: any, stored: boolean) => void) => void;
+          getItem: (key: string, callback: (error: any, value: string) => void) => void;
+          getItems: (keys: string[], callback: (error: any, values: any) => void) => void;
+          removeItem: (key: string, callback?: (error: any, deleted: boolean) => void) => void;
+        };
         // Version check method
         isVersionAtLeast: (version: string) => boolean;
         showPopup: (params: {
