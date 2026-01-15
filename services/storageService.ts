@@ -39,9 +39,10 @@ export const saveUserDataToSheet = async (userState: UserState) => {
 
   const payload = {
     action: "save",
-    telegramId: userState.telegramId || "Anonymous",
+    // Force string to ensure Google Apps Script lookup works correctly even for large numbers
+    telegramId: String(userState.telegramId || "Anonymous"), 
     firstName: userState.firstName || "User",
-    username: userState.username ? `@${userState.username}` : "-", // Явно отправляем прочерк если нет юзернейма
+    username: userState.username ? `@${userState.username}` : "-", 
     archetype: archetypeStatus,
     progress: `${userState.courseProgress.filter(m => m.isCompleted).length}/${userState.courseProgress.length}`,
     aiSummary: userState.aiSummary || "-"
