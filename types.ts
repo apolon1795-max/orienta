@@ -121,6 +121,9 @@ declare global {
           };
         };
         expand: () => void;
+        // Link handling methods
+        openLink: (url: string, options?: { try_instant_view?: boolean }) => void;
+        openTelegramLink: (url: string) => void;
         // CloudStorage API
         CloudStorage: {
           setItem: (key: string, value: string, callback?: (error: any, stored: boolean) => void) => void;
