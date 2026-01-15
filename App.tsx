@@ -332,6 +332,18 @@ const App: React.FC = () => {
     }
   };
 
+  const handleOpenTelegramLink = (url: string) => {
+    const tg = window.Telegram?.WebApp;
+    // t.me links should be opened via openTelegramLink to work correctly on Desktop
+    if (tg && tg.openTelegramLink && (url.startsWith('https://t.me') || url.startsWith('tg://'))) {
+        tg.openTelegramLink(url);
+    } else if (tg && tg.openLink) {
+        tg.openLink(url);
+    } else {
+        window.open(url, '_blank');
+    }
+  };
+
   // --- Views ---
 
   if (isSyncing) {
@@ -556,11 +568,9 @@ const App: React.FC = () => {
               <p className="text-slate-400 mt-2">Готов применить результаты теста "{userState.testResult?.title || 'Тест'}" в реальной жизни? Запишись на частную сессию.</p>
             </div>
             
-            <a href={tgLink} target="_blank" rel="noreferrer" className="block w-full">
-              <Button fullWidth variant="fantasy">
+            <Button fullWidth variant="fantasy" onClick={() => handleOpenTelegramLink(tgLink)}>
                 Написать Ментору <ExternalLink className="w-4 h-4 ml-2" />
-              </Button>
-            </a>
+            </Button>
           </div>
       </div>
     );
@@ -575,7 +585,7 @@ const App: React.FC = () => {
         <h2 className="text-2xl font-serif font-bold text-white mb-6">Вступай в Племя</h2>
         
         <div className="space-y-4">
-          <a href="https://t.me/sense_house" target="_blank" rel="noreferrer" className="block group">
+          <div onClick={() => handleOpenTelegramLink("https://t.me/sense_house")} className="block group cursor-pointer">
              <div className="bg-slate-900 p-6 rounded-xl border border-slate-800 flex items-center justify-between hover:border-indigo-500 transition-all">
                 <div className="flex items-center gap-4">
                   <div className="bg-blue-500/20 p-3 rounded-lg">
@@ -588,7 +598,7 @@ const App: React.FC = () => {
                 </div>
                 <ExternalLink className="w-5 h-5 text-slate-600 group-hover:text-white" />
              </div>
-          </a>
+          </div>
 
           {userState.testResult && (
             <div 
