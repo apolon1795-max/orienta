@@ -49,16 +49,19 @@ export const saveUserDataToSheet = async (userState: UserState) => {
   };
 
   try {
+    console.log("📤 Отправка данных в Google Sheet:", payload);
     // Используем no-cors. Мы не узнаем ответ, но данные уйдут.
+    // credentials: 'omit' важен, чтобы браузер не блокировал запрос из-за кук
     await fetch(GOOGLE_SCRIPT_URL, {
       method: "POST",
       mode: "no-cors", 
+      credentials: "omit",
       headers: {
         "Content-Type": "text/plain;charset=utf-8",
       },
       body: JSON.stringify(payload),
     });
-    console.log("✅ Данные отправлены в таблицу:", payload);
+    console.log("✅ Запрос отправлен (no-cors)");
   } catch (error) {
     console.error("❌ Ошибка сохранения в таблицу:", error);
   }
