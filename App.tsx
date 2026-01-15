@@ -22,6 +22,7 @@ import { saveUserDataToSheet } from './services/storageService';
 
 const CLOUD_STORAGE_KEY = 'user_progress_v1';
 const LOCAL_STORAGE_KEY = 'appState_ru';
+const GAME_STORAGE_KEY = 'hero_game_progress_v2'; // Key used in TestView
 
 // Helper types for minified cloud state
 interface MinifiedCloudState {
@@ -305,9 +306,17 @@ const App: React.FC = () => {
 
   const handleRetakeTest = () => {
       const doReset = () => {
+          // 1. Сбрасываем глобальное состояние
           const updates = { testResult: null, aiSummary: null };
           updateUserState(updates);
+
+          // 2. Сбрасываем внутреннюю память теста (TestView), чтобы не открывался старый результат
+          localStorage.removeItem(GAME_STORAGE_KEY);
+
+          // 3. Отправляем в таблицу информацию о рестарте
           saveUserDataToSheet({ ...userState, ...updates });
+
+          // 4. Переключаем экран
           setView(AppView.TEST);
       };
   
