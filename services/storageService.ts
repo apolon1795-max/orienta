@@ -24,23 +24,31 @@ export const GOOGLE_SCRIPT_URL = getScriptUrl();
 
 export const saveUserDataToSheet = async (userState: UserState) => {
   if (!GOOGLE_SCRIPT_URL) {
-    console.warn("⚠️ Google Sheet URL не настроен! Создайте файл .env и добавьте переменную VITE_GOOGLE_SCRIPT_URL");
+    console.warn("⚠️ Google Sheet URL не настроен! Проверьте файл .env");
     return;
+  }
+
+  // Если нет результата теста, значит пользователь либо только начал, либо нажал "Рестарт"
+  // Если hasOnboarded = true, но результата нет — это Рестарт.
+  let archetypeStatus = "Не начал";
+  if (userState.testResult?.title) {
+      archetypeStatus = userState.testResult.title;
+  } else if (userState.hasOnboarded) {
+      archetypeStatus = "Проходит тест (Рестарт)";
   }
 
   const payload = {
     action: "save",
     telegramId: userState.telegramId || "Anonymous",
     firstName: userState.firstName || "User",
-    username: userState.username ? `@${userState.username}` : "No Username",
-    archetype: userState.testResult?.title || "Не прошел тест",
+    username: userState.username ? `@${userState.username}` : "-", // Явно отправляем прочерк если нет юзернейма
+    archetype: archetypeStatus,
     progress: `${userState.courseProgress.filter(m => m.isCompleted).length}/${userState.courseProgress.length}`,
-    aiSummary: userState.aiSummary || "Нет"
+    aiSummary: userState.aiSummary || "-"
   };
 
   try {
-    // Используем no-cors, так как GAS часто не возвращает CORS заголовки при редиректах, 
-    // но запрос все равно доходит.
+    // Используем no-cors. Мы не узнаем ответ, но данные уйдут.
     await fetch(GOOGLE_SCRIPT_URL, {
       method: "POST",
       mode: "no-cors", 
