@@ -1,42 +1,30 @@
 import { UserState } from "../types";
 
 // =============================================================================================
-// БЕЗОПАСНОСТЬ ДАННЫХ
-// =============================================================================================
-// Ссылка на Google Script теперь берется из переменных окружения (Environment Variables).
-// Это безопасно для публикации кода на GitHub.
-//
-// В Timeweb / Vercel / Netlify добавьте переменную:
-// Key: REACT_APP_GOOGLE_SCRIPT_URL
-// Value: https://script.google.com/macros/s/.......
+// SAFE STORAGE SERVICE
+// Этот файл безопасен для GitHub. Он не содержит ключей.
+// Ссылка на скрипт берется из файла .env (переменная VITE_GOOGLE_SCRIPT_URL)
 // =============================================================================================
 
-// Fix for TypeScript finding "process" in browser env
-declare var process: any;
-
+// Helper function to safely access environment variables without crashing
 const getScriptUrl = () => {
-  // 1. Попытка получить из process.env (стандарт Node.js / Create React App)
-  if (typeof process !== 'undefined' && process.env?.REACT_APP_GOOGLE_SCRIPT_URL) {
-    return process.env.REACT_APP_GOOGLE_SCRIPT_URL;
-  }
-  
-  // 2. Попытка получить из import.meta.env (стандарт Vite)
-  // @ts-ignore
-  if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GOOGLE_SCRIPT_URL) {
+  try {
     // @ts-ignore
-    return import.meta.env.VITE_GOOGLE_SCRIPT_URL;
+    if (typeof import.meta !== 'undefined' && import.meta.env) {
+      // @ts-ignore
+      return import.meta.env.VITE_GOOGLE_SCRIPT_URL || "";
+    }
+  } catch (e) {
+    console.warn("Environment check failed", e);
   }
-
-  // 3. ФОЛБЭК: Если переменная не найдена, возвращаем пустую строку.
-  // Это гарантирует, что секретная ссылка не попадет в репозиторий.
-  return ""; 
+  return "";
 };
 
 export const GOOGLE_SCRIPT_URL = getScriptUrl();
 
 export const saveUserDataToSheet = async (userState: UserState) => {
   if (!GOOGLE_SCRIPT_URL) {
-    console.warn("Google Sheet URL is not set. Please configure REACT_APP_GOOGLE_SCRIPT_URL in your environment variables.");
+    console.warn("⚠️ Google Sheet URL не настроен! Создайте файл .env и добавьте переменную VITE_GOOGLE_SCRIPT_URL");
     return;
   }
 
@@ -44,12 +32,15 @@ export const saveUserDataToSheet = async (userState: UserState) => {
     action: "save",
     telegramId: userState.telegramId || "Anonymous",
     firstName: userState.firstName || "User",
-    archetype: userState.testResult?.title || "Not Completed",
+    username: userState.username ? `@${userState.username}` : "No Username",
+    archetype: userState.testResult?.title || "Не прошел тест",
     progress: `${userState.courseProgress.filter(m => m.isCompleted).length}/${userState.courseProgress.length}`,
-    aiSummary: userState.aiSummary ? "Generated" : "None"
+    aiSummary: userState.aiSummary || "Нет"
   };
 
   try {
+    // Используем no-cors, так как GAS часто не возвращает CORS заголовки при редиректах, 
+    // но запрос все равно доходит.
     await fetch(GOOGLE_SCRIPT_URL, {
       method: "POST",
       mode: "no-cors", 
@@ -58,8 +49,8 @@ export const saveUserDataToSheet = async (userState: UserState) => {
       },
       body: JSON.stringify(payload),
     });
-    console.log("Data sent to Google Sheet successfully");
+    console.log("✅ Данные отправлены в таблицу:", payload);
   } catch (error) {
-    console.error("Failed to save data to Google Sheet:", error);
+    console.error("❌ Ошибка сохранения в таблицу:", error);
   }
 };
