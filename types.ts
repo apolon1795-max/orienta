@@ -35,6 +35,7 @@ export interface UserState {
   hasOnboarded: boolean;
   telegramId: string | number | null;
   firstName: string | null;
+  username: string | null; // Added username for contact
   testResult: TestResult | null;
   courseProgress: CourseModule[];
   aiSummary: string | null;
