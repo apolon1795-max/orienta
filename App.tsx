@@ -29,6 +29,7 @@ interface MinifiedCloudState {
     ts: number; // timestamp
     tId: string | number | null; // telegramId
     nm: string | null; // name
+    usr: string | null; // username (shortened key)
     onb: boolean; // onboarded
     res: { t: string, s: string, d: string } | null; // testResult (title, scoreType, timestamp)
     crs: number[]; // completed module IDs
@@ -41,6 +42,7 @@ const packState = (state: UserState): string => {
         ts: state.lastUpdated,
         tId: state.telegramId,
         nm: state.firstName,
+        usr: state.username,
         onb: state.hasOnboarded,
         res: state.testResult ? {
             t: state.testResult.title,
@@ -79,6 +81,7 @@ const unpackState = (jsonStr: string, currentLocal: UserState): UserState | null
             hasOnboarded: min.onb,
             telegramId: min.tId || currentLocal.telegramId,
             firstName: min.nm || currentLocal.firstName,
+            username: min.usr || currentLocal.username,
             testResult: hydratedResult,
             courseProgress: hydratedCourse,
             aiSummary: min.ai,
@@ -108,6 +111,7 @@ const App: React.FC = () => {
       hasOnboarded: false,
       telegramId: null,
       firstName: null,
+      username: null,
       testResult: null,
       courseProgress: INITIAL_COURSE_MODULES,
       aiSummary: null,
@@ -166,6 +170,7 @@ const App: React.FC = () => {
                       ...cloudState,
                       telegramId: user.id, 
                       firstName: user.first_name,
+                      username: user.username || null
                     };
                   } else {
                     console.log("Using Local State");
@@ -174,19 +179,29 @@ const App: React.FC = () => {
                       ...localState,
                       telegramId: user.id,
                       firstName: user.first_name,
+                      username: user.username || null
                     };
                   }
               });
             } else {
               console.log("No cloud data or empty");
               // Initialize ID if needed
-              updateUserState({ telegramId: user.id, firstName: user.first_name });
+              updateUserState({ 
+                telegramId: user.id, 
+                firstName: user.first_name, 
+                username: user.username || null 
+              });
               setSyncStatus('synced');
             }
             setIsSyncing(false);
           });
         } else {
-          updateUserState({ telegramId: user.id, firstName: user.first_name });
+          // No cloud support
+          updateUserState({ 
+            telegramId: user.id, 
+            firstName: user.first_name,
+            username: user.username || null 
+          });
           setIsSyncing(false);
           setSyncStatus('error');
         }
