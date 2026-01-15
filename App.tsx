@@ -97,6 +97,9 @@ const unpackState = (jsonStr: string, currentLocal: UserState): UserState | null
 const App: React.FC = () => {
   const [view, setView] = useState<AppView>(AppView.LANDING);
   
+  // Ключ для принудительного пересоздания компонента Теста
+  const [testResetKey, setTestResetKey] = useState(0);
+
   // Инициализация состояния: Пробуем загрузить LocalStorage
   const [userState, setUserState] = useState<UserState>(() => {
     try {
@@ -306,17 +309,23 @@ const App: React.FC = () => {
 
   const handleRetakeTest = () => {
       const doReset = () => {
-          // 1. Сбрасываем глобальное состояние
+          // 1. Сбрасываем внутреннюю память теста ДО изменения View
+          localStorage.removeItem(GAME_STORAGE_KEY);
+          
+          // 2. Обновляем ключ сброса, чтобы компонент TestView пересоздался с нуля
+          setTestResetKey(prev => prev + 1);
+
+          // 3. Формируем чистое состояние
           const updates = { testResult: null, aiSummary: null };
+          
+          // 4. Отправляем в таблицу информацию о рестарте, используя ОБНОВЛЕННЫЕ данные
+          const resetState = { ...userState, ...updates };
+          saveUserDataToSheet(resetState);
+
+          // 5. Применяем обновления в React
           updateUserState(updates);
 
-          // 2. Сбрасываем внутреннюю память теста (TestView), чтобы не открывался старый результат
-          localStorage.removeItem(GAME_STORAGE_KEY);
-
-          // 3. Отправляем в таблицу информацию о рестарте
-          saveUserDataToSheet({ ...userState, ...updates });
-
-          // 4. Переключаем экран
+          // 6. Переключаем экран
           setView(AppView.TEST);
       };
   
@@ -662,6 +671,7 @@ const App: React.FC = () => {
       )}
       {view === AppView.TEST && (
         <TestView 
+          key={testResetKey}
           onComplete={handleTestComplete} 
           onCancel={() => setView(AppView.DASHBOARD)} 
         />
