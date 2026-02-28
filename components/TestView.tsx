@@ -233,6 +233,7 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResu
     const [isTransitioning, setIsTransitioning] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
     const hasCalculatedResult = useRef(false);
+    const touchStartRef = useRef<{x: number, y: number} | null>(null);
 
     // BACKGROUND PRELOADING
     useEffect(() => {
@@ -486,7 +487,20 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResu
                             ].map((r) => (
                                 <button
                                     key={r.val}
-                                    onClick={() => handleRaceSelect(r.val)}
+                                    onPointerDown={(e) => {
+                                        touchStartRef.current = { x: e.clientX, y: e.clientY };
+                                    }}
+                                    onClick={(e) => {
+                                        if (touchStartRef.current) {
+                                            const dx = e.clientX - touchStartRef.current.x;
+                                            const dy = e.clientY - touchStartRef.current.y;
+                                            if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+                                                e.preventDefault();
+                                                return;
+                                            }
+                                        }
+                                        handleRaceSelect(r.val);
+                                    }}
                                     className="bg-slate-800/60 hover:bg-purple-900/40 border border-slate-600 hover:border-purple-400 p-6 rounded-xl transition-all duration-300 text-xl font-serif text-white shadow-lg"
                                 >
                                     {r.label}
@@ -570,7 +584,20 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResu
                                 return (
                                     <button
                                         key={idx}
-                                        onClick={() => setSelectedOptionIdx(idx)}
+                                        onPointerDown={(e) => {
+                                            touchStartRef.current = { x: e.clientX, y: e.clientY };
+                                        }}
+                                        onClick={(e) => {
+                                            if (touchStartRef.current) {
+                                                const dx = e.clientX - touchStartRef.current.x;
+                                                const dy = e.clientY - touchStartRef.current.y;
+                                                if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+                                                    e.preventDefault();
+                                                    return;
+                                                }
+                                            }
+                                            setSelectedOptionIdx(idx);
+                                        }}
                                         className={`w-full text-left border p-4 rounded-lg transition-all duration-200 group relative overflow-hidden ${
                                             isSelected 
                                                 ? 'bg-purple-600/30 border-purple-400 text-white shadow-[0_0_15px_rgba(168,85,247,0.3)]' 
