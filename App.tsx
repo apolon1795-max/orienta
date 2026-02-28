@@ -272,6 +272,14 @@ const App: React.FC = () => {
     saveUserDataToSheet({ ...userState, ...updates });
   };
 
+  const handleTestCalculated = (result: TestResult) => {
+    if (!userState.testResult || userState.testResult.scoreType !== result.scoreType) {
+      const updates = { testResult: result };
+      updateUserState(updates);
+      saveUserDataToSheet({ ...userState, ...updates });
+    }
+  };
+
   const handleTestComplete = (result: TestResult) => {
     const updates = { testResult: result };
     updateUserState(updates);
@@ -674,6 +682,7 @@ const App: React.FC = () => {
           key={testResetKey}
           onComplete={handleTestComplete} 
           onCancel={() => setView(AppView.DASHBOARD)} 
+          onResultCalculated={handleTestCalculated}
         />
       )}
       {view === AppView.COURSE && (
