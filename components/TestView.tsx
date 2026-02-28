@@ -199,9 +199,10 @@ const QUESTIONS: any = {
 interface TestViewProps {
   onComplete: (result: TestResult) => void;
   onCancel: () => void;
+  onResultCalculated?: (result: TestResult) => void;
 }
 
-export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel }) => {
+export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResultCalculated }) => {
     // State
     const [step, setStep] = useState<Step>(() => {
         const saved = localStorage.getItem(STORAGE_KEY);
@@ -231,6 +232,7 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel }) => {
 
     const [isTransitioning, setIsTransitioning] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
+    const hasCalculatedResult = useRef(false);
 
     // BACKGROUND PRELOADING
     useEffect(() => {
@@ -311,6 +313,7 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel }) => {
             [Archetype.Communicator]: 0,
         });
         setHistory([]);
+        hasCalculatedResult.current = false;
     };
 
     const createSnapshot = () => ({
@@ -369,6 +372,23 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel }) => {
          
          onComplete(finalResult);
     };
+
+    useEffect(() => {
+        if (step === Step.Result && onResultCalculated && !hasCalculatedResult.current) {
+            hasCalculatedResult.current = true;
+            const winner = getWinner();
+            const resultData = ARCHETYPES[winner];
+            
+            const finalResult: TestResult = {
+                scoreType: winner,
+                title: resultData.title,
+                description: resultData.description.join('\n\n'),
+                timestamp: new Date().toISOString()
+            };
+            
+            onResultCalculated(finalResult);
+        }
+    }, [step, scores, onResultCalculated]);
 
     const getQuestionImage = (currentStep: Step) => {
         // @ts-ignore
