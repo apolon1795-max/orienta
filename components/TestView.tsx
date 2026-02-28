@@ -267,6 +267,7 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResu
         if (scrollRef.current) {
             scrollRef.current.scrollTo(0, 0);
         }
+        window.scrollTo(0, 0);
         setSelectedOptionIdx(null);
     }, [step]);
 
@@ -280,6 +281,11 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResu
             setHistory((prev: any) => [...prev, newHistoryItem]);
         }
         
+        if (scrollRef.current) {
+            scrollRef.current.scrollTo(0, 0);
+        }
+        window.scrollTo(0, 0);
+        
         setStep(nextStep);
         setIsTransitioning(false);
     };
@@ -292,6 +298,11 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResu
         
         setIsTransitioning(true);
         await wait(300);
+
+        if (scrollRef.current) {
+            scrollRef.current.scrollTo(0, 0);
+        }
+        window.scrollTo(0, 0);
 
         const previousState = history[history.length - 1];
         setStep(previousState.step);
