@@ -1,5 +1,4 @@
 import React from 'react';
-import { LessonMedia } from './LessonMedia';
 import { Castle, Gem, CheckCircle } from 'lucide-react';
 import type { CourseState } from '../types';
 import { Button } from './Button';
@@ -11,7 +10,6 @@ const Frame = ({ children }: { children: React.ReactNode }) => <div className="m
 export const DreamStage = ({ course: c, onChange, onFinish }: Props) => {
   const update = (patch: Partial<CourseState>) => onChange(prev => ({ ...prev, ...patch }));
   if (c.s4Phase === 'intro') return <Frame>
-    <LessonMedia stage={4} />
     <Castle className="w-14 h-14 text-amber-400" aria-hidden="true" />
     <h2 className="text-3xl font-serif text-white">Башня мечты</h2>
     <p className="text-slate-200 leading-relaxed">Представь свою будущую работу: место, людей, задачи и обычный день. Затем выбери, какой формат тебе ближе. Ответы помогут сформулировать, что стоит проверить на практике.</p>
@@ -46,7 +44,7 @@ export const AssessmentStage = ({ course: c, onChange, onFinish }: Props) => {
   const update = (patch: Partial<CourseState>) => onChange(prev => ({ ...prev, ...patch }));
   const interests = scoreInterests(c.hollandAnswers), motivation = scoreMotivation(c.motivationAnswers);
   const topInterests = leaders(interests, 2), topMotivation = leaders(motivation, 3);
-  if (c.s5Phase === 'intro') return <Frame><LessonMedia stage={5} /><Gem className="w-14 h-14 text-indigo-300" aria-hidden="true" />
+  if (c.s5Phase === 'intro') return <Frame><Gem className="w-14 h-14 text-indigo-300" aria-hidden="true" />
     <h2 className="text-3xl font-serif text-white">Хрустальный зал</h2>
     <p className="text-slate-200">Впереди два авторских опросника: 12 утверждений о профессиональных интересах по шести направлениям Холланда и 10 вопросов о мотивации. Это короткая игровая адаптация для исследования вариантов, её точность как диагностики не установлена.</p>
     <Button variant="fantasy" onClick={() => update({ s5Phase: 'holland', s5Index: Math.min(c.hollandAnswers.length, 11) })}>Исследовать интересы</Button>

@@ -11,6 +11,14 @@ import { GOOGLE_SCRIPT_URL } from './services/storageService';
 import { createUserState, readUserState, saveLocalState, GAME_STORAGE_KEY, exportBackup, importBackup } from './services/progress';
 import { downloadText, courseFingerprint } from './services/profile';
 import { createTestDraft, readTestDraft, TestDraft } from './services/testProgress';
+import { LessonMedia } from './components/LessonMedia';
+import { ProgressAccount, ProgressAccess } from './components/ProgressAccount';
+import { apiBase, ProgressSync, type ProgressPayload, type SyncState } from './services/cloudProgress';
+
+const CLOUD_API = apiBase(import.meta.env.VITE_PROGRESS_API_URL);
+const browserStorage = (name: 'localStorage' | 'sessionStorage'): Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> => {
+  try { return window[name]; } catch { return { getItem: () => null, removeItem: () => {}, setItem: () => { throw new Error('storage_unavailable'); } }; }
+};
 
 const StorageIndicator = ({ available }: { available: boolean }) => (
   <span className="absolute top-4 right-4 text-slate-300 print-hidden" title={available ? 'Прогресс сохранён в этом браузере' : 'Хранилище браузера недоступно'}>
@@ -20,6 +28,7 @@ const StorageIndicator = ({ available }: { available: boolean }) => (
 const App: React.FC = () => {
   const [view, setView] = useState<AppView>(AppView.LANDING);
   const [userState, setUserState] = useState<UserState>(() => {
+    if (CLOUD_API) return createUserState();
     try { return readUserState(window.localStorage); } catch { return createUserState(); }
   });
   const [testResetKey, setTestResetKey] = useState(0);
@@ -29,16 +38,38 @@ const App: React.FC = () => {
   const [notice, setNotice] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<'test' | 'all' | 'import' | null>(null);
   const pendingImport = useRef<ReturnType<typeof importBackup> | null>(null);
-  const [initialDraft] = useState(() => { try { return readTestDraft(window.localStorage); } catch { return createTestDraft(); } });
+  const [initialDraft] = useState(() => { if (CLOUD_API) return createTestDraft(); try { return readTestDraft(window.localStorage); } catch { return createTestDraft(); } });
   const testDraft = useRef(initialDraft);
+  const [draftRevision, setDraftRevision] = useState(0);
   const handleDraftChange = useCallback((draft: TestDraft) => {
     testDraft.current = draft;
-    try { window.localStorage.setItem(GAME_STORAGE_KEY, JSON.stringify(draft)); } catch { setStorageAvailable(false); }
+    setDraftRevision(n => n + 1);
+    if (!CLOUD_API) { try { window.localStorage.setItem(GAME_STORAGE_KEY, JSON.stringify(draft)); } catch { setStorageAvailable(false); } }
   }, []);
   const dialog = useRef<HTMLDialogElement>(null);
   const request = useRef<AbortController | null>(null);
   const aiInFlight = useRef(false);
   const importInput = useRef<HTMLInputElement>(null);
+  const mediaEpoch = useRef(0);
+  const renderedMediaEpoch = mediaEpoch.current;
+  const restoreCloud = useCallback((payload: ProgressPayload) => {
+    mediaEpoch.current++;
+    setUserState(payload.state); testDraft.current = payload.testDraft;
+    setTestResetKey(n => n + 1); setDraftRevision(n => n + 1);
+    setView(payload.state.hasOnboarded ? AppView.DASHBOARD : AppView.ONBOARDING);
+  }, []);
+  const [sync] = useState(() => new ProgressSync({ base: CLOUD_API, sessionStorage: browserStorage('sessionStorage'), storage: browserStorage('localStorage'), restore: restoreCloud,
+    reset: () => restoreCloud({ state: createUserState(), testDraft: createTestDraft() }) }));
+  const [syncState, setSyncState] = useState<SyncState>(sync.state);
+  useEffect(() => { const unsubscribe = sync.subscribe(setSyncState); void sync.start(); return unsubscribe; }, [sync]);
+  useEffect(() => { sync.offer({ state: userState, testDraft: testDraft.current }); }, [sync, userState, draftRevision, syncState.status]);
+  useEffect(() => {
+    if (!CLOUD_API) return;
+    const retry = () => { void sync.retry(); }, flush = () => { void sync.flush(); };
+    const hidden = () => { if (document.visibilityState === 'hidden') flush(); };
+    window.addEventListener('online', retry); window.addEventListener('pagehide', flush); document.addEventListener('visibilitychange', hidden);
+    return () => { window.removeEventListener('online', retry); window.removeEventListener('pagehide', flush); document.removeEventListener('visibilitychange', hidden); };
+  }, [sync]);
   const profileReady = userState.course.completedStages.length === 5 && !!userState.testResult;
   const updateUserState = useCallback((updates: Partial<UserState>) => {
     setUserState(prev => ({ ...prev, ...updates, lastUpdated: Date.now() }));
@@ -53,6 +84,7 @@ const App: React.FC = () => {
     });
   }, []);
   useEffect(() => {
+    if (CLOUD_API) return;
     try { setStorageAvailable(saveLocalState(window.localStorage, userState)); } catch { setStorageAvailable(false); }
   }, [userState]);
   useEffect(() => { window.scrollTo(0, 0); }, [view]);
@@ -100,9 +132,9 @@ const App: React.FC = () => {
     request.current?.abort(); request.current = null;
     if (confirmation === 'import' && pendingImport.current) {
       handleExport(); setUserState(pendingImport.current.state); testDraft.current = pendingImport.current.testDraft; pendingImport.current = null;
-    } else if (confirmation === 'all') { try { window.localStorage.removeItem('appState_ru_recovery'); } catch {} pendingImport.current = null; setUserState({ ...createUserState(), lastUpdated: Date.now() }); testDraft.current = createTestDraft(); }
+    } else if (confirmation === 'all') { if (!CLOUD_API) { try { window.localStorage.removeItem('appState_ru_recovery'); } catch {} } pendingImport.current = null; setUserState({ ...createUserState(), lastUpdated: Date.now() }); testDraft.current = createTestDraft(); }
     else { updateUserState({ testResult: null, aiSummary: null, summarySource: undefined }); testDraft.current = createTestDraft(); }
-    try { window.localStorage.setItem(GAME_STORAGE_KEY, JSON.stringify(testDraft.current)); } catch { setStorageAvailable(false); }
+    if (!CLOUD_API) { try { window.localStorage.setItem(GAME_STORAGE_KEY, JSON.stringify(testDraft.current)); } catch { setStorageAvailable(false); } }
     setTestResetKey(k => k + 1); setView(confirmation === 'test' ? AppView.TEST : confirmation === 'all' ? AppView.LANDING : AppView.DASHBOARD);
     setConfirmation(null); setAiError(null);
   };
@@ -151,7 +183,7 @@ const App: React.FC = () => {
             <Bot className="w-6 h-6 text-white" />
           </div>
           <div className="bg-slate-800 p-4 rounded-2xl rounded-tl-none text-slate-200 shadow-lg border border-slate-700 space-y-2">
-            <p>Твой прогресс сохраняется на этом устройстве.</p>
+            <p>{CLOUD_API ? 'Твой прогресс сохраняется по личному коду.' : 'Твой прогресс сохраняется на этом устройстве.'}</p>
             <p>Сначала выбери персонажа и пройди пять ситуаций. Затем исследуй интересы, ценности и навыки в пяти этапах курса.</p>
           </div>
         </div>
@@ -297,8 +329,10 @@ const App: React.FC = () => {
     </div>
   );
 
+  if (CLOUD_API && ['signed-out', 'checking', 'error'].includes(syncState.status)) return <ProgressAccess client={sync} state={syncState} onExport={handleExport} hasLocalAnswers={userState.hasOnboarded || testDraft.current.step !== 'start'} />;
   return (
     <div className="min-h-screen text-slate-200 font-sans selection:bg-indigo-500/30">
+      <ProgressAccount client={sync} state={syncState} onExport={handleExport} />
       {!storageAvailable && <div role="alert" className="p-4 bg-amber-950 text-amber-100 print-hidden">Браузер не сохраняет прогресс. Скачай резервную копию перед закрытием страницы. <button className="underline" onClick={handleExport}>Скачать копию</button></div>}
       {notice && <div role="status" className="p-4 bg-slate-800 text-slate-100 print-hidden">{notice} <button onClick={() => setNotice(null)} className="underline ml-3">Закрыть</button></div>}
       {view === AppView.LANDING && renderLanding()}
@@ -321,6 +355,10 @@ const App: React.FC = () => {
         />
       )}
       {view === AppView.COURSE && (
+        <>
+        {userState.course.activeStage !== null && userState.course.activeStage < 5 && <LessonMedia key={userState.course.activeStage} stage={userState.course.activeStage + 1}
+          progress={userState.course.lessons[String(userState.course.activeStage + 1)]}
+          onProgress={progress => { const stage = userState.course.activeStage! + 1; updateCourse(prev => mediaEpoch.current === renderedMediaEpoch ? ({ ...prev, lessons: { ...prev.lessons, [stage]: progress } }) : prev); }} />}
         <CourseView 
           course={userState.course}
           onChange={updateCourse}
@@ -328,6 +366,7 @@ const App: React.FC = () => {
           onBack={() => setView(AppView.DASHBOARD)}
           isGeneratingAi={isGeneratingAi}
         />
+        </>
       )}
       {view === AppView.AI_SUMMARY && profileReady && <ProfileView state={userState}
         onBack={() => setView(AppView.DASHBOARD)} onConsultation={() => setView(AppView.CONSULTATION)}
@@ -335,7 +374,7 @@ const App: React.FC = () => {
       {view === AppView.CONSULTATION && renderConsultation()}
       {view === AppView.COMMUNITY && renderCommunity()}
       {view === AppView.DASHBOARD && <section aria-label="Сохранение прогресса" className="max-w-5xl mx-auto px-6 pb-12 print-hidden">
-        <p className="text-sm text-slate-300 mb-4">Ответы хранятся в этом браузере. Резервная копия позволяет перенести результаты на другое устройство. Автоматическая отправка ответов не включена.</p>
+        <p className="text-sm text-slate-300 mb-4">{CLOUD_API ? 'Ответы и место просмотра уроков сохраняются по личному коду. Резервную копию можно скачать отдельно.' : 'Ответы хранятся в этом браузере. Резервная копия позволяет перенести результаты на другое устройство. Автоматическая отправка ответов не включена.'}</p>
         <div className="flex flex-wrap gap-3">
           <Button variant="secondary" onClick={handleExport}><Download className="w-4 h-4" />Скачать копию</Button>
           <Button variant="secondary" onClick={() => importInput.current?.click()}><Upload className="w-4 h-4" />Загрузить копию</Button>
@@ -345,7 +384,7 @@ const App: React.FC = () => {
       </section>}
       <dialog ref={dialog} onCancel={e => { e.preventDefault(); setConfirmation(null); }} onClose={() => setConfirmation(null)} aria-labelledby="confirmation-title" className="bg-slate-900 text-slate-100 rounded-2xl border border-slate-600 p-6 max-w-md w-[calc(100%-2rem)] backdrop:bg-black/70">
         <h2 id="confirmation-title" className="text-xl font-serif font-bold mb-4">{confirmation === 'import' ? 'Загрузить резервную копию?' : confirmation === 'all' ? 'Удалить все данные?' : 'Пройти тест заново?'}</h2>
-        <p className="text-slate-300 mb-6">{confirmation === 'import' ? 'Текущий прогресс заменится данными из файла. Перед заменой скачается копия текущих ответов.' : confirmation === 'all' ? 'Результат теста, ответы курса и профкарта будут удалены из этого браузера. Скачай копию, если хочешь сохранить их.' : 'Результат теста и дополнительный ИИ-разбор будут удалены. Ответы курса сохранятся.'}</p>
+        <p className="text-slate-300 mb-6">{confirmation === 'import' ? 'Текущий прогресс заменится данными из файла. Перед заменой скачается копия текущих ответов.' : confirmation === 'all' ? `Результат теста, ответы курса, прогресс видео и профкарта будут сброшены ${CLOUD_API ? 'в этом профиле, включая облачное сохранение после синхронизации' : 'в этом браузере'}. Скачай копию, если хочешь сохранить их.` : 'Результат теста и дополнительный ИИ-разбор будут удалены. Ответы курса сохранятся.'}</p>
         <div className="flex gap-3"><Button autoFocus variant="secondary" onClick={() => setConfirmation(null)}>Отмена</Button><Button onClick={confirmReset}>{confirmation === 'import' ? 'Загрузить' : 'Продолжить'}</Button></div>
       </dialog>
     </div>

@@ -1,0 +1,5 @@
+{
+  "TableName": "orienta",
+  "AttributeDefinitions": [{ "AttributeName": "key", "AttributeType": "S" }],
+  "KeySchema": [{ "AttributeName": "key", "KeyType": "HASH" }]
+}

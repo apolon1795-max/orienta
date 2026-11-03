@@ -27,7 +27,16 @@ export interface TestResult {
   heroName?: string;
 }
 
+export interface LessonProgress {
+  source: string;
+  position: number;
+  duration: number;
+  completed: boolean;
+  updatedAt: number;
+}
+
 export interface CourseState {
+  lessons: Record<string, LessonProgress>;
   activeStage: number | null;
   completedStages: number[];
   s1CardIndex: number;

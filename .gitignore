@@ -9,3 +9,8 @@ dist/
 output/
 *.tsbuildinfo
 public/images/
+dist-server/
+private/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal

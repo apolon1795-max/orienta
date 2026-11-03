@@ -1,0 +1,19 @@
+openapi: 3.0.0
+info:
+  title: Orienta pilot progress
+  version: 1.0.0
+paths:
+  /api/{route}:
+    x-yc-apigateway-any-method:
+      parameters:
+        - name: route
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [health, session, progress]
+      x-yc-apigateway-integration:
+        type: cloud_functions
+        function_id: REPLACE_WITH_ORIENTA_FUNCTION_ID
+        tag: orienta-pilot
+        service_account_id: REPLACE_WITH_GATEWAY_INVOKER_ACCOUNT_ID

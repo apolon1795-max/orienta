@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { LessonMedia } from './LessonMedia';
+import { lessonConfigured, currentLessonProgress } from './LessonMedia';
+import { playbackTime } from '../services/lessonProgress';
 import { 
   ArrowLeft, Lock, CheckCircle, Play, Star, 
   Shield, Brain, Zap, Trophy, Heart, Briefcase 
@@ -152,6 +153,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
             {stages.map((stage, idx) => {
                 const isLocked = idx > 0 && !completedStages.includes(idx - 1);
                 const isCompleted = completedStages.includes(idx);
+                const lesson = currentLessonProgress(idx + 1, course.lessons[idx + 1]);
 
 
                 return (
@@ -177,6 +179,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
                         <div>
                             <h3 className={`font-bold ${isLocked ? 'text-slate-500' : 'text-white'}`}>{stage.title}</h3>
                             <p className="text-sm text-slate-400">{stage.desc}</p>
+                            {idx < 5 && lessonConfigured(idx + 1) && <p className="text-xs text-slate-300 mt-1">{lesson?.completed ? 'Видео завершено' : lesson?.position ? 'Видео: ' + playbackTime(lesson.position) : 'Видеоурок доступен'}</p>}
                         </div>
                     </button>
                 );
@@ -190,7 +193,6 @@ export const CourseView: React.FC<CourseViewProps> = ({
     if (s1Phase === 'intro') {
         return (
             <div className="flex flex-col items-center justify-center h-full text-center p-6 animate-fade-in">
-                <LessonMedia stage={1} />
                 <p className="max-w-sm text-slate-300 mb-6">Выбери от одной до трёх сфер, по одной или две профессии в каждой и ответь на три загадки. Здесь можно пробовать и ошибаться.</p>
                 <h2 className="text-3xl font-serif font-bold text-white mb-4">Привет, Герой! 👋</h2>
                 <p className="text-slate-300 mb-8 max-w-sm">
@@ -373,7 +375,6 @@ export const CourseView: React.FC<CourseViewProps> = ({
     if (s2Phase === 'intro') {
         return (
             <div className="flex flex-col items-center justify-center h-full text-center p-6 animate-fade-in">
-                <LessonMedia stage={2} />
                 <p className="max-w-sm text-slate-300 mb-6">Запиши свои сильные стороны и трудности, выбери пять ценностей и представь подарки на три будущих дня рождения. Ответы войдут в профкарту.</p>
                 <h2 className="text-3xl font-serif font-bold text-white mb-4">Зеркало Души 🪞</h2>
                 <p className="text-slate-300 mb-8 max-w-sm">
@@ -482,7 +483,6 @@ export const CourseView: React.FC<CourseViewProps> = ({
     if (s3Phase === 'intro') {
         return (
             <div className="flex flex-col items-center justify-center h-full text-center p-6 animate-fade-in">
-                <LessonMedia stage={3} />
                 <p className="max-w-sm text-slate-300 mb-6">Выбери привычный подход к задачам, команде и учёбе. Затем попробуй четыре практические ситуации.</p>
                 <h2 className="text-3xl font-serif font-bold text-white mb-4">Турнир Мастеров 🤺</h2>
                 <p className="text-slate-300 mb-8 max-w-sm">

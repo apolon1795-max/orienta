@@ -3,10 +3,12 @@ import type { CourseState, UserState } from '../types.ts';
 import { ARCHETYPES, INITIAL_COURSE_MODULES } from '../types.ts';
 import { SPHERES_DATA, VALUES_LIST, QUIZ_DATA, SKILLS_QUESTIONS, CRISIS_QUESTIONS } from '../data/course.ts';
 import { normalizeTestDraft, type TestDraft } from './testProgress.ts';
+import { normalizeLessons } from './lessonProgress.ts';
 
 export const LOCAL_STORAGE_KEY = 'appState_ru';
 export const GAME_STORAGE_KEY = 'hero_game_progress_v2';
 export const createCourseState = (): CourseState => ({
+  lessons: {},
   activeStage: null, completedStages: [], s1CardIndex: 0, s1SelectedSpheres: [],
   s1QuizIndex: 0, s1Phase: 'intro', s1ProfessionIndex: 0, s1SelectedProfessions: {}, s1QuizAnswers: [], s1QuizFeedback: null,
   s2Phase: 'intro', s2Values: [], s2Inputs: { s: '', w: '', o: '', t: '', age: '', gift: '', gift2: '', gift3: '' }, s2GiftIndex: 0,
@@ -50,6 +52,7 @@ export const normalizeCourseState = (value: unknown): CourseState => {
   const v = object(value), defaults = createCourseState(), inputs = object(v.s2Inputs);
   const c: CourseState = {
     ...defaults,
+    lessons: normalizeLessons(v.lessons),
     s1CardIndex: index(v.s1CardIndex, SPHERES_DATA.length),
     s1SelectedSpheres: choices(v.s1SelectedSpheres, SPHERES_DATA.map(s => s.id), 10),
     s1QuizIndex: index(v.s1QuizIndex, QUIZ_DATA.length - 1),

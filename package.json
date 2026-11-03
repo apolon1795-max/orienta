@@ -10,6 +10,10 @@
     "test": "node --experimental-transform-types --test tests/*.test.mjs",
     "typecheck": "tsc --noEmit",
     "test:browser": "node --experimental-transform-types tests/browser.mjs",
+    "test:browser:cloud": "node --experimental-transform-types tests/cloud-browser.mjs",
+    "build:server": "node scripts/build-server.mjs",
+    "server:dev": "node --experimental-transform-types server/local.mjs",
+    "admin": "node --experimental-transform-types server/admin.mjs",
     "assets": "node scripts/cache-assets.mjs",
     "prebuild": "npm run assets",
     "predev": "npm run assets"

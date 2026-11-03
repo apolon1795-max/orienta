@@ -15,8 +15,10 @@ jobs:
       - run: npm install --ignore-scripts --no-audit --no-fund
       - run: npm test
       - run: npm run build
+      - run: npm run build:server
       - run: npx playwright install --with-deps chromium
       - run: npm run test:browser
+      - run: npm run test:browser:cloud
       - name: Preserve review evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -25,4 +27,5 @@ jobs:
           path: |
             output/
             dist/
+            dist-server/
             package-lock.json
