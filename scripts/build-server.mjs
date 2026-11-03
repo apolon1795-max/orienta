@@ -2,8 +2,8 @@ import { build } from 'vite';
 import { builtinModules } from 'node:module';
 import { writeFile } from 'node:fs/promises';
 for (const name of ['function', 'bootstrap']) await build({ configFile: false, publicDir: false, build: { outDir: 'dist-server', emptyOutDir: name === 'function', target: 'node22', minify: false,
-  lib: { entry: `server/${name}.mjs`, formats: ['cjs'], fileName: () => `${name}.js` }, rollupOptions: { external: [...builtinModules, ...builtinModules.map(module => 'node:' + module)] } } });
-await writeFile('dist-server/package.json', JSON.stringify({ type: 'commonjs', private: true }));
+  lib: { entry: `server/${name}.mjs`, formats: ['cjs'], fileName: () => `${name}.js` }, rollupOptions: { external: ['ydb-sdk', ...builtinModules, ...builtinModules.map(module => 'node:' + module)] } } });
+await writeFile('dist-server/package.json', JSON.stringify({ type: 'commonjs', private: true, dependencies: { 'ydb-sdk': '5.11.1' } }));
 const { handler } = await import('../dist-server/function.js');
 const previous = process.env.ORIENTA_YDB_ENDPOINT;
 process.env.ORIENTA_YDB_ENDPOINT = 'https://docapi.serverless.yandexcloud.net/ru-central1/build/check';

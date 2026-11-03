@@ -57,3 +57,13 @@ test('private operator can issue codes, export results and revoke only the selec
     assert.ok(exported.startsWith('\uFEFF')); assert.ok(pupils.every(pupil => exported.includes(pupil.learnerId) && !exported.includes(pupil.code)));
   } finally { store.close(); }
 });
+test('private diagnostics expose infrastructure identifiers without exception messages or values', async () => {
+  const admin = createBootstrapHandler({ env: { ORIENTA_ADMIN_ENABLED: 'true' }, getStore: async () => {
+    const error = new Error('private pupil answer and access token'); error.code = 'AccessDeniedException'; throw error;
+  } });
+  const response = await admin({ operation: 'initialize' }, context);
+  assert.equal(response.statusCode, 503);
+  assert.deepEqual(JSON.parse(response.body), { error: 'admin_operation_failed', code: 'AccessDeniedException', kind: 'Error' });
+  const invalid = createBootstrapHandler({ env: { ORIENTA_ADMIN_ENABLED: 'true' }, getStore: async () => { throw { code: 'secret data', name: 'private token' }; } });
+  assert.deepEqual(JSON.parse((await invalid({ operation: 'initialize' }, context)).body), { error: 'admin_operation_failed' });
+});

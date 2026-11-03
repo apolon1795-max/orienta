@@ -195,7 +195,7 @@ test('Excel export includes course answers and lesson progress, without access c
 
 test('Cloud Functions HTTP adapter forwards CORS, base64 bodies and context IAM without permanent keys', async () => {
   let authorization;
-  const handler = createFunctionHandler({ env: { ORIENTA_YDB_ENDPOINT: 'https://docapi.serverless.yandexcloud.net/ru-central1/cloud/database', ORIENTA_ALLOWED_ORIGINS: 'https://pilot.example' }, transport: async (_url, options) => { authorization = options.headers.authorization; return Response.json({}); } });
+  const handler = createFunctionHandler({ env: { ORIENTA_YDB_DRIVER: 'document', ORIENTA_YDB_ENDPOINT: 'https://docapi.serverless.yandexcloud.net/ru-central1/cloud/database', ORIENTA_ALLOWED_ORIGINS: 'https://pilot.example' }, transport: async (_url, options) => { authorization = options.headers.authorization; return Response.json({}); } });
   const health = await handler({ httpMethod: 'GET', path: '/api/health', headers: { origin: 'https://pilot.example' } }, {});
   assert.equal(health.statusCode, 200); assert.equal(health.headers['access-control-allow-origin'], 'https://pilot.example');
   const login = await handler({ httpMethod: 'POST', path: '/api/session', isBase64Encoded: true, body: Buffer.from(JSON.stringify({ code: 'ORI-' + 'A'.repeat(32) })).toString('base64') }, { token: { access_token: 'short-lived-test-token' } });

@@ -1,4 +1,4 @@
-import { createYdbStore } from './ydb.mjs';
+import { createCloudStore } from './cloud-store.mjs';
 import { provisionLearner } from './api.mjs';
 import { exportRows } from './report.mjs';
 
@@ -12,8 +12,9 @@ export const createBootstrapHandler = ({ env = process.env, transport = fetch, g
   try { input = event?.httpMethod ? JSON.parse(event.isBase64Encoded ? Buffer.from(event.body || '', 'base64').toString('utf8') : event.body || '{}') : event; }
   catch { return reply(400, { error: 'invalid_json' }); }
   if (!['initialize', 'provision', 'export', 'disable'].includes(input?.operation)) return reply(400, { error: 'unknown_operation' });
+  let store;
   try {
-    const store = getStore ? await getStore() : createYdbStore({ endpoint: env.ORIENTA_YDB_ENDPOINT, table: env.ORIENTA_YDB_TABLE || 'orienta', transport, token: async () => context.token.access_token });
+    store = getStore ? await getStore() : createCloudStore({ driver: env.ORIENTA_YDB_DRIVER, endpoint: env.ORIENTA_YDB_ENDPOINT, table: env.ORIENTA_YDB_TABLE, transport, token: async () => context.token.access_token });
     if (input.operation === 'initialize') return reply(200, await store.initialize());
     if (input.operation === 'export') return reply(200, { csv: await exportRows(store) });
     if (input.operation === 'disable') {
@@ -29,6 +30,11 @@ export const createBootstrapHandler = ({ env = process.env, transport = fetch, g
     for (let i = 1; i <= count; i++) pupils.push(await provisionLearner(store, 'Ученик ' + String(i).padStart(3, '0')));
     // Provisioning deliberately runs only on an explicit operator invocation; never log these codes.
     return reply(200, { pupils });
-  } catch { return reply(503, { error: 'admin_operation_failed' }); }
+  } catch (error) {
+    // Only infrastructure identifiers reach the IAM-protected operator response; never messages, answers or credentials.
+    const identifier = value => typeof value === 'string' && /^[A-Za-z0-9_.-]{1,80}$/.test(value) ? value : undefined;
+    return reply(503, { error: 'admin_operation_failed', code: identifier(error?.code), kind: identifier(error?.name) });
+  }
+  finally { if (!getStore) { try { await store?.close?.(); } catch { /* Keep the original result. */ } } }
 };
 export const handler = createBootstrapHandler();

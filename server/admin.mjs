@@ -1,6 +1,6 @@
 import { open } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
-import { createYdbStore } from './ydb.mjs';
+import { createCloudStore } from './cloud-store.mjs';
 import { provisionLearner } from './api.mjs';
 import { csvRow, exportRows } from './report.mjs';
 export { csvCell, exportRows } from './report.mjs';
@@ -8,7 +8,7 @@ const args = process.argv.slice(2), command = args[0];
 const argument = name => { const idx = args.indexOf('--' + name); return idx >= 0 ? args[idx + 1] : undefined; };
 const main = async () => {
   if (!['provision', 'export', 'disable'].includes(command)) throw new Error('Use provision --count N --output <private.csv>, export --output <private.csv>, or disable --id <learner UUID>');
-  const store = process.env.ORIENTA_YDB_ENDPOINT ? createYdbStore({ endpoint: process.env.ORIENTA_YDB_ENDPOINT, table: process.env.ORIENTA_YDB_TABLE || 'orienta', token: async () => {
+  const store = process.env.ORIENTA_YDB_ENDPOINT ? createCloudStore({ driver: process.env.ORIENTA_YDB_DRIVER, endpoint: process.env.ORIENTA_YDB_ENDPOINT, table: process.env.ORIENTA_YDB_TABLE, token: async () => {
     if (!process.env.ORIENTA_IAM_TOKEN) throw new Error('Provide a short-lived admin IAM token through the environment'); return process.env.ORIENTA_IAM_TOKEN;
   } }) : (await import('./sqlite.mjs')).openSqliteStore(process.env.ORIENTA_DB_PATH || 'private/progress.sqlite');
   try {
@@ -31,7 +31,7 @@ const main = async () => {
       }
     } finally { await file.close(); }
     console.log(command === 'export' ? 'Выгрузка сохранена в приватный CSV-файл для Excel.' : 'Личные коды сохранены в приватный CSV-файл.');
-  } finally { store.close?.(); }
+  } finally { await store.close?.(); }
 };
 // Importing CSV helpers in tests must not execute admin commands.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main().catch(error => { console.error(error.message); process.exitCode = 1; });
