@@ -1,3 +1,4 @@
+import { HOLLAND_QUESTIONS, MOTIVATION_QUESTIONS, WORKPLACES, WORK_PRIORITIES, WORK_STYLES } from '../data/assessments.ts';
 import type { CourseState, UserState } from '../types.ts';
 import { ARCHETYPES, INITIAL_COURSE_MODULES } from '../types.ts';
 import { SPHERES_DATA, VALUES_LIST, QUIZ_DATA, SKILLS_QUESTIONS, CRISIS_QUESTIONS } from '../data/course.ts';
@@ -7,13 +8,15 @@ export const LOCAL_STORAGE_KEY = 'appState_ru';
 export const GAME_STORAGE_KEY = 'hero_game_progress_v2';
 export const createCourseState = (): CourseState => ({
   activeStage: null, completedStages: [], s1CardIndex: 0, s1SelectedSpheres: [],
-  s1QuizIndex: 0, s1Phase: 'intro', s1QuizAnswers: [], s1QuizFeedback: null,
-  s2Phase: 'intro', s2Values: [], s2Inputs: { s: '', w: '', o: '', t: '', age: '', gift: '' },
+  s1QuizIndex: 0, s1Phase: 'intro', s1ProfessionIndex: 0, s1SelectedProfessions: {}, s1QuizAnswers: [], s1QuizFeedback: null,
+  s2Phase: 'intro', s2Values: [], s2Inputs: { s: '', w: '', o: '', t: '', age: '', gift: '', gift2: '', gift3: '' }, s2GiftIndex: 0,
   s3Phase: 'intro', s3Thinking: '', s3Team: '', s3Learning: '', s3CrisisIdx: 0,
   s3CrisisAnswers: [], untimed: false,
+  s4Phase: 'intro', s4Dream: '', s4Place: '', s4Priority: '', s4Style: '',
+  s5Phase: 'intro', s5Index: 0, hollandAnswers: [], motivationAnswers: [],
 });
 export const createUserState = (): UserState => ({
-  schemaVersion: 2, hasOnboarded: false, telegramId: null, firstName: null, username: null,
+  schemaVersion: 3, hasOnboarded: false, telegramId: null, firstName: null, username: null,
   testResult: null, courseProgress: INITIAL_COURSE_MODULES.map(m => ({ ...m })),
   course: createCourseState(), aiSummary: null, lastUpdated: 0,
 });
@@ -22,14 +25,25 @@ const text = (v: unknown, max = 1200) => typeof v === 'string' ? v.slice(0, max)
 const index = (v: unknown, max: number) => Number.isInteger(v) && Number(v) >= 0 && Number(v) <= max ? Number(v) : 0;
 const choices = (v: unknown, allowed: string[], max: number) => Array.isArray(v)
   ? [...new Set(v.filter((x): x is string => typeof x === 'string' && allowed.includes(x)))].slice(0, max) : [];
+const answers = (value: unknown, limit: number, variants: number): number[] => {
+  if (!Array.isArray(value)) return [];
+  const result: number[] = [];
+  for (const answer of value.slice(0, limit)) {
+    if (!Number.isInteger(answer) || answer < 0 || answer >= variants) break;
+    result.push(answer);
+  }
+  return result;
+};
 const phase = <T extends string>(v: unknown, allowed: T[], fallback: T): T => allowed.includes(v as T) ? v as T : fallback;
 export const validAge = (value: string) => /^\d{1,3}$/.test(value) && Number(value) >= 6 && Number(value) <= 100;
-export const validGift = (value: string) => value.trim().length >= 2 && !/деньг|бабло|рубл|доллар|евро|валют|money|cash/i.test(value);
+export const validGift = (value: string) => value.trim().length >= 2;
 export const canFinishStage = (c: CourseState, stage: number): boolean => {
-  if (stage === 0) return c.s1SelectedSpheres.length >= 1 && c.s1SelectedSpheres.length <= 3 && c.s1QuizAnswers.length === QUIZ_DATA.length;
+  if (stage === 0) return c.s1SelectedSpheres.length >= 1 && c.s1SelectedSpheres.length <= 3 && c.s1SelectedSpheres.every(id => (c.s1SelectedProfessions[id]?.length || 0) >= 1 && c.s1SelectedProfessions[id].length <= 2) && c.s1QuizAnswers.length === QUIZ_DATA.length;
   if (stage === 1) return ['s', 'w', 'o', 't'].every(k => c.s2Inputs[k as 's'].trim().length >= 2)
-    && c.s2Values.length === 5 && validAge(c.s2Inputs.age) && validGift(c.s2Inputs.gift);
+    && c.s2Values.length === 5 && validAge(c.s2Inputs.age) && [c.s2Inputs.gift, c.s2Inputs.gift2, c.s2Inputs.gift3].every(validGift);
   if (stage === 2) return [c.s3Thinking, c.s3Team, c.s3Learning].every(Boolean) && c.s3CrisisAnswers.length === CRISIS_QUESTIONS.length;
+  if (stage === 3) return c.s4Dream.trim().length >= 2 && WORKPLACES.includes(c.s4Place) && WORK_PRIORITIES.includes(c.s4Priority) && WORK_STYLES.includes(c.s4Style);
+  if (stage === 4) return c.hollandAnswers.length === HOLLAND_QUESTIONS.length && c.hollandAnswers.every(a => [0, 1, 2].includes(a)) && c.motivationAnswers.length === MOTIVATION_QUESTIONS.length && c.motivationAnswers.every(a => [0, 1, 2, 3].includes(a));
   return false;
 };
 export const normalizeCourseState = (value: unknown): CourseState => {
@@ -39,12 +53,15 @@ export const normalizeCourseState = (value: unknown): CourseState => {
     s1CardIndex: index(v.s1CardIndex, SPHERES_DATA.length),
     s1SelectedSpheres: choices(v.s1SelectedSpheres, SPHERES_DATA.map(s => s.id), 10),
     s1QuizIndex: index(v.s1QuizIndex, QUIZ_DATA.length - 1),
-    s1Phase: phase(v.s1Phase, ['intro', 'tinder', 'filter', 'quiz_intro', 'quiz', 'done'], 'intro'),
-    s1QuizAnswers: Array.isArray(v.s1QuizAnswers) ? v.s1QuizAnswers.slice(0, QUIZ_DATA.length).filter((n: unknown) => Number.isInteger(n) && Number(n) >= 0 && Number(n) < 3) : [],
+    s1Phase: phase(v.s1Phase, ['intro', 'tinder', 'filter', 'jobs', 'quiz_intro', 'quiz', 'done'], 'intro'),
+    s1ProfessionIndex: index(v.s1ProfessionIndex, 2),
+    s1SelectedProfessions: Object.fromEntries(SPHERES_DATA.map(s => [s.id, choices(object(v.s1SelectedProfessions)[s.id], s.jobs, 2)])),
+    s1QuizAnswers: answers(v.s1QuizAnswers, 3, 3),
     s1QuizFeedback: typeof v.s1QuizFeedback === 'string' ? text(v.s1QuizFeedback, 100) : null,
     s2Phase: phase(v.s2Phase, ['intro', 'swot1', 'swot2', 'swot3', 'swot4', 'values', 'age', 'gifts', 'done'], 'intro'),
     s2Values: choices(v.s2Values, VALUES_LIST, 5),
-    s2Inputs: { s: text(inputs.s), w: text(inputs.w), o: text(inputs.o), t: text(inputs.t), age: text(inputs.age, 3), gift: text(inputs.gift) },
+    s2Inputs: { s: text(inputs.s), w: text(inputs.w), o: text(inputs.o), t: text(inputs.t), age: text(inputs.age, 3), gift: text(inputs.gift), gift2: text(inputs.gift2), gift3: text(inputs.gift3) },
+    s2GiftIndex: index(v.s2GiftIndex, 2),
     s3Phase: phase(v.s3Phase, ['intro', 'q1', 'q2', 'q3', 'crisis_intro', 'crisis', 'done'], 'intro'),
     s3Thinking: choices([v.s3Thinking], SKILLS_QUESTIONS[0].opts.map(o => o.type), 1)[0] || '',
     s3Team: choices([v.s3Team], SKILLS_QUESTIONS[1].opts.map(o => o.type), 1)[0] || '',
@@ -52,18 +69,30 @@ export const normalizeCourseState = (value: unknown): CourseState => {
     s3CrisisIdx: index(v.s3CrisisIdx, CRISIS_QUESTIONS.length - 1),
     s3CrisisAnswers: Array.isArray(v.s3CrisisAnswers) ? v.s3CrisisAnswers.slice(0, 4).map((a: unknown, i: number) => choices([a], [...CRISIS_QUESTIONS[i].opts.map(o => o.type), 'Без ответа'], 1)[0] || 'Без ответа') : [],
     untimed: v.untimed === true,
+    s4Phase: phase(v.s4Phase, ['intro', 'dream', 'place', 'priority', 'style', 'done'], 'intro'),
+    s4Dream: text(v.s4Dream), s4Place: choices([v.s4Place], WORKPLACES, 1)[0] || '',
+    s4Priority: choices([v.s4Priority], WORK_PRIORITIES, 1)[0] || '', s4Style: choices([v.s4Style], WORK_STYLES, 1)[0] || '',
+    s5Phase: phase(v.s5Phase, ['intro', 'holland', 'holland_result', 'motivation_intro', 'motivation', 'done'], 'intro'),
+    s5Index: index(v.s5Index, 11),
+    hollandAnswers: answers(v.hollandAnswers, 12, 3),
+    motivationAnswers: answers(v.motivationAnswers, 10, 4),
   };
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 5; i++) {
     if (Array.isArray(v.completedStages) && v.completedStages.includes(i) && canFinishStage(c, i) && (i === 0 || c.completedStages.includes(i - 1))) c.completedStages.push(i);
   }
-  if (c.s1Phase === 'done' && !canFinishStage(c, 0)) c.s1Phase = 'intro';
-  if (c.s2Phase === 'done' && !canFinishStage(c, 1)) c.s2Phase = 'intro';
+  if (c.s1Phase === 'done' && !canFinishStage(c, 0)) { c.s1Phase = c.s1SelectedSpheres.length ? 'jobs' : 'intro'; c.s1ProfessionIndex = 0; }
+  if (c.s2Phase === 'done' && !canFinishStage(c, 1)) { c.s2Phase = c.s2Values.length === 5 ? 'gifts' : 'values'; c.s2GiftIndex = validGift(c.s2Inputs.gift) ? 1 : 0; }
   if (c.s3Phase === 'done' && !canFinishStage(c, 2)) c.s3Phase = 'intro';
-  c.activeStage = Number.isInteger(v.activeStage) && v.activeStage >= 0 && v.activeStage <= c.completedStages.length && v.activeStage <= 3 ? v.activeStage : null;
+  if (c.s4Phase === 'done' && !canFinishStage(c, 3)) c.s4Phase = 'dream';
+  if (c.s5Phase === 'done' && !canFinishStage(c, 4)) { c.s5Phase = 'intro'; c.s5Index = 0; }
+  if (c.s1Phase === 'jobs') c.s1ProfessionIndex = Math.min(c.s1ProfessionIndex, Math.max(0, c.s1SelectedSpheres.length - 1));
+  if (['quiz_intro', 'quiz', 'done'].includes(c.s1Phase) && c.s1SelectedSpheres.some(id => !c.s1SelectedProfessions[id]?.length)) { c.s1Phase = 'jobs'; c.s1ProfessionIndex = 0; }
+  if (c.s5Phase === 'holland') c.s5Index = Math.min(c.s5Index, c.hollandAnswers.length, 11);
+  if (['holland_result', 'motivation_intro', 'motivation', 'done'].includes(c.s5Phase) && c.hollandAnswers.length < 12) { c.s5Phase = 'holland'; c.s5Index = c.hollandAnswers.length; }
+  if (c.s5Phase === 'motivation') c.s5Index = Math.min(c.s5Index, c.motivationAnswers.length, 9);
+  c.activeStage = Number.isInteger(v.activeStage) && v.activeStage >= 0 && v.activeStage <= c.completedStages.length && v.activeStage <= 5 ? v.activeStage : null;
   return c;
 };
-export const getCourseXp = (c: CourseState) => c.completedStages.reduce((sum, id) => sum + [40, 40, 20][id], 0)
-  + c.s1QuizAnswers.reduce((sum, answer, i) => sum + (answer === QUIZ_DATA[i].correct ? 10 : 0), 0);
 export const normalizeUserState = (value: unknown): UserState => {
   const v = object(value), defaults = createUserState(), r = object(v.testResult);
   const course = normalizeCourseState(v.course);
@@ -94,11 +123,11 @@ export const readUserState = (storage: Pick<Storage, 'getItem'> & Partial<Pick<S
 export const saveLocalState = (storage: Pick<Storage, 'setItem'>, state: UserState): boolean => {
   try { storage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(state)); return true; } catch { return false; }
 };
-export const exportBackup = (state: UserState, testDraft?: TestDraft) => JSON.stringify({ format: 'orienta-backup', version: 2, exportedAt: new Date().toISOString(), state, testDraft }, null, 2);
+export const exportBackup = (state: UserState, testDraft?: TestDraft) => JSON.stringify({ format: 'orienta-backup', version: 3, exportedAt: new Date().toISOString(), state, testDraft }, null, 2);
 export const importBackup = (json: string): { state: UserState; testDraft: TestDraft } => {
   if (json.length > 200000) throw new Error('Файл слишком большой. Выбери резервную копию Orienta до 200 КБ.');
   let data;
   try { data = JSON.parse(json); } catch { throw new Error('Не удалось прочитать файл. Нужна резервная копия Orienta в формате JSON.'); }
-  if (data?.format !== 'orienta-backup' || data.version !== 2 || !data.state || !data.state.course) throw new Error('Это не резервная копия Orienta версии 2.');
+  if (data?.format !== 'orienta-backup' || ![2, 3].includes(data.version) || !data.state || !data.state.course) throw new Error('Это не резервная копия Orienta.');
   return { state: { ...normalizeUserState(data.state), lastUpdated: Date.now() }, testDraft: normalizeTestDraft(data.testDraft) };
 };

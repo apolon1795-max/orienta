@@ -11,9 +11,9 @@ export const ProfileView = ({ state, onBack, onConsultation, onAi, aiConfigured,
     <div className="print-hidden mb-8"><Button variant="ghost" onClick={onBack}>← Хаб</Button></div>
     <header className="mb-10">
       <Trophy className="w-12 h-12 text-amber-400 mb-5" aria-hidden="true" />
-      <h1 className="text-3xl sm:text-4xl font-serif font-bold text-amber-200 mb-3">Твоя профкарта</h1>
+      <h1 className="text-3xl sm:text-4xl font-serif font-bold text-amber-200 mb-3">Профкарта Героя</h1>
       <p className="text-lg text-slate-200">{state.testResult?.heroName || 'Искатель'} · {state.testResult?.title}</p>
-      <p className="text-slate-300 mt-4 leading-relaxed">Ты собрал свои интересы, ценности и подход к задачам. Профкарта основана на твоих ответах и помогает выбрать, какую профессию попробовать.</p>
+      <p className="text-slate-300 mt-4 leading-relaxed">Ты собрал ответы всех пяти этапов: интересы, ценности, навыки, образ будущей работы и мотивацию. Профкарта основана на твоих ответах и помогает выбрать, какую профессию попробовать.</p>
     </header>
     {profileSections(state).map(section => (
       <section key={section.title} className="py-6 border-t border-slate-700 break-inside-avoid">

@@ -39,7 +39,7 @@ const App: React.FC = () => {
   const request = useRef<AbortController | null>(null);
   const aiInFlight = useRef(false);
   const importInput = useRef<HTMLInputElement>(null);
-  const profileReady = userState.course.completedStages.length === 3 && !!userState.testResult;
+  const profileReady = userState.course.completedStages.length === 5 && !!userState.testResult;
   const updateUserState = useCallback((updates: Partial<UserState>) => {
     setUserState(prev => ({ ...prev, ...updates, lastUpdated: Date.now() }));
   }, []);
@@ -100,7 +100,7 @@ const App: React.FC = () => {
     request.current?.abort(); request.current = null;
     if (confirmation === 'import' && pendingImport.current) {
       handleExport(); setUserState(pendingImport.current.state); testDraft.current = pendingImport.current.testDraft; pendingImport.current = null;
-    } else if (confirmation === 'all') { setUserState({ ...createUserState(), lastUpdated: Date.now() }); testDraft.current = createTestDraft(); }
+    } else if (confirmation === 'all') { try { window.localStorage.removeItem('appState_ru_recovery'); } catch {} pendingImport.current = null; setUserState({ ...createUserState(), lastUpdated: Date.now() }); testDraft.current = createTestDraft(); }
     else { updateUserState({ testResult: null, aiSummary: null, summarySource: undefined }); testDraft.current = createTestDraft(); }
     try { window.localStorage.setItem(GAME_STORAGE_KEY, JSON.stringify(testDraft.current)); } catch { setStorageAvailable(false); }
     setTestResetKey(k => k + 1); setView(confirmation === 'test' ? AppView.TEST : confirmation === 'all' ? AppView.LANDING : AppView.DASHBOARD);
@@ -114,10 +114,6 @@ const App: React.FC = () => {
       <div className="absolute bottom-0 right-0 w-96 h-96 bg-indigo-600/20 rounded-full blur-[100px] translate-x-1/2 translate-y-1/2 pointer-events-none"></div>
 
       <div className="max-w-2xl z-10 space-y-8">
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-900/50 border border-slate-800 text-indigo-400 text-sm font-medium animate-fade-in-up">
-          <Sparkles className="w-4 h-4" />
-          <span>Будущее твоего роста</span>
-        </div>
         
         <h1 className="text-4xl sm:text-5xl md:text-7xl font-serif font-bold bg-clip-text text-transparent bg-gradient-to-b from-amber-100 to-amber-500 tracking-tight leading-tight">
           Раскрой Свой <br/> Истинный Потенциал
@@ -156,7 +152,7 @@ const App: React.FC = () => {
           </div>
           <div className="bg-slate-800 p-4 rounded-2xl rounded-tl-none text-slate-200 shadow-lg border border-slate-700 space-y-2">
             <p>Твой прогресс сохраняется на этом устройстве.</p>
-            <p>Сначала выбери персонажа и пройди пять ситуаций. Затем исследуй интересы, ценности и навыки в трёх этапах курса.</p>
+            <p>Сначала выбери персонажа и пройди пять ситуаций. Затем исследуй интересы, ценности и навыки в пяти этапах курса.</p>
           </div>
         </div>
       </div>
@@ -221,13 +217,13 @@ const App: React.FC = () => {
       <div className="grid grid-cols-2 gap-4">
         <DashboardCard 
           title="Курс" 
-          subtitle={userState.testResult ? userState.course.completedStages.length + "/3 этапов" : "Сначала игровой тест"}
+          subtitle={userState.testResult ? userState.course.completedStages.length + "/5 этапов" : "Сначала игровой тест"}
           icon={<GraduationCap className="w-6 h-6 text-slate-400" />}
           onClick={handleOpenCourse}
         />
         <DashboardCard 
-          title="Профкарта" 
-          subtitle={profileReady ? "Готова" : "Заверши три этапа"}
+          title="Профкарта"
+          subtitle={profileReady ? "Готова" : "Заверши пять этапов"}
           icon={<Sparkles className="w-6 h-6 text-amber-400" />}
           onClick={() => setView(AppView.AI_SUMMARY)}
           disabled={!profileReady}
@@ -312,7 +308,7 @@ const App: React.FC = () => {
         <GuideView 
           archetype={userState.testResult.scoreType} 
           onBack={() => setView(AppView.DASHBOARD)} 
-          onStartCourse={handleOpenCourse} 
+          onStartCourse={handleOpenCourse}
         />
       )}
       {view === AppView.TEST && (

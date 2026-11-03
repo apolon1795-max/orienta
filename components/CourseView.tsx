@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
+import { LessonMedia } from './LessonMedia';
 import { 
   ArrowLeft, Lock, CheckCircle, Play, Star, 
   Shield, Brain, Zap, Trophy, Heart, Briefcase 
 } from 'lucide-react';
 import { Button } from './Button';
 
+import { DreamStage, AssessmentStage } from './FinalStages';
 import type { CourseState } from '../types';
 import { SPHERES_DATA, QUIZ_DATA, VALUES_LIST, SKILLS_QUESTIONS, CRISIS_QUESTIONS } from '../data/course';
-import { canFinishStage, getCourseXp, validAge, validGift } from '../services/progress';
+import { canFinishStage, validAge, validGift } from '../services/progress';
 
 interface CourseViewProps {
   course: CourseState;
@@ -47,7 +49,6 @@ export const CourseView: React.FC<CourseViewProps> = ({
   }
   const [activeStage, setActiveStage] = field('activeStage');
   const completedStages = course.completedStages;
-  const xp = getCourseXp(course);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const s1CardIndex = course.s1CardIndex;
   const [s1SelectedSpheres, setS1SelectedSpheres] = field('s1SelectedSpheres');
@@ -101,7 +102,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
       const next = prev.s1CardIndex + 1;
       if (next < SPHERES_DATA.length) return { ...prev, s1SelectedSpheres: selected, s1CardIndex: next };
       if (!selected.length) return { ...prev, s1CardIndex: 0 };
-      return { ...prev, s1SelectedSpheres: selected, s1CardIndex: next, s1Phase: selected.length > 3 ? 'filter' : 'quiz_intro' };
+      return { ...prev, s1SelectedSpheres: selected, s1CardIndex: next, s1Phase: selected.length > 3 ? 'filter' : 'jobs' };
     });
   };
 
@@ -115,18 +116,18 @@ export const CourseView: React.FC<CourseViewProps> = ({
             </button>
             <div>
                 <h2 className="font-serif font-bold text-white text-lg leading-tight">Путь Мастера</h2>
-                <div className="text-xs text-slate-400">Ранг: {xp > 100 ? 'Магистр' : xp > 50 ? 'Искатель' : 'Новичок'}</div>
+                <div className="text-sm text-slate-300">Пять этапов к Профкарте Героя</div>
             </div>
         </div>
         <div className="flex flex-col items-end w-32">
             <div className="flex justify-between w-full text-xs font-bold text-indigo-400 mb-1">
-                <span>XP</span>
-                <span>{xp}/130</span>
+                <span>Пройдено</span>
+                <span>{completedStages.length}/5</span>
             </div>
             <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
                 <div 
                     className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-500" 
-                    style={{ width: `${(xp / 130) * 100}%` }}
+                    style={{ width: `${(completedStages.length / 5) * 100}%` }}
                 ></div>
             </div>
         </div>
@@ -138,7 +139,9 @@ export const CourseView: React.FC<CourseViewProps> = ({
         { id: 0, title: "Этап 1: Интересы", icon: <Heart className="w-6 h-6" />, desc: "Исследование земель" },
         { id: 1, title: "Этап 2: Личность", icon: <Brain className="w-6 h-6" />, desc: "Зеркало души" },
         { id: 2, title: "Этап 3: Навыки", icon: <Shield className="w-6 h-6" />, desc: "Турнир мастеров" },
-        { id: 3, title: "Финал: Профкарта", icon: <Trophy className="w-6 h-6" />, desc: "Судьба героя" },
+        { id: 3, title: "Этап 4: Башня мечты", icon: <Briefcase className="w-6 h-6" />, desc: "Образ будущей работы" },
+        { id: 4, title: "Этап 5: Хрустальный зал", icon: <Brain className="w-6 h-6" />, desc: "Интересы и мотивация" },
+        { id: 5, title: "Финал: Профкарта Героя", icon: <Trophy className="w-6 h-6" />, desc: "Судьба героя" },
     ];
 
     return (
@@ -149,7 +152,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
             {stages.map((stage, idx) => {
                 const isLocked = idx > 0 && !completedStages.includes(idx - 1);
                 const isCompleted = completedStages.includes(idx);
-                
+
 
                 return (
                     <button
@@ -187,7 +190,8 @@ export const CourseView: React.FC<CourseViewProps> = ({
     if (s1Phase === 'intro') {
         return (
             <div className="flex flex-col items-center justify-center h-full text-center p-6 animate-fade-in">
-                <p className="max-w-sm text-slate-300 mb-6">Выбери от одной до трёх сфер и ответь на три загадки о профессиях. Здесь можно пробовать и ошибаться.</p>
+                <LessonMedia stage={1} />
+                <p className="max-w-sm text-slate-300 mb-6">Выбери от одной до трёх сфер, по одной или две профессии в каждой и ответь на три загадки. Здесь можно пробовать и ошибаться.</p>
                 <h2 className="text-3xl font-serif font-bold text-white mb-4">Привет, Герой! 👋</h2>
                 <p className="text-slate-300 mb-8 max-w-sm">
                    Свайпай 10 сфер! Лайкай то, что интересно. Твой выбор определит путь.
@@ -257,13 +261,29 @@ export const CourseView: React.FC<CourseViewProps> = ({
                     <Button 
                         fullWidth 
                         disabled={s1SelectedSpheres.length > 3 || s1SelectedSpheres.length === 0}
-                        onClick={() => setS1Phase('quiz_intro')}
+                        onClick={() => setS1Phase('jobs')}
                     >
                         Готово
                     </Button>
                 </div>
             </div>
         );
+    }
+
+    if (s1Phase === 'jobs') {
+      const idx = Math.min(course.s1ProfessionIndex, Math.max(0, s1SelectedSpheres.length - 1));
+      const sphere = SPHERES_DATA.find(s => s.id === s1SelectedSpheres[idx]);
+      if (!sphere) return <Button onClick={() => setS1Phase('tinder')}>Вернуться к сферам</Button>;
+      const selected = course.s1SelectedProfessions[sphere.id] || [];
+      return <div className="max-w-md mx-auto p-6 space-y-5">
+        <h2 className="text-2xl font-serif text-white">Профессии: {sphere.title}</h2>
+        <p className="text-slate-200">Выбери одну или две профессии, которые хочется изучить. Сфера {idx + 1} из {s1SelectedSpheres.length}.</p>
+        {sphere.jobs.map(job => <Button key={job} fullWidth variant={selected.includes(job) ? 'primary' : 'secondary'} aria-pressed={selected.includes(job)} disabled={!selected.includes(job) && selected.length >= 2} onClick={() => onChange(prev => {
+          const old = prev.s1SelectedProfessions[sphere.id] || [];
+          return { ...prev, s1SelectedProfessions: { ...prev.s1SelectedProfessions, [sphere.id]: old.includes(job) ? old.filter(v => v !== job) : old.length < 2 ? [...old, job] : old } };
+        })}>{job}</Button>)}
+        <Button fullWidth disabled={selected.length < 1} onClick={() => onChange(prev => ({ ...prev, s1ProfessionIndex: idx + 1 < s1SelectedSpheres.length ? idx + 1 : idx, s1Phase: idx + 1 < s1SelectedSpheres.length ? 'jobs' : prev.s1QuizAnswers.length === 3 ? 'done' : 'quiz_intro' }))}>Продолжить</Button>
+      </div>;
     }
 
     if (s1Phase === 'quiz_intro') {
@@ -297,7 +317,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
                                 const isCorrect = idx === q.correct;
                                 onChange(prev => {
                                   if (prev.s1QuizAnswers.length > s1QuizIndex) return prev;
-                                  return { ...prev, s1QuizAnswers: [...prev.s1QuizAnswers, idx], s1QuizFeedback: isCorrect ? 'Верно! +10 XP' : 'Не совсем…' };
+                                  return { ...prev, s1QuizAnswers: [...prev.s1QuizAnswers, idx], s1QuizFeedback: isCorrect ? 'Верно!' : 'Не совсем…' };
                                 });
                             }}
                             className={`w-full p-4 rounded-xl text-left border transition-all ${
@@ -338,8 +358,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
                     <CheckCircle className="w-12 h-12 text-green-400" />
                 </div>
                 <h2 className="text-3xl font-serif font-bold text-white mb-2">Этап 1 Пройден! 🎉</h2>
-                <p className="text-slate-300 mb-8">Интересы сохранены.</p>
-                <div className="text-4xl font-bold text-amber-400 mb-8 drop-shadow-glow">+40 XP</div>
+                <p className="text-slate-300 mb-8">Интересы и выбранные профессии сохранены.</p>
                 <Button variant="fantasy" onClick={() => finishStage(0, 40)}>На карту</Button>
             </div>
         );
@@ -354,7 +373,8 @@ export const CourseView: React.FC<CourseViewProps> = ({
     if (s2Phase === 'intro') {
         return (
             <div className="flex flex-col items-center justify-center h-full text-center p-6 animate-fade-in">
-                <p className="max-w-sm text-slate-300 mb-6">Запиши свои сильные стороны и трудности, затем выбери пять ценностей. Ответы войдут в профкарту.</p>
+                <LessonMedia stage={2} />
+                <p className="max-w-sm text-slate-300 mb-6">Запиши свои сильные стороны и трудности, выбери пять ценностей и представь подарки на три будущих дня рождения. Ответы войдут в профкарту.</p>
                 <h2 className="text-3xl font-serif font-bold text-white mb-4">Зеркало Души 🪞</h2>
                 <p className="text-slate-300 mb-8 max-w-sm">
                     Герой должен знать свою силу и слабость. Загляни в зеркальные пруды!
@@ -431,49 +451,15 @@ export const CourseView: React.FC<CourseViewProps> = ({
     }
 
     if (s2Phase === 'gifts') {
-         const handleGiftSubmit = () => {
-             const val = s2Inputs.gift.toLowerCase();
-             const forbidden = ["деньг", "бабло", "рубл", "доллар", "евро", "валют", "money", "cash"];
-             
-             if (!validGift(s2Inputs.gift)) {
-                 showToast("🚫 Никаких денег! Придумай мечту.");
-                 return;
-             }
-
-             // Humor logic
-             if (val.includes("еда") || val.includes("тор") || val.includes("пицц")) {
-                 showToast("🍕 Вкусно жить не запретишь!");
-             } else if (val.includes("мир") || val.includes("путеш") || val.includes("море")) {
-                 showToast("🌍 Дух приключений!");
-             } else if (val.includes("машин") || val.includes("авто") || val.includes("bmw")) {
-                 showToast("🚍 Бип-бип!");
-             } else {
-                 showToast("👍 Классный выбор!");
-             }
-             
-             // Wait for toast then finish
-             setS2Phase('done');
-         };
-
-        return (
-             <div className="p-6 h-full flex flex-col justify-center max-w-md mx-auto animate-fade-in">
-                <h3 className="text-2xl font-serif font-bold text-white mb-2">Тебе исполняется {parseInt(s2Inputs.age) + 1}! 🎉</h3>
-                <p className="text-slate-400 mb-6">Что ты хочешь в подарок? (Что сделает тебя счастливее? <b>Деньги загадывать нельзя!</b>)</p>
-                <textarea 
-                    className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl p-4 text-white focus:border-purple-500 outline-none h-32 mb-6"
-                    aria-label="Желаемый подарок" maxLength={1200} placeholder="Машину, остров, собаку..."
-                    value={s2Inputs.gift}
-                    onChange={(e) => saveInput('gift', e.target.value)}
-                />
-                <Button 
-                    fullWidth 
-                    disabled={s2Inputs.gift.trim().length < 2}
-                    onClick={handleGiftSubmit}
-                >
-                    Хочу!
-                </Button>
-            </div>
-        );
+      const idx = course.s2GiftIndex;
+      const key = (['gift', 'gift2', 'gift3'] as const)[idx];
+      return <div className="p-6 max-w-md mx-auto space-y-6">
+        <h3 className="text-2xl font-serif text-white">Тебе исполняется {Number(s2Inputs.age) + idx + 1}!</h3>
+        <p className="text-slate-200">Подарок {idx + 1} из 3: что бы ты хотел получить? Здесь можно мечтать. Ответ не определяет твою профессию.</p>
+        <label htmlFor="future-gift" className="block text-slate-200">Желаемый подарок</label>
+        <textarea id="future-gift" maxLength={1200} className="w-full h-32 bg-slate-800 border border-slate-600 rounded-xl p-4 text-white" value={s2Inputs[key]} onChange={e => saveInput(key, e.target.value)} />
+        <Button fullWidth disabled={!validGift(s2Inputs[key])} onClick={() => onChange(prev => ({ ...prev, s2GiftIndex: Math.min(idx + 1, 2), s2Phase: idx === 2 ? 'done' : 'gifts' }))}>{idx === 2 ? 'Сохранить подарки' : 'Следующий день рождения'}</Button>
+      </div>;
     }
 
     if (s2Phase === 'done') {
@@ -484,7 +470,6 @@ export const CourseView: React.FC<CourseViewProps> = ({
                 </div>
                 <h2 className="text-3xl font-serif font-bold text-white mb-2">Этап 2 Пройден!</h2>
                 <p className="text-slate-300 mb-8">Ты проанализировал себя.</p>
-                <div className="text-4xl font-bold text-amber-400 mb-8 drop-shadow-glow">+40 XP</div>
                 <Button variant="fantasy" onClick={() => finishStage(1, 40)}>На карту</Button>
             </div>
         );
@@ -497,6 +482,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
     if (s3Phase === 'intro') {
         return (
             <div className="flex flex-col items-center justify-center h-full text-center p-6 animate-fade-in">
+                <LessonMedia stage={3} />
                 <p className="max-w-sm text-slate-300 mb-6">Выбери привычный подход к задачам, команде и учёбе. Затем попробуй четыре практические ситуации.</p>
                 <h2 className="text-3xl font-serif font-bold text-white mb-4">Турнир Мастеров 🤺</h2>
                 <p className="text-slate-300 mb-8 max-w-sm">
@@ -619,7 +605,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
                         <div className="text-2xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-200 to-amber-400 mb-2 uppercase tracking-widest drop-shadow-md">
                             {fullTitle}
                         </div>
-                        <div className="text-xs text-indigo-300 uppercase tracking-[0.2em] mb-6">Уровень 3 • Арена</div>
+                        <div className="text-sm text-indigo-300 mb-6">Турнир мастеров</div>
                         
                         <div className="grid grid-cols-3 gap-2 border-t border-white/10 pt-4">
                             <div className="flex flex-col items-center">
@@ -637,8 +623,6 @@ export const CourseView: React.FC<CourseViewProps> = ({
                         </div>
                     </div>
                 </div>
-
-                <div className="text-2xl font-bold text-amber-400 mb-6 drop-shadow-glow">+20 XP</div>
                 <Button variant="fantasy" onClick={() => finishStage(2, 20)}>На карту</Button>
             </div>
         );
@@ -695,7 +679,9 @@ export const CourseView: React.FC<CourseViewProps> = ({
                 {activeStage === 0 && renderStage1()}
                 {activeStage === 1 && renderStage2()}
                 {activeStage === 2 && renderStage3()}
-                {activeStage === 3 && renderFinal()}
+                {activeStage === 3 && <DreamStage course={course} onChange={onChange} onFinish={() => finishStage(3, 0)} />}
+                {activeStage === 4 && <AssessmentStage course={course} onChange={onChange} onFinish={() => finishStage(4, 0)} />}
+                {activeStage === 5 && renderFinal()}
             </div>
         )}
     </div>

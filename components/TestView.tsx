@@ -109,10 +109,13 @@ const ImageWithSkeleton: React.FC<{ src: string; alt: string; className?: string
     const [error, setError] = useState(false);
 
     useEffect(() => {
+        setLoaded(false); setError(false);
         const img = new Image();
-        img.src = src;
         img.onload = () => setLoaded(true);
         img.onerror = () => setError(true);
+        img.src = src;
+        if (img.complete && img.naturalWidth) setLoaded(true);
+        return () => { img.onload = null; img.onerror = null; };
     }, [src]);
 
     return (
@@ -132,7 +135,7 @@ const ImageWithSkeleton: React.FC<{ src: string; alt: string; className?: string
             {error && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900 text-slate-500 text-xs p-2 text-center">
                     <ImageIcon className="w-6 h-6 mb-1" />
-                    <span>Failed to load</span>
+                    <span>Не удалось загрузить иллюстрацию</span>
                 </div>
             )}
         </div>
@@ -400,7 +403,7 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResu
                     <div className="text-center space-y-6">
                         <h2 className="text-3xl font-serif text-white">Выбор происхождения</h2>
                         <div className="rounded-xl overflow-hidden shadow-2xl border border-slate-600 max-w-lg mx-auto mb-6 h-64 md:h-80 w-full">
-                            <ImageWithSkeleton src={IMAGES.general.allCharacters} alt="Races" className="w-full h-full" />
+                            <ImageWithSkeleton src={IMAGES.general.allCharacters} alt="Персонажи Ориенты" className="w-full h-full" />
                         </div>
                         <p className="text-slate-300">В Ориенте 4 великие расы. У каждой — свой стиль и подход к жизни. Кто ты?</p>
                         <p className="text-xs text-slate-500 uppercase tracking-widest">(Это только визуал)</p>
@@ -482,7 +485,7 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResu
                         
                         {questionImage && (
                             <div className="rounded-xl overflow-hidden shadow-2xl border border-indigo-500/30 max-w-md mx-auto h-64 md:h-72 w-full">
-                                <ImageWithSkeleton src={questionImage} alt="Situation" className="w-full h-full" />
+                                <ImageWithSkeleton src={questionImage} alt="Сцена игрового вопроса" className="w-full h-full" />
                             </div>
                         )}
 
@@ -567,7 +570,7 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResu
                         <h2 className="text-3xl md:text-4xl font-serif text-amber-100">О, {heroData.name}!</h2>
                         
                         <div className="rounded-xl overflow-hidden shadow-2xl border border-amber-500/30 max-w-md mx-auto h-64 w-full">
-                            <ImageWithSkeleton src={IMAGES.general.pigeon} alt="Messenger Pigeon" className="w-full h-full" />
+                            <ImageWithSkeleton src={IMAGES.general.pigeon} alt="Почтовый голубь со свитком" className="w-full h-full" />
                         </div>
 
                         <div className="space-y-4 text-slate-300 max-w-lg mx-auto">
