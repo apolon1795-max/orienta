@@ -23,6 +23,7 @@ try {
   const draft=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('hero_game_progress_v2')));
   const hub=async()=>{await click('Начать Путь');if(await page.getByRole('button',{name:'Поехали',exact:true}).isVisible())await click('Поехали');};
   await page.goto(base);await page.screenshot({path:'output/playwright/01-landing-desktop.png',fullPage:true});
+  console.log('ORIENTA_VISUAL_LANDING:'+(await fs.readFile('output/playwright/01-landing-desktop.png')).toString('base64'));
   await hub();await click('Начать Тест');await click('Начать игру');await click('Создать персонажа');await click('Человек');
   await page.getByRole('textbox',{name:'Имя героя'}).fill('Искатель 🌿');await click('Подтвердить имя');await click('Отправиться в путь');
   for(let i=0;i<5;i++){
@@ -38,6 +39,8 @@ try {
   await shown('Открыт полный доступ');assert.equal(Object.values((await draft()).scores).reduce((a,b)=>a+b,0),5);
   await click('Открыть Персональный Гайд');await page.screenshot({path:'output/playwright/02-guide.png',fullPage:true});
   await page.locator('#guide-action-btn').click();await shown('Путь Мастера');
+  await page.setViewportSize({width:390,height:844});await page.screenshot({path:'output/playwright/map-mobile.png',fullPage:true});
+  console.log('ORIENTA_VISUAL_MAP:'+(await fs.readFile('output/playwright/map-mobile.png')).toString('base64'));
   assert.equal(await page.getByRole('button',{name:/Этап 2: Личность/}).isDisabled(),true);record('test, guide and sequential course access');
   await page.getByRole('button',{name:/Этап 1: Интересы/}).click();await click('Погнали');
   for(let i=0;i<10;i++)await click(i<2?'Лайк':'Мимо');
@@ -72,6 +75,7 @@ try {
     await page.setViewportSize({width,height:844});
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),'overflow at '+width);
     await page.screenshot({path:'output/playwright/profile-'+width+'.png',fullPage:true});
+    if(width===390)console.log('ORIENTA_VISUAL_PROFILE:'+(await fs.readFile('output/playwright/profile-390.png')).toString('base64'));
   }
   await page.emulateMedia({media:'print'});await page.pdf({path:'output/playwright/profile.pdf',format:'A4',printBackground:true});await page.emulateMedia({media:'screen'});
   record('profile responsive at 320/390/768/1280 and print export');
@@ -94,6 +98,7 @@ try {
   const deniedPage=await denied.newPage();deniedPage.on('pageerror',e=>errors.push(String(e)));await deniedPage.goto(base);
   await deniedPage.getByRole('alert').waitFor();assert.ok((await deniedPage.getByRole('alert').textContent()).includes('не сохраняет'));record('storage failure is visible and app stays usable');
   assert.deepEqual(errors,[]);record('no browser page errors');
+  console.log('ORIENTA_LOCK:'+(await fs.readFile('package-lock.json')).toString('base64'));
   await fs.writeFile('output/playwright/result.json',JSON.stringify({checks,errors,illustrations:'cached originals; external networking blocked during browser scenarios'},null,2));
 } catch(error) {
   if(browser){const contexts=browser.contexts();const page=contexts[0]?.pages()[0];if(page){await page.screenshot({path:'output/playwright/failure.png',fullPage:true}).catch(()=>{});await fs.writeFile('output/playwright/failure.html',await page.content()).catch(()=>{});}}
