@@ -4,11 +4,25 @@ export const createYdbStore = ({ endpoint, token, table = 'orienta', transport =
   const call = async (action, input) => {
     const response = await transport(url, { method: 'POST', signal: AbortSignal.timeout(8000), headers: { authorization: 'Bearer ' + await token(), 'content-type': 'application/x-amz-json-1.0', 'x-amz-target': 'DynamoDB_20120810.' + action }, body: JSON.stringify({ TableName: table, ...input }) });
     const result = await response.json();
-    if (!response.ok) { const error = new Error('YDB request failed'); error.conditional = /ConditionalCheckFailedException/.test(result.__type || ''); throw error; }
+    if (!response.ok) { const error = new Error('YDB request failed'); error.code = String(result.__type || '').split('#').pop(); error.conditional = error.code === 'ConditionalCheckFailedException'; throw error; }
     return result;
   };
   const decode = item => item ? { key: item.key.S, revision: Number(item.revision.N), value: JSON.parse(item.value.S) } : null;
   return {
+    initialize: async () => {
+      let description;
+      try { description = await call('DescribeTable', {}); }
+      catch (error) {
+        if (error.code !== 'ResourceNotFoundException') throw error;
+        try { await call('CreateTable', { AttributeDefinitions: [{ AttributeName: 'key', AttributeType: 'S' }], KeySchema: [{ AttributeName: 'key', KeyType: 'HASH' }] }); }
+        catch (createError) { if (createError.code !== 'ResourceInUseException') throw createError; }
+        description = await call('DescribeTable', {});
+      }
+      const schema = description.Table;
+      if (schema?.KeySchema?.length !== 1 || schema.KeySchema[0].AttributeName !== 'key' || schema.KeySchema[0].KeyType !== 'HASH'
+        || !schema.AttributeDefinitions?.some(attribute => attribute.AttributeName === 'key' && attribute.AttributeType === 'S')) throw new Error('Unexpected progress table schema');
+      return { table, ready: true };
+    },
     get: async key => decode((await call('GetItem', { Key: { key: { S: key } }, ConsistentRead: true })).Item),
     compareAndSet: async (key, expected, value) => {
       try {

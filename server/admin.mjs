@@ -1,23 +1,9 @@
 import { open } from 'node:fs/promises';
+import { pathToFileURL } from 'node:url';
 import { createYdbStore } from './ydb.mjs';
 import { provisionLearner } from './api.mjs';
-
-export const csvCell = value => {
-  let text = String(value ?? '');
-  if (/^[\s]*[=+\-@]/.test(text)) text = "'" + text;
-  return '"' + text.replaceAll('"', '""') + '"';
-};
-const csvRow = values => values.map(csvCell).join(';') + '\r\n';
-export const exportRows = async store => {
-  const learners = await store.scan('learner:');
-  const rows = [['Ученик', 'ID', 'Обновлено', 'Этапов выполнено', 'Видео завершено', 'Ответы и прогресс']];
-  for (const learner of learners) {
-    const progress = await store.get('progress:' + learner.value.learnerId), state = progress?.value.payload.state;
-    rows.push([learner.value.label, learner.value.learnerId, progress ? new Date(progress.value.updatedAt).toISOString() : '', state?.course.completedStages.length || 0,
-      Object.values(state?.course.lessons || {}).filter(lesson => lesson.completed).length, progress ? JSON.stringify(progress.value.payload) : '']);
-  }
-  return '\uFEFF' + rows.map(csvRow).join('');
-};
+import { csvRow, exportRows } from './report.mjs';
+export { csvCell, exportRows } from './report.mjs';
 const args = process.argv.slice(2), command = args[0];
 const argument = name => { const idx = args.indexOf('--' + name); return idx >= 0 ? args[idx + 1] : undefined; };
 const main = async () => {
@@ -48,4 +34,4 @@ const main = async () => {
   } finally { store.close?.(); }
 };
 // Importing CSV helpers in tests must not execute admin commands.
-if (process.argv[1] && import.meta.url === (await import('node:url')).pathToFileURL(process.argv[1]).href) main().catch(error => { console.error(error.message); process.exitCode = 1; });
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main().catch(error => { console.error(error.message); process.exitCode = 1; });
