@@ -22,6 +22,30 @@ export interface TestResult {
   title: string; // Russian title
   description: string;
   timestamp: string;
+  scores?: Record<string, number>;
+  tiedTypes?: string[];
+  heroName?: string;
+}
+
+export interface CourseState {
+  activeStage: number | null;
+  completedStages: number[];
+  s1CardIndex: number;
+  s1SelectedSpheres: string[];
+  s1QuizIndex: number;
+  s1Phase: 'intro' | 'tinder' | 'filter' | 'quiz_intro' | 'quiz' | 'done';
+  s1QuizAnswers: number[];
+  s1QuizFeedback: string | null;
+  s2Phase: 'intro' | 'swot1' | 'swot2' | 'swot3' | 'swot4' | 'values' | 'age' | 'gifts' | 'done';
+  s2Values: string[];
+  s2Inputs: { s: string; w: string; o: string; t: string; age: string; gift: string };
+  s3Phase: 'intro' | 'q1' | 'q2' | 'q3' | 'crisis_intro' | 'crisis' | 'done';
+  s3Thinking: string;
+  s3Team: string;
+  s3Learning: string;
+  s3CrisisIdx: number;
+  s3CrisisAnswers: string[];
+  untimed: boolean;
 }
 
 export interface CourseModule {
@@ -32,6 +56,7 @@ export interface CourseModule {
 }
 
 export interface UserState {
+  schemaVersion?: 2;
   hasOnboarded: boolean;
   telegramId: string | number | null;
   firstName: string | null;
@@ -39,6 +64,8 @@ export interface UserState {
   testResult: TestResult | null;
   courseProgress: CourseModule[];
   aiSummary: string | null;
+  summarySource?: 'rules' | 'ai';
+  course: CourseState;
   lastUpdated: number; // Timestamp for sync conflict resolution
 }
 
@@ -87,24 +114,9 @@ export const ARCHETYPES: Record<string, { title: string; description: string[]; 
 };
 
 export const INITIAL_COURSE_MODULES: CourseModule[] = [
-  { 
-    id: 1, 
-    title: 'Модуль 1: Фундамент Роста', 
-    content: 'Понимание своей отправной точки критически важно. В этом модуле мы разберем психологию изменений и научимся ставить реалистичные цели, основанные на твоем архетипе.', 
-    isCompleted: false 
-  },
-  { 
-    id: 2, 
-    title: 'Модуль 2: Стратегическое Внедрение', 
-    content: 'Идеи ничего не стоят без реализации. Изучи фреймворки, которые используют топ-CEO для управления временем и энергией.', 
-    isCompleted: false 
-  },
-  { 
-    id: 3, 
-    title: 'Модуль 3: Мастерство и Устойчивость', 
-    content: 'Создание наследия требует постоянства. Мы обсудим формирование долгосрочных привычек и способы избежать выгорания на пути к цели.', 
-    isCompleted: false 
-  },
+  { id: 1, title: 'Этап 1: Интересы', content: 'Исследование профессиональных сфер и задач специалистов.', isCompleted: false },
+  { id: 2, title: 'Этап 2: Личность', content: 'Сильные стороны, трудности, ценности и личные цели.', isCompleted: false },
+  { id: 3, title: 'Этап 3: Навыки', content: 'Мышление, командная работа, обучение и практические ситуации.', isCompleted: false },
 ];
 
 // Extend Window interface for Telegram
