@@ -1,10 +1,10 @@
 import type { UserState } from '../types';
 import { buildProfileText } from './profile';
-import { GOOGLE_SCRIPT_URL } from './storageService';
+import { AI_PROXY_URL } from './storageService';
 // API keys belong on the server. No provider is claimed until an endpoint is configured.
 export const generateGraduationSummary = async (state: UserState, signal?: AbortSignal): Promise<string> => {
-  if (!GOOGLE_SCRIPT_URL) throw new Error('Сервис ИИ пока не подключён.');
-  const response = await fetch(GOOGLE_SCRIPT_URL, {
+  if (!AI_PROXY_URL) throw new Error('Сервис ИИ пока не подключён.');
+  const response = await fetch(AI_PROXY_URL, {
     method: 'POST', signal,
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify({ action: 'generate_ai', prompt: 'Помоги исследовать профессии по ответам участника. Не ставь диагнозы и не обещай пригодность. Предложи конкретную профессиональную пробу.\n' + buildProfileText({ ...state, aiSummary: null }) }),

@@ -7,7 +7,7 @@ import { CourseView } from './components/CourseView';
 import { GuideView } from './components/GuideView';
 import { ProfileView } from './components/ProfileView';
 import { generateGraduationSummary } from './services/geminiService';
-import { GOOGLE_SCRIPT_URL } from './services/storageService';
+import { AI_PROXY_URL } from './services/storageService';
 import { createUserState, readUserState, saveLocalState, GAME_STORAGE_KEY, exportBackup, importBackup } from './services/progress';
 import { downloadText, courseFingerprint } from './services/profile';
 import { createTestDraft, readTestDraft, TestDraft } from './services/testProgress';
@@ -370,7 +370,7 @@ const App: React.FC = () => {
       )}
       {view === AppView.AI_SUMMARY && profileReady && <ProfileView state={userState}
         onBack={() => setView(AppView.DASHBOARD)} onConsultation={() => setView(AppView.CONSULTATION)}
-        onAi={handleGenerateAi} aiConfigured={!!GOOGLE_SCRIPT_URL} generating={isGeneratingAi} error={aiError} />}
+        onAi={handleGenerateAi} aiConfigured={!!AI_PROXY_URL} generating={isGeneratingAi} error={aiError} />}
       {view === AppView.CONSULTATION && renderConsultation()}
       {view === AppView.COMMUNITY && renderCommunity()}
       {view === AppView.DASHBOARD && <section aria-label="Сохранение прогресса" className="max-w-5xl mx-auto px-6 pb-12 print-hidden">

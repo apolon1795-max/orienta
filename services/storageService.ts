@@ -1,5 +1,5 @@
-const configuredUrl = import.meta.env.VITE_GOOGLE_SCRIPT_URL || '';
-export const GOOGLE_SCRIPT_URL = (() => {
+const configuredUrl = import.meta.env.VITE_AI_PROXY_URL || '';
+export const AI_PROXY_URL = (() => {
   try {
     const url = new URL(configuredUrl);
     return url.protocol === 'https:' || (url.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(url.hostname)) ? url.href : '';
