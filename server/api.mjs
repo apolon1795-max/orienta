@@ -1,6 +1,7 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { normalizeUserState } from '../services/progress.ts';
 import { normalizeTestDraft } from '../services/testProgress.ts';
+import { AiError } from './ai.mjs';
 
 export const digest = value => createHash('sha256').update(value).digest('hex');
 export const normalizeCode = value => typeof value === 'string' ? value.toUpperCase().replace(/[\s-]/g, '') : '';
@@ -23,7 +24,7 @@ export const provisionLearner = async (store, label = '') => {
   return { learnerId, code, label: account.label };
 };
 
-export const createApi = ({ store, allowedOrigins = [], now = Date.now, sessionDays = 7, loginLimits = new Map() }) => {
+export const createApi = ({ store, allowedOrigins = [], now = Date.now, sessionDays = 7, loginLimits = new Map(), ai = null }) => {
   const limits = loginLimits;
   return async ({ method, path, headers = {}, body = '', ip = '' }) => {
     headers = Object.fromEntries(Object.entries(headers).map(([key, value]) => [key.toLowerCase(), value]));
@@ -51,7 +52,7 @@ export const createApi = ({ store, allowedOrigins = [], now = Date.now, sessionD
         const token = randomBytes(32).toString('base64url'), expiresAt = now() + sessionDays * 86400000;
         if (!await store.compareAndSet(sessionKey(token), 0, { learnerId: learner.value.learnerId, expiresAt })) throw new Error('session_not_created');
         const progress = await store.get('progress:' + learner.value.learnerId);
-        return reply(200, { token, learnerId: learner.value.learnerId, expiresAt, progress: snapshot(progress) });
+        return reply(200, { token, learnerId: learner.value.learnerId, expiresAt, progress: snapshot(progress), aiAvailable: !!ai });
       }
       const token = /^Bearer ([A-Za-z0-9_-]{43})$/.exec(headers.authorization || '')?.[1];
       if (!token) return reply(401, { error: 'sign_in_required' });
@@ -64,7 +65,27 @@ export const createApi = ({ store, allowedOrigins = [], now = Date.now, sessionD
         return reply(200, { ok: true });
       }
       const key = 'progress:' + session.value.learnerId;
-      if (method === 'GET' && path === '/progress') return reply(200, { learnerId: session.value.learnerId, progress: snapshot(await store.get(key)) });
+      if (method === 'GET' && path === '/progress') return reply(200, { learnerId: session.value.learnerId, progress: snapshot(await store.get(key)), aiAvailable: !!ai });
+      if (method === 'POST' && path === '/ai-summary') {
+        if (!ai) return reply(503, { error: 'ai_disabled' });
+        if (!Number.isSafeInteger(input.baseRevision) || input.baseRevision < 1 || Object.keys(input).some(name => name !== 'baseRevision')) return reply(400, { error: 'invalid_revision' });
+        const progress = await store.get(key);
+        if (!progress || progress.revision !== input.baseRevision) return reply(409, { error: 'ai_progress_changed' });
+        try {
+          const fingerprint = ai.fingerprint(progress.value.payload.state);
+          const result = await ai.summarize(session.value.learnerId, progress.value.payload.state);
+          // A logout, revoked access or changed answers during generation invalidates this response.
+          const currentSession = await store.get(sessionKey(token));
+          const currentLearner = await store.get('learner:' + session.value.learnerId);
+          if (!currentSession || currentSession.value.expiresAt <= now() || !currentLearner?.value.active) return reply(401, { error: 'session_expired' });
+          const current = await store.get(key);
+          if (!current || ai.fingerprint(current.value.payload.state) !== fingerprint) return reply(409, { error: 'ai_progress_changed' });
+          return reply(200, result);
+        } catch (error) {
+          if (error instanceof AiError) return reply(error.status, { error: error.code });
+          return reply(503, { error: 'ai_unavailable' });
+        }
+      }
       if (method === 'PUT' && path === '/progress') {
         if (!Number.isSafeInteger(input.baseRevision) || input.baseRevision < 0 || !/^[A-Za-z0-9_-]{16,64}$/.test(input.mutationId || '')) return reply(400, { error: 'invalid_revision' });
         let payload;

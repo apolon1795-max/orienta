@@ -8,7 +8,7 @@ interface Session { token: string; learnerId: string; expiresAt: number }
 interface Mutation { baseRevision: number; mutationId: string; payload: ProgressPayload }
 interface Cache { revision: number; saved: string; pending: Mutation | null; queued: ProgressPayload | null }
 export type SyncStatus = 'local' | 'signed-out' | 'checking' | 'saved' | 'pending' | 'offline' | 'conflict' | 'error';
-export interface SyncState { status: SyncStatus; learnerId?: string; message?: string; dirty: boolean; cacheAvailable: boolean }
+export interface SyncState { status: SyncStatus; learnerId?: string; message?: string; dirty: boolean; cacheAvailable: boolean; aiAvailable?: boolean }
 const SESSION_KEY = 'orienta_session_v1';
 const cacheKey = (id: string) => 'orienta_sync_v1:' + id;
 const clean = (value: ProgressPayload): ProgressPayload => {
@@ -39,6 +39,7 @@ export class ProgressSync {
   private generation = 0;
   private started = false;
   private cacheAvailable = true;
+  private aiAvailable = false;
   private timer: ReturnType<typeof setTimeout> | undefined;
   private listeners = new Set<(state: SyncState) => void>();
   state: SyncState;
@@ -47,7 +48,7 @@ export class ProgressSync {
   }
   subscribe(listener: (state: SyncState) => void) { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; }
   private publish(status: SyncStatus, message?: string) {
-    const next = { status, message, learnerId: this.session?.learnerId, dirty: !!(this.cache.pending || this.cache.queued), cacheAvailable: this.cacheAvailable };
+    const next = { status, message, learnerId: this.session?.learnerId, dirty: !!(this.cache.pending || this.cache.queued), cacheAvailable: this.cacheAvailable, aiAvailable: !!this.session && this.aiAvailable };
     if (JSON.stringify(next) === JSON.stringify(this.state)) return;
     this.state = next;
     this.listeners.forEach(listener => listener(this.state));
@@ -57,8 +58,8 @@ export class ProgressSync {
     try { this.options.storage.setItem(cacheKey(this.session.learnerId), JSON.stringify(this.cache)); this.cacheAvailable = true; }
     catch { this.cacheAvailable = false; }
   }
-  private async request(path: string, method = 'GET', body?: unknown, token = this.session?.token) {
-    const response = await (this.options.fetch || fetch)(this.options.base + path, { method, cache: 'no-store', keepalive: method === 'PUT', signal: AbortSignal.timeout(12000),
+  private async request(path: string, method = 'GET', body?: unknown, token = this.session?.token, signal?: AbortSignal) {
+    const response = await (this.options.fetch || fetch)(this.options.base + path, { method, cache: 'no-store', keepalive: method === 'PUT', signal: signal || AbortSignal.timeout(12000),
       headers: { ...(body ? { 'content-type': 'application/json' } : {}), ...(token ? { authorization: 'Bearer ' + token } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}) });
     const data = await response.json();
     if (!response.ok) throw Object.assign(new Error(data.error || 'request_failed'), { status: response.status, data });
@@ -92,6 +93,7 @@ export class ProgressSync {
       this.generation++; this.session = { token: data.token, learnerId: data.learnerId, expiresAt: data.expiresAt };
       // Session storage deliberately ends the browser session on shared school computers.
       try { this.options.sessionStorage.setItem(SESSION_KEY, JSON.stringify(this.session)); } catch { /* This tab can still work until it is closed. */ }
+      this.aiAvailable = data.aiAvailable === true;
       this.readCache(); this.receive(normalizeSnapshot(data.progress));
     } catch (error: any) { this.publish('signed-out', error.status === 401 ? 'Код не подошёл. Проверь символы или обратись к наставнику.' : error.status === 429 ? 'Слишком много попыток. Подожди минуту.' : 'Сейчас не удалось войти. Проверь интернет и попробуй ещё раз.'); }
   }
@@ -116,7 +118,7 @@ export class ProgressSync {
     if (!this.session) return;
     const generation = this.generation;
     this.ready = false; this.publish('checking');
-    try { const data = await this.request('/progress'); if (generation === this.generation) this.receive(normalizeSnapshot(data.progress)); }
+    try { const data = await this.request('/progress'); if (generation === this.generation) { this.aiAvailable = data.aiAvailable === true; this.receive(normalizeSnapshot(data.progress)); } }
     catch (error: any) { if (generation === this.generation) this.publish(error.status === 401 ? 'signed-out' : 'error', error.status === 401 ? 'Сессия закончилась. Введи личный код ещё раз.' : 'Облако недоступно. Повтори подключение, когда появится интернет.'); }
   }
   offer(payload: ProgressPayload) {
@@ -151,6 +153,47 @@ export class ProgressSync {
     } finally { this.busy = false; }
     if (!this.paused && !this.remote && this.cache.queued) await this.flush();
   }
+  async generateAi(payload: ProgressPayload, signal?: AbortSignal): Promise<string> {
+    if (!this.session || !this.ready || !this.aiAvailable) throw new Error('Войди по личному коду. Сервис ИИ должен быть подключён наставником.');
+    const generation = this.generation, serialized = JSON.stringify(clean(payload));
+    this.offer(payload);
+    // Let an autosave already in flight finish before choosing the server revision.
+    for (let i = 0; i < 250; i++) {
+      if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+      if (generation !== this.generation || this.paused || this.remote) break;
+      await this.flush();
+      if (!this.busy && !this.cache.pending && !this.cache.queued) break;
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    if (generation !== this.generation || !this.session || this.busy || this.cache.pending || this.cache.queued || this.paused || this.remote || this.cache.saved !== serialized)
+      throw new Error('Сначала сохрани ответы в облаке и разреши конфликт с другим устройством, если он появился.');
+    try {
+      const data = await this.request('/ai-summary', 'POST', { baseRevision: this.cache.revision }, this.session.token, signal);
+      if (generation !== this.generation) throw new Error('ai_account_changed');
+      if (this.cache.pending || this.cache.queued || this.cache.saved !== serialized) throw new Error('ai_progress_changed');
+      if (typeof data.text !== 'string' || data.text.trim().length < 20 || data.text.length > 12000) throw new Error('ai_invalid_response');
+      return data.text.trim();
+    } catch (error: any) {
+      if (signal?.aborted) throw error;
+      const messages: Record<string, string> = {
+        ai_balance_required: 'На сервисе ИИ закончился баланс. Сообщи наставнику.',
+        ai_configuration: 'Наставнику нужно проверить подключение сервиса ИИ.',
+        ai_disabled: 'Сервис ИИ пока не подключён.',
+        ai_daily_limit: 'На сегодня лимит разборов исчерпан. Готовый разбор сохранён.',
+        ai_pilot_limit: 'Лимит пилота исчерпан. Сообщи наставнику.',
+        ai_running: 'Разбор уже готовится. Подожди немного и повтори запрос.',
+        ai_try_later: 'Подожди минуту перед повторной попыткой.',
+        ai_provider_busy: 'Сервис ИИ занят. Повтори запрос через минуту.',
+        ai_timeout: 'Сервис ИИ не успел ответить. Можно повторить запрос через минуту.',
+        ai_progress_changed: 'Ответы изменились. Открой актуальную облачную версию профкарты.',
+        ai_account_changed: 'Учётная запись изменилась. Открой свою профкарту ещё раз.',
+        ai_profile_incomplete: 'Сначала заверши тест и все пять этапов курса.',
+        ai_profile_too_large: 'Ответы слишком длинные для разбора. Сократи свободные ответы.',
+        session_expired: 'Сессия закончилась. Введи личный код ещё раз.',
+      };
+      throw new Error(messages[error.message] || 'Не удалось получить ИИ-разбор. Повтори запрос через минуту.');
+    }
+  }
   async retry() { this.paused = false; if (!this.ready) await this.refresh(); else await this.flush(); }
   useCloudCopy() {
     if (!this.remote) return;
@@ -163,7 +206,7 @@ export class ProgressSync {
     const token = this.session?.token;
     this.generation++; this.ready = false; this.paused = false; clearTimeout(this.timer);
     try { if (this.session) this.options.storage.removeItem(cacheKey(this.session.learnerId)); this.options.sessionStorage.removeItem(SESSION_KEY); } catch { /* Logout still clears this tab. */ }
-    this.session = null; this.remote = null; this.cache = { revision: 0, saved: '', pending: null, queued: null };
+    this.session = null; this.aiAvailable = false; this.remote = null; this.cache = { revision: 0, saved: '', pending: null, queued: null };
     this.options.reset(); this.publish('signed-out');
     if (token) { try { await this.request('/session', 'DELETE', undefined, token); } catch { /* The token is already gone from this device and expires server-side. */ } }
   }

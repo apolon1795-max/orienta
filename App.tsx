@@ -6,8 +6,6 @@ import { TestView } from './components/TestView';
 import { CourseView } from './components/CourseView';
 import { GuideView } from './components/GuideView';
 import { ProfileView } from './components/ProfileView';
-import { generateGraduationSummary } from './services/geminiService';
-import { AI_PROXY_URL } from './services/storageService';
 import { createUserState, readUserState, saveLocalState, GAME_STORAGE_KEY, exportBackup, importBackup } from './services/progress';
 import { downloadText, courseFingerprint } from './services/profile';
 import { createTestDraft, readTestDraft, TestDraft } from './services/testProgress';
@@ -105,13 +103,13 @@ const App: React.FC = () => {
     aiInFlight.current = true;
     const controller = new AbortController(); request.current = controller;
     setIsGeneratingAi(true); setAiError(null);
-    const timeout = setTimeout(() => controller.abort(), 20000), snapshot = userState;
+    const timeout = setTimeout(() => controller.abort(), 35000), snapshot = userState;
     try {
-      const summary = await generateGraduationSummary(snapshot, controller.signal);
+      const summary = await sync.generateAi({ state: snapshot, testDraft: testDraft.current }, controller.signal);
       if (!controller.signal.aborted) setUserState(prev => courseFingerprint(prev.course) === courseFingerprint(snapshot.course) && prev.testResult?.timestamp === snapshot.testResult?.timestamp
         ? { ...prev, aiSummary: summary, summarySource: 'ai', lastUpdated: Date.now() } : prev);
-    } catch {
-      if (request.current === controller) setAiError(controller.signal.aborted ? 'Время ожидания истекло.' : 'Не удалось получить ИИ-разбор.');
+    } catch (error) {
+      if (request.current === controller) setAiError(controller.signal.aborted ? 'Время ожидания истекло. Повтори запрос через минуту.' : error instanceof Error ? error.message : 'Не удалось получить ИИ-разбор.');
     } finally { clearTimeout(timeout); setIsGeneratingAi(false); aiInFlight.current = false; }
   };
   const handleOpenTelegramLink = (url: string) => {
@@ -370,7 +368,7 @@ const App: React.FC = () => {
       )}
       {view === AppView.AI_SUMMARY && profileReady && <ProfileView state={userState}
         onBack={() => setView(AppView.DASHBOARD)} onConsultation={() => setView(AppView.CONSULTATION)}
-        onAi={handleGenerateAi} aiConfigured={!!AI_PROXY_URL} generating={isGeneratingAi} error={aiError} />}
+        onAi={handleGenerateAi} aiConfigured={syncState.aiAvailable === true} generating={isGeneratingAi} error={aiError} />}
       {view === AppView.CONSULTATION && renderConsultation()}
       {view === AppView.COMMUNITY && renderCommunity()}
       {view === AppView.DASHBOARD && <section aria-label="Сохранение прогресса" className="max-w-5xl mx-auto px-6 pb-12 print-hidden">

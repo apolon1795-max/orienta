@@ -11,7 +11,7 @@ paths:
           required: true
           schema:
             type: string
-            enum: [health, session, progress]
+            enum: [health, session, progress, ai-summary]
       x-yc-apigateway-integration:
         type: cloud_functions
         payload_format_version: '1.0'

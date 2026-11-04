@@ -1,5 +1,6 @@
 import { createApi } from './api.mjs';
 import { createCloudStore } from './cloud-store.mjs';
+import { createProxyAi, createAiService } from './ai.mjs';
 
 // Cloud Functions: attach a service account with database-scoped ydb.editor.
 // No permanent cloud keys are shipped to browsers or stored in the source tree.
@@ -12,7 +13,9 @@ export const createFunctionHandler = ({ env = process.env, transport = fetch } =
         if (!context.token?.access_token) throw new Error('Attach a service account');
         return context.token.access_token;
       } });
-      const api = createApi({ store, loginLimits, allowedOrigins: (env.ORIENTA_ALLOWED_ORIGINS || '').split(',').filter(Boolean) });
+      const provider = createProxyAi({ env, transport });
+      const ai = provider ? createAiService({ store, provider }) : null;
+      const api = createApi({ store, ai, loginLimits, allowedOrigins: (env.ORIENTA_ALLOWED_ORIGINS || '').split(',').filter(Boolean) });
       const response = await api({ method: event.httpMethod, path: String(event.path || '').replace(/^\/api(?=\/)/, ''), headers: event.headers,
         body: event.isBase64Encoded ? Buffer.from(event.body || '', 'base64').toString('utf8') : event.body || '', ip: event.requestContext?.identity?.sourceIp || '' });
       return { statusCode: response.status, headers: response.headers, body: response.body, isBase64Encoded: false };

@@ -36,8 +36,8 @@ export const ProfileView = ({ state, onBack, onConsultation, onAi, aiConfigured,
         <Button variant="secondary" onClick={() => window.print()}><Printer className="w-5 h-5" />Печать / PDF</Button>
       </div>
       {aiConfigured && <div className="py-6 border-t border-slate-700">
-        <p className="text-sm text-slate-300 mb-4">Дополнительный разбор отправит ответы из профкарты в настроенный сервис ИИ.</p>
-        <Button disabled={generating} onClick={onAi}><Sparkles className="w-5 h-5" />{generating ? 'Готовим разбор…' : 'Получить ИИ-разбор'}</Button>
+        <p className="text-sm text-slate-300 mb-4">По кнопке ответы из профкарты отправятся в ProxyAPI и OpenAI для разбора. Убери из свободных ответов имена, контакты и название школы. Запрос обрабатывается за пределами России.</p>
+        <Button disabled={generating || state.summarySource === 'ai' && !!state.aiSummary} onClick={onAi}><Sparkles className="w-5 h-5" />{generating ? 'Готовим разбор…' : state.summarySource === 'ai' && state.aiSummary ? 'Разбор сохранён' : 'Получить ИИ-разбор'}</Button>
         {error && <p role="alert" className="text-red-300 mt-4">{error} Профкарта сохранена. Можно повторить запрос.</p>}
       </div>}
       <Button variant="outline" onClick={onConsultation}>Обсудить с наставником</Button>
