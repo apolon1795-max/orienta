@@ -25,7 +25,18 @@ try {
   const hub=async()=>{await click('Начать Путь');if(await page.getByRole('button',{name:'Поехали',exact:true}).isVisible())await click('Поехали');};
   await page.goto(base);await page.screenshot({path:'output/playwright/01-landing-desktop.png',fullPage:true});
   console.log('ORIENTA_VISUAL_LANDING:'+(await fs.readFile('output/playwright/01-landing-desktop.png')).toString('base64'));
-  await hub();await click('Начать Тест');await click('Начать игру');await click('Создать персонажа');await click('Человек');
+  await hub();await click('Начать Тест');await click('Начать игру');await click('Создать персонажа');
+  await page.emulateMedia({reducedMotion:'no-preference'});
+  await page.waitForFunction(()=>{
+    const image=document.querySelector('img[alt="Персонажи Ориенты"]');
+    if(!image?.complete || !image.naturalWidth) return false;
+    const box=image.getBoundingClientRect(),style=getComputedStyle(image);
+    return box.width>200 && box.height>200 && Number(style.opacity)>0.99 && style.visibility==='visible';
+  });
+  await page.screenshot({path:'output/playwright/00-game-illustration.png',fullPage:true});
+  record('game illustration loads at a visible size with normal motion');
+  await page.emulateMedia({reducedMotion:'reduce'});
+  await click('Человек');
   await page.getByRole('textbox',{name:'Имя героя'}).fill('Искатель 🌿');await click('Подтвердить имя');await click('Отправиться в путь');
   for(let i=0;i<5;i++){
     if(i===4)await click('Сжать артефакт');
