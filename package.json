@@ -6,12 +6,23 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node --experimental-transform-types --test tests/*.test.mjs",
+    "typecheck": "tsc --noEmit",
+    "test:browser": "node --experimental-transform-types tests/browser.mjs",
+    "test:browser:cloud": "node --experimental-transform-types tests/cloud-browser.mjs",
+    "build:server": "node scripts/build-server.mjs",
+    "server:dev": "node --experimental-transform-types server/local.mjs",
+    "admin": "node --experimental-transform-types server/admin.mjs",
+    "assets": "node scripts/cache-assets.mjs",
+    "prebuild": "npm run assets",
+    "predev": "npm run assets"
   },
   "dependencies": {
     "lucide-react": "^0.344.0",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "ydb-sdk": "5.11.1"
   },
   "devDependencies": {
     "@types/node": "^20.11.24",
@@ -19,9 +30,13 @@
     "@types/react-dom": "^18.2.21",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.18",
+    "playwright": "1.56.1",
     "postcss": "^8.4.35",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.2.2",
     "vite": "^5.1.4"
+  },
+  "engines": {
+    "node": ">=24"
   }
 }

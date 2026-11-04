@@ -1,159 +1,110 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
+import { lessonConfigured, currentLessonProgress } from './LessonMedia';
+import { playbackTime } from '../services/lessonProgress';
 import { 
   ArrowLeft, Lock, CheckCircle, Play, Star, 
   Shield, Brain, Zap, Trophy, Heart, Briefcase 
 } from 'lucide-react';
 import { Button } from './Button';
 
-// --- DATA CONSTANTS ---
-
-const SPHERES_DATA = [
-    { id: "it", icon: "💻", title: "IT и технологии", desc: "Код, игры, дизайн и кибербезопасность.", jobs: ["Программист", "Разработчик игр", "UX/UI-дизайнер", "Кибербезопасность", "Системный администратор", "Product Manager"] },
-    { id: "health", icon: "💊", title: "Здоровье и спорт", desc: "Помощь людям, медицина, фитнес.", jobs: ["Врач", "Фитнес-тренер", "Диетолог", "Психолог", "Хирург", "Фармацевт"] },
-    { id: "art", icon: "🎨", title: "Творчество и медиа", desc: "Дизайн, видео, музыка и блоги.", jobs: ["Иллюстратор", "Сценарист", "Блогер", "Музыкант", "Фотограф", "Режиссер"] },
-    { id: "edu", icon: "📚", title: "Образование и социум", desc: "Обучение и помощь людям.", jobs: ["Учитель", "Психолог", "Коуч", "Логопед", "Тьютор", "Бизнес-тренер"] },
-    { id: "build", icon: "🏗️", title: "Строительство", desc: "Создание зданий и пространств.", jobs: ["Архитектор", "Инженер-строитель", "Дизайнер интерьера", "Урбанист", "Ландшафтный дизайнер", "Риелтор"] },
-    { id: "science", icon: "🧪", title: "Наука и природа", desc: "Исследования, химия и космос.", jobs: ["Биолог", "Эколог", "Химик", "Агроном", "Генетик", "Астроном"] },
-    { id: "travel", icon: "✈️", title: "Путешествия", desc: "Туризм, рестораны и ивенты.", jobs: ["Гид", "Шеф-повар", "Event-менеджер", "Отельер", "Бортпроводник", "Администратор ресторана"] },
-    { id: "security", icon: "🛡️", title: "Безопасность", desc: "Спасение жизней и защита.", jobs: ["Сотрудник МЧС", "Пилот", "Пожарный", "Криминалист", "Телохранитель", "Военный"] },
-    { id: "energy", icon: "⚡", title: "Энергетика", desc: "Ресурсы, нефть и атом.", jobs: ["Энергетик", "Геолог", "Инженер АЭС", "Нефтяник", "Электромонтажник", "Инженер по бурению"] },
-    { id: "biz", icon: "💼", title: "Бизнес и финансы", desc: "Управление, маркетинг и деньги.", jobs: ["Предприниматель", "Менеджер", "Маркетолог", "Финансист", "Sales-менеджер", "Логист"] }
-];
-
-const QUIZ_DATA = [
-    { q: "Я создаю миры, где сражаются драконы. Кто я?", answers: ["Гейм-дизайнер", "Иллюстратор", "Сценарист"], correct: 0, feedback: "Гейм-дизайнер создает правила. Иллюстратор рисует." },
-    { q: "Я управляю командой, слежу за сроками, но риск и прибыль — не моя забота.", answers: ["Предприниматель", "Project Менеджер", "Финансист"], correct: 1, feedback: "Предприниматель рискует деньгами, а Project Manager управляет процессом." },
-    { q: "Я лечу животных, даже если они кусаются.", answers: ["Ветеринар", "Эколог", "Зоолог"], correct: 0, feedback: "Ветеринар — это врач для зверей." }
-];
-
-const VALUES_LIST = ["Семья", "Любовь", "Здоровье", "Интересная работа", "Друзья", "Творчество", "Признание", "Гармония", "Деньги", "Самореализация", "Свобода", "Власть"];
-
-const SKILLS_QUESTIONS = [
-    {
-        title: "Мышление",
-        q: "Завтра сдача сложного проекта. Твои действия?",
-        opts: [
-            { t: "Разделю на шаги и пойду по порядку", type: "Структурный", fb: "Твоя сила — порядок. Тебя зовут, чтобы разложить хаос по полочкам." },
-            { t: "Создам план и найду помощников", type: "Командный", fb: "Ты стратег. Видишь цель, собираешь союзников и вперед." },
-            { t: "Сначала паника, потом работа", type: "Реалист", fb: "Классика! Сначала эмоции, потом решимость. Тролль одобряет." },
-            { t: "Посмотрю в потолок... идея придет", type: "Созерцатель", fb: "Твоя суперсила — озарение. Думаешь через космос." },
-            { t: "Найду способ сделать проще и быстрее", type: "Хакер", fb: "Хитрец! Оптимизатор. Главное — результат, а не инструкция." }
-        ]
-    },
-    {
-        title: "Команда",
-        q: "В команде все спорят и тянут в разные стороны. Ты?",
-        opts: [
-            { t: "Всех выслушаю и помирю", type: "Дипломат", fb: "Спаситель школьных чатов и нервных клеток." },
-            { t: "Сделаю часть сам — так надежнее", type: "Одиночка", fb: "Соло-волк. Хочешь сделать хорошо — сделай сам." },
-            { t: "Раздам всем задачи и скажу «Погнали»", type: "Организатор", fb: "Лидер от природы. У тебя всегда есть план Б." },
-            { t: "Подстроюсь, лишь бы закончить", type: "Гибкий", fb: "Адаптер. Ты просто хочешь, чтобы все получилось." },
-            { t: "Возьму ответственность на себя", type: "Лидер", fb: "Лидер с характером. Вижу цель — не вижу препятствий." }
-        ]
-    },
-    {
-        title: "Обучение",
-        q: "Тебе нужно освоить магию рун (или новый язык) за месяц. Как?",
-        opts: [
-            { t: "Куплю учебник, выучу теорию", type: "Теоретик", fb: "Системный подход. Ты строишь фундамент." },
-            { t: "Сразу начну колдовать (методом тыка)", type: "Практик", fb: "Учеба через ошибки. Самый быстрый путь." },
-            { t: "Найду Верховного Мага (наставника)", type: "Ученик", fb: "Мудрость других — твой ресурс." },
-            { t: "Подсмотрю, как делают другие", type: "Наблюдатель", fb: "Ты умеешь копировать и улучшать." }
-        ]
-    }
-];
-
-const CRISIS_QUESTIONS = [
-    { q: "1/4: ЧП! Ведущий заболел, колонка сломалась. До начала 15 минут.", opts: [{ t: "Возьму все на себя + попрошу помощи", type: "Менеджер" }, { t: "Решу главное, на мелочи забью", type: "Минималист" }, { t: "Найду замену и технику", type: "Координатор" }, { t: "Повозмущаюсь, потом соберусь", type: "Боец" }] },
-    { q: "2/4: Друзья в команде поссорились и не хотят работать вместе.", opts: [{ t: "Разведу их по разным углам/задачам", type: "Дипломат" }, { t: "Скажу: 'Соберитесь, работа стоит!'", type: "Лидер" }, { t: "Попробую помирить шуткой", type: "Душа компании" }, { t: "Буду работать за них, пока они дуются", type: "Трудяга" }] },
-    { q: "3/4: Ты забыл флешку с презентацией дома! Выступать через 5 минут.", opts: [{ t: "Расскажу без слайдов, на харизме", type: "Оратор" }, { t: "Попрошу перенести меня в конец списка", type: "Хитрец" }, { t: "Быстро нарисую схему на доске", type: "Креативщик" }, { t: "Честно признаюсь учителю", type: "Честный" }] },
-    { q: "4/4: Интернет отключился прямо во время важной онлайн-игры (турнира).", opts: [{ t: "Раздам интернет с телефона (Hotspot)", type: "Технарь" }, { t: "Ударю по роутеру (вдруг поможет)", type: "Шаман" }, { t: "Спокойно пойду пить чай", type: "Дзен-мастер" }, { t: "Буду звонить провайдеру и кричать", type: "Боец" }] }
-];
+import { DreamStage, AssessmentStage } from './FinalStages';
+import type { CourseState } from '../types';
+import { SPHERES_DATA, QUIZ_DATA, VALUES_LIST, SKILLS_QUESTIONS, CRISIS_QUESTIONS } from '../data/course';
+import { canFinishStage, validAge, validGift } from '../services/progress';
 
 interface CourseViewProps {
-  modules?: any[]; // Legacy prop
-  onUpdateProgress?: (id: number) => void; // Legacy prop
+  course: CourseState;
+  onChange: React.Dispatch<React.SetStateAction<CourseState>>;
   onCompleteCourse: () => void;
   onBack: () => void;
   isGeneratingAi: boolean;
 }
-
-// --- SUBCOMPONENTS ---
-
-const VideoPlaceholder: React.FC<{ label: string }> = ({ label }) => (
-  <div className="w-full h-48 bg-black rounded-xl flex items-center justify-center mb-6 border border-slate-700 shadow-lg relative overflow-hidden group cursor-pointer">
-    {/* Fake Thumbnail Gradient */}
-    <div className="absolute inset-0 bg-gradient-to-br from-slate-900 to-indigo-900 opacity-60"></div>
-    
-    <div className="relative z-10 flex flex-col items-center gap-2 transform group-hover:scale-110 transition-transform duration-300">
-      <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30">
-        <Play className="w-8 h-8 text-white fill-current ml-1" />
-      </div>
-      <span className="font-bold tracking-widest text-white text-sm uppercase">{label}</span>
-    </div>
+const InputStep = ({ title, desc, placeholder, value, onChange, onNext }: {
+  title: string; desc: string; placeholder: string; value: string;
+  onChange: (value: string) => void; onNext: () => void;
+}) => (
+  <div className="p-6 min-h-[80svh] flex flex-col justify-center max-w-md mx-auto animate-fade-in">
+    <label htmlFor="reflection" className="text-2xl font-serif font-bold text-white mb-2">{title}</label>
+    <p id="reflection-help" className="text-slate-300 mb-6">{desc}</p>
+    <textarea id="reflection" aria-describedby="reflection-help" maxLength={1200}
+      className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl p-4 text-white focus:border-purple-500 outline-none h-32 mb-6"
+      placeholder={placeholder} value={value} onChange={e => onChange(e.target.value)} />
+    <Button fullWidth disabled={value.trim().length < 2} onClick={onNext}>Далее</Button>
   </div>
 );
 
 const Toast: React.FC<{ message: string | null }> = ({ message }) => {
   if (!message) return null;
   return (
-    <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-slate-900/90 text-white px-6 py-4 rounded-xl border border-indigo-500 shadow-[0_0_30px_rgba(0,0,0,0.5)] z-[100] text-center animate-fade-in text-lg font-medium backdrop-blur-md">
+    <div role="status" className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-slate-900/90 text-white px-6 py-4 rounded-xl border border-indigo-500 shadow-[0_0_30px_rgba(0,0,0,0.5)] z-[100] text-center animate-fade-in text-lg font-medium backdrop-blur-md">
       {message}
     </div>
   );
 };
 
 export const CourseView: React.FC<CourseViewProps> = ({ 
-  onCompleteCourse, 
-  onBack,
-  isGeneratingAi
+  course, onChange, onCompleteCourse, onBack, isGeneratingAi
 }) => {
-  // Game State
-  const [activeStage, setActiveStage] = useState<number | null>(null);
-  const [completedStages, setCompletedStages] = useState<number[]>([]);
-  const [xp, setXp] = useState(0);
+  function field<K extends keyof CourseState>(key: K): [CourseState[K], React.Dispatch<React.SetStateAction<CourseState[K]>>] {
+    return [course[key], value => onChange(prev => ({ ...prev, [key]: typeof value === 'function' ? (value as (old: CourseState[K]) => CourseState[K])(prev[key]) : value }))];
+  }
+  const [activeStage, setActiveStage] = field('activeStage');
+  const completedStages = course.completedStages;
   const [toastMsg, setToastMsg] = useState<string | null>(null);
-  
-  // Stage 1 State
-  const [s1CardIndex, setS1CardIndex] = useState(0);
-  const [s1SelectedSpheres, setS1SelectedSpheres] = useState<string[]>([]);
-  const [s1QuizIndex, setS1QuizIndex] = useState(0);
-  const [s1Phase, setS1Phase] = useState<'intro' | 'tinder' | 'filter' | 'quiz_intro' | 'quiz' | 'done'>('intro');
-  const [s1QuizFeedback, setS1QuizFeedback] = useState<string | null>(null);
-
-  // Stage 2 State
-  const [s2Phase, setS2Phase] = useState<'intro' | 'swot1' | 'swot2' | 'swot3' | 'swot4' | 'values' | 'age' | 'gifts' | 'done'>('intro');
-  const [s2Values, setS2Values] = useState<string[]>([]);
-  const [s2Inputs, setS2Inputs] = useState({ s: '', w: '', o: '', t: '', age: '', gift: '' });
-
-  // Stage 3 State
-  const [s3Phase, setS3Phase] = useState<'intro' | 'q1' | 'q2' | 'q3' | 'crisis_intro' | 'crisis' | 'done'>('intro');
-  const [s3Thinking, setS3Thinking] = useState('');
-  const [s3Team, setS3Team] = useState('');
-  const [s3Learning, setS3Learning] = useState('');
-  const [s3CrisisIdx, setS3CrisisIdx] = useState(0);
+  const s1CardIndex = course.s1CardIndex;
+  const [s1SelectedSpheres, setS1SelectedSpheres] = field('s1SelectedSpheres');
+  const s1QuizIndex = course.s1QuizIndex;
+  const s1Phase = course.s1Phase;
+  const s1QuizFeedback = course.s1QuizFeedback;
+  const [s2Phase, setS2Phase] = field('s2Phase');
+  const [s2Values, setS2Values] = field('s2Values');
+  const [s2Inputs, setS2Inputs] = field('s2Inputs');
+  const [s3Phase, setS3Phase] = field('s3Phase');
+  const [s3Thinking, setS3Thinking] = field('s3Thinking');
+  const [s3Team, setS3Team] = field('s3Team');
+  const [s3Learning, setS3Learning] = field('s3Learning');
+  const s3CrisisIdx = course.s3CrisisIdx;
   const [s3Timer, setS3Timer] = useState(20);
-  const timerRef = useRef<any>(null); // Fixed type for build
-
-  // Helper: Open Stage
+  const answerCrisis = (answer: string, expectedIndex = s3CrisisIdx) => onChange(prev => {
+    if (prev.s3Phase !== 'crisis' || prev.s3CrisisIdx !== expectedIndex) return prev;
+    const answers = [...prev.s3CrisisAnswers];
+    answers[expectedIndex] = answer;
+    return { ...prev, s3CrisisAnswers: answers,
+      s3CrisisIdx: Math.min(expectedIndex + 1, 3), s3Phase: expectedIndex === 3 ? 'done' : 'crisis' };
+  });
+  useEffect(() => {
+    if (activeStage !== 2 || s3Phase !== 'crisis' || course.untimed) return;
+    setS3Timer(20);
+    const interval = setInterval(() => setS3Timer(n => Math.max(0, n - 1)), 1000);
+    const timeout = setTimeout(() => answerCrisis('Без ответа', s3CrisisIdx), 20000);
+    return () => { clearInterval(interval); clearTimeout(timeout); };
+  }, [activeStage, s3Phase, s3CrisisIdx, course.untimed, onChange]);
+  useEffect(() => {
+    if (!toastMsg) return;
+    const id = setTimeout(() => setToastMsg(null), 2000);
+    return () => clearTimeout(id);
+  }, [toastMsg]);
+  useEffect(() => { window.scrollTo(0, 0); }, [activeStage, s1Phase, s2Phase, s3Phase, s3CrisisIdx]);
   const openStage = (idx: number) => {
-    // Check lock
     if (idx > 0 && !completedStages.includes(idx - 1)) return;
     setActiveStage(idx);
   };
-
-  // Helper: Finish Stage
-  const finishStage = (idx: number, reward: number) => {
-    if (!completedStages.includes(idx)) {
-        setCompletedStages(prev => [...prev, idx]);
-        setXp(prev => prev + reward);
-    }
-    setActiveStage(null);
-  };
-
-  const showToast = (msg: string) => {
-    setToastMsg(msg);
-    setTimeout(() => setToastMsg(null), 2000);
+  const finishStage = (idx: number, _reward: number) => onChange(prev => {
+    if (!canFinishStage(prev, idx)) return prev;
+    return { ...prev, completedStages: [...new Set([...prev.completedStages, idx])], activeStage: null };
+  });
+  const showToast = (message: string) => setToastMsg(message);
+  const setS1Phase = (next: CourseState['s1Phase']) => onChange(prev => ({ ...prev, s1Phase: next }));
+  const chooseSphere = (id?: string) => {
+    if (s1CardIndex + 1 === SPHERES_DATA.length && !id && !s1SelectedSpheres.length) showToast('Выбери хотя бы одну сферу. Можно исследовать её без уверенности.');
+    onChange(prev => {
+      if (prev.s1CardIndex !== s1CardIndex) return prev;
+      const selected = id ? [...new Set([...prev.s1SelectedSpheres, id])] : prev.s1SelectedSpheres;
+      const next = prev.s1CardIndex + 1;
+      if (next < SPHERES_DATA.length) return { ...prev, s1SelectedSpheres: selected, s1CardIndex: next };
+      if (!selected.length) return { ...prev, s1CardIndex: 0 };
+      return { ...prev, s1SelectedSpheres: selected, s1CardIndex: next, s1Phase: selected.length > 3 ? 'filter' : 'jobs' };
+    });
   };
 
   // --- RENDERERS ---
@@ -161,23 +112,23 @@ export const CourseView: React.FC<CourseViewProps> = ({
   const renderHeader = () => (
     <div className="bg-slate-900 border-b border-slate-800 p-4 sticky top-0 z-20 flex items-center justify-between shadow-xl">
         <div className="flex items-center gap-3">
-            <button onClick={onBack} className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors">
+            <button aria-label="Вернуться в хаб" onClick={onBack} className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors">
                 <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
                 <h2 className="font-serif font-bold text-white text-lg leading-tight">Путь Мастера</h2>
-                <div className="text-xs text-slate-400">Ранг: {xp > 100 ? 'Магистр' : xp > 50 ? 'Искатель' : 'Новичок'}</div>
+                <div className="text-sm text-slate-300">Пять этапов к Профкарте Героя</div>
             </div>
         </div>
         <div className="flex flex-col items-end w-32">
             <div className="flex justify-between w-full text-xs font-bold text-indigo-400 mb-1">
-                <span>XP</span>
-                <span>{xp}/500</span>
+                <span>Пройдено</span>
+                <span>{completedStages.length}/5</span>
             </div>
             <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
                 <div 
                     className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-500" 
-                    style={{ width: `${(xp / 500) * 100}%` }}
+                    style={{ width: `${(completedStages.length / 5) * 100}%` }}
                 ></div>
             </div>
         </div>
@@ -189,7 +140,9 @@ export const CourseView: React.FC<CourseViewProps> = ({
         { id: 0, title: "Этап 1: Интересы", icon: <Heart className="w-6 h-6" />, desc: "Исследование земель" },
         { id: 1, title: "Этап 2: Личность", icon: <Brain className="w-6 h-6" />, desc: "Зеркало души" },
         { id: 2, title: "Этап 3: Навыки", icon: <Shield className="w-6 h-6" />, desc: "Турнир мастеров" },
-        { id: 3, title: "Финал: Профкарта", icon: <Trophy className="w-6 h-6" />, desc: "Судьба героя" },
+        { id: 3, title: "Этап 4: Башня мечты", icon: <Briefcase className="w-6 h-6" />, desc: "Образ будущей работы" },
+        { id: 4, title: "Этап 5: Хрустальный зал", icon: <Brain className="w-6 h-6" />, desc: "Интересы и мотивация" },
+        { id: 5, title: "Финал: Профкарта Героя", icon: <Trophy className="w-6 h-6" />, desc: "Судьба героя" },
     ];
 
     return (
@@ -200,13 +153,15 @@ export const CourseView: React.FC<CourseViewProps> = ({
             {stages.map((stage, idx) => {
                 const isLocked = idx > 0 && !completedStages.includes(idx - 1);
                 const isCompleted = completedStages.includes(idx);
-                const isActive = !isLocked && !isCompleted;
+                const lesson = currentLessonProgress(idx + 1, course.lessons[idx + 1]);
+
 
                 return (
-                    <div 
+                    <button
+                        type="button" disabled={isLocked} aria-label={stage.title + '. ' + (isLocked ? 'Сначала заверши предыдущий этап' : isCompleted ? 'Пройден, открыть итоги' : 'Открыть')}
                         key={idx} 
                         onClick={() => openStage(idx)}
-                        className={`relative z-10 flex items-center gap-4 p-4 rounded-xl border-2 transition-all duration-300 cursor-pointer ${
+                        className={`relative z-10 w-full text-left flex items-center gap-4 p-4 rounded-xl border-2 transition-all duration-300 cursor-pointer ${
                             isLocked 
                                 ? 'bg-slate-900 border-slate-800 opacity-60 grayscale' 
                                 : isCompleted
@@ -224,8 +179,9 @@ export const CourseView: React.FC<CourseViewProps> = ({
                         <div>
                             <h3 className={`font-bold ${isLocked ? 'text-slate-500' : 'text-white'}`}>{stage.title}</h3>
                             <p className="text-sm text-slate-400">{stage.desc}</p>
+                            {idx < 5 && lessonConfigured(idx + 1) && <p className="text-xs text-slate-300 mt-1">{lesson?.completed ? 'Видео завершено' : lesson?.position ? 'Видео: ' + playbackTime(lesson.position) : 'Видеоурок доступен'}</p>}
                         </div>
-                    </div>
+                    </button>
                 );
             })}
         </div>
@@ -237,7 +193,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
     if (s1Phase === 'intro') {
         return (
             <div className="flex flex-col items-center justify-center h-full text-center p-6 animate-fade-in">
-                <VideoPlaceholder label="ВИДЕО СТАРТ" />
+                <p className="max-w-sm text-slate-300 mb-6">Выбери от одной до трёх сфер, по одной или две профессии в каждой и ответь на три загадки. Здесь можно пробовать и ошибаться.</p>
                 <h2 className="text-3xl font-serif font-bold text-white mb-4">Привет, Герой! 👋</h2>
                 <p className="text-slate-300 mb-8 max-w-sm">
                    Свайпай 10 сфер! Лайкай то, что интересно. Твой выбор определит путь.
@@ -248,20 +204,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
     }
 
     if (s1Phase === 'tinder') {
-        if (s1CardIndex >= SPHERES_DATA.length) {
-            // Auto transition to filter or next
-            setTimeout(() => {
-                if (s1SelectedSpheres.length > 3) setS1Phase('filter');
-                else if (s1SelectedSpheres.length === 0) {
-                    setS1CardIndex(0); // Restart
-                } else {
-                    setS1Phase('quiz_intro');
-                }
-            }, 500);
-            return <div className="p-10 text-center text-white">Обработка...</div>;
-        }
-
-        const card = SPHERES_DATA[s1CardIndex];
+        const card = SPHERES_DATA[Math.min(s1CardIndex, SPHERES_DATA.length - 1)];
         return (
             <div className="flex flex-col items-center justify-center h-full p-6 animate-fade-in">
                 <div className="text-slate-400 mb-4 text-sm">Карта {s1CardIndex + 1} из {SPHERES_DATA.length}</div>
@@ -274,7 +217,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
                     <Button 
                         variant="secondary" 
                         fullWidth 
-                        onClick={() => setS1CardIndex(prev => prev + 1)}
+                        onClick={() => chooseSphere()}
                         className="border-red-400 text-red-400 hover:bg-red-950/30"
                     >
                         Мимо
@@ -282,10 +225,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
                     <Button 
                         variant="primary" 
                         fullWidth 
-                        onClick={() => {
-                            setS1SelectedSpheres(prev => [...prev, card.id]);
-                            setS1CardIndex(prev => prev + 1);
-                        }}
+                        onClick={() => chooseSphere(card.id)}
                         className="bg-green-600 hover:bg-green-500"
                     >
                         Лайк
@@ -299,7 +239,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
         return (
             <div className="p-6 h-full flex flex-col items-center">
                 <h3 className="text-2xl font-bold text-white mb-2">Рюкзак переполнен!</h3>
-                <p className="text-slate-400 mb-6 text-center">Оставь только 3 самые важные сферы.</p>
+                <p className="text-slate-400 mb-6 text-center">Оставь от одной до трёх самых важных сфер.</p>
                 <div className="w-full max-w-md space-y-3 flex-1 overflow-y-auto">
                     {s1SelectedSpheres.map(id => {
                         const item = SPHERES_DATA.find(s => s.id === id);
@@ -323,13 +263,29 @@ export const CourseView: React.FC<CourseViewProps> = ({
                     <Button 
                         fullWidth 
                         disabled={s1SelectedSpheres.length > 3 || s1SelectedSpheres.length === 0}
-                        onClick={() => setS1Phase('quiz_intro')}
+                        onClick={() => setS1Phase('jobs')}
                     >
                         Готово
                     </Button>
                 </div>
             </div>
         );
+    }
+
+    if (s1Phase === 'jobs') {
+      const idx = Math.min(course.s1ProfessionIndex, Math.max(0, s1SelectedSpheres.length - 1));
+      const sphere = SPHERES_DATA.find(s => s.id === s1SelectedSpheres[idx]);
+      if (!sphere) return <Button onClick={() => setS1Phase('tinder')}>Вернуться к сферам</Button>;
+      const selected = course.s1SelectedProfessions[sphere.id] || [];
+      return <div className="max-w-md mx-auto p-6 space-y-5">
+        <h2 className="text-2xl font-serif text-white">Профессии: {sphere.title}</h2>
+        <p className="text-slate-200">Выбери одну или две профессии, которые хочется изучить. Сфера {idx + 1} из {s1SelectedSpheres.length}.</p>
+        {sphere.jobs.map(job => <Button key={job} fullWidth variant={selected.includes(job) ? 'primary' : 'secondary'} aria-pressed={selected.includes(job)} disabled={!selected.includes(job) && selected.length >= 2} onClick={() => onChange(prev => {
+          const old = prev.s1SelectedProfessions[sphere.id] || [];
+          return { ...prev, s1SelectedProfessions: { ...prev.s1SelectedProfessions, [sphere.id]: old.includes(job) ? old.filter(v => v !== job) : old.length < 2 ? [...old, job] : old } };
+        })}>{job}</Button>)}
+        <Button fullWidth disabled={selected.length < 1} onClick={() => onChange(prev => ({ ...prev, s1ProfessionIndex: idx + 1 < s1SelectedSpheres.length ? idx + 1 : idx, s1Phase: idx + 1 < s1SelectedSpheres.length ? 'jobs' : prev.s1QuizAnswers.length === 3 ? 'done' : 'quiz_intro' }))}>Продолжить</Button>
+      </div>;
     }
 
     if (s1Phase === 'quiz_intro') {
@@ -346,10 +302,6 @@ export const CourseView: React.FC<CourseViewProps> = ({
     }
 
     if (s1Phase === 'quiz') {
-        if (s1QuizIndex >= QUIZ_DATA.length) {
-            setS1Phase('done');
-            return null;
-        }
         const q = QUIZ_DATA[s1QuizIndex];
         
         return (
@@ -365,8 +317,10 @@ export const CourseView: React.FC<CourseViewProps> = ({
                             disabled={!!s1QuizFeedback}
                             onClick={() => {
                                 const isCorrect = idx === q.correct;
-                                setS1QuizFeedback(isCorrect ? "Верно! +10 XP" : "Не совсем...");
-                                if (isCorrect) setXp(x => x + 10);
+                                onChange(prev => {
+                                  if (prev.s1QuizAnswers.length > s1QuizIndex) return prev;
+                                  return { ...prev, s1QuizAnswers: [...prev.s1QuizAnswers, idx], s1QuizFeedback: isCorrect ? 'Верно!' : 'Не совсем…' };
+                                });
                             }}
                             className={`w-full p-4 rounded-xl text-left border transition-all ${
                                 s1QuizFeedback
@@ -386,9 +340,10 @@ export const CourseView: React.FC<CourseViewProps> = ({
                             {q.feedback}
                         </div>
                         <Button fullWidth onClick={() => {
-                            setS1QuizFeedback(null);
-                            if (s1QuizIndex + 1 < QUIZ_DATA.length) setS1QuizIndex(prev => prev + 1);
-                            else setS1Phase('done');
+                            onChange(prev => {
+                              if (prev.s1QuizIndex !== s1QuizIndex || !prev.s1QuizFeedback) return prev;
+                              return { ...prev, s1QuizFeedback: null, s1QuizIndex: Math.min(s1QuizIndex + 1, 2), s1Phase: s1QuizIndex === 2 ? 'done' : 'quiz' };
+                            });
                         }}>
                             Далее
                         </Button>
@@ -405,9 +360,8 @@ export const CourseView: React.FC<CourseViewProps> = ({
                     <CheckCircle className="w-12 h-12 text-green-400" />
                 </div>
                 <h2 className="text-3xl font-serif font-bold text-white mb-2">Этап 1 Пройден! 🎉</h2>
-                <p className="text-slate-300 mb-8">Интересы сохранены.</p>
-                <div className="text-4xl font-bold text-amber-400 mb-8 drop-shadow-glow">+50 XP</div>
-                <Button variant="fantasy" onClick={() => finishStage(0, 50)}>На карту</Button>
+                <p className="text-slate-300 mb-8">Интересы и выбранные профессии сохранены.</p>
+                <Button variant="fantasy" onClick={() => finishStage(0, 40)}>На карту</Button>
             </div>
         );
     }
@@ -421,7 +375,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
     if (s2Phase === 'intro') {
         return (
             <div className="flex flex-col items-center justify-center h-full text-center p-6 animate-fade-in">
-                <VideoPlaceholder label="ВИДЕО ЛИЧНОСТЬ" />
+                <p className="max-w-sm text-slate-300 mb-6">Запиши свои сильные стороны и трудности, выбери пять ценностей и представь подарки на три будущих дня рождения. Ответы войдут в профкарту.</p>
                 <h2 className="text-3xl font-serif font-bold text-white mb-4">Зеркало Души 🪞</h2>
                 <p className="text-slate-300 mb-8 max-w-sm">
                     Герой должен знать свою силу и слабость. Загляни в зеркальные пруды!
@@ -431,31 +385,17 @@ export const CourseView: React.FC<CourseViewProps> = ({
         );
     }
 
-    // Generic Input Step Component
-    const InputStep = ({ title, desc, placeholder, valKey, nextPhase }: any) => (
-        <div className="p-6 h-full flex flex-col justify-center max-w-md mx-auto animate-fade-in">
-            <h3 className="text-2xl font-serif font-bold text-white mb-2">{title}</h3>
-            <p className="text-slate-400 mb-6">{desc}</p>
-            <textarea 
-                className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl p-4 text-white focus:border-purple-500 outline-none h-32 mb-6"
-                placeholder={placeholder}
-                value={s2Inputs[valKey as keyof typeof s2Inputs]}
-                onChange={(e) => saveInput(valKey, e.target.value)}
-            />
-            <Button 
-                fullWidth 
-                disabled={s2Inputs[valKey as keyof typeof s2Inputs].length < 2}
-                onClick={() => setS2Phase(nextPhase)}
-            >
-                Далее
-            </Button>
-        </div>
-    );
-
-    if (s2Phase === 'swot1') return <InputStep title="Твоя Сила 💪" desc="В чем ты хорош? Что хвалят другие?" placeholder="Быстро учусь, умею рисовать..." valKey="s" nextPhase="swot2" />;
-    if (s2Phase === 'swot2') return <InputStep title="Слабые места 🧠" desc="Что дается с трудом? Где нужна помощь?" placeholder="Лень, боюсь выступать..." valKey="w" nextPhase="swot3" />;
-    if (s2Phase === 'swot3') return <InputStep title="Возможности 🔓" desc={`Как использовать твою силу: "${s2Inputs.s}"?`} placeholder="Могу стать дизайнером..." valKey="o" nextPhase="swot4" />;
-    if (s2Phase === 'swot4') return <InputStep title="Угрозы ⚠️" desc={`Что помешает из-за слабости: "${s2Inputs.w}"?`} placeholder="Завалю экзамен..." valKey="t" nextPhase="values" />;
+    const reflections = {
+      swot1: { title: 'Твоя Сила', desc: 'В чем ты хорош? Что хвалят другие?', placeholder: 'Быстро учусь, умею рисовать…', key: 's', next: 'swot2' },
+      swot2: { title: 'Слабые места', desc: 'Что даётся с трудом? Где нужна помощь?', placeholder: 'Мне пока сложно выступать…', key: 'w', next: 'swot3' },
+      swot3: { title: 'Возможности', desc: 'Как использовать твою силу: «' + s2Inputs.s + '»?', placeholder: 'Попробую сделать проект…', key: 'o', next: 'swot4' },
+      swot4: { title: 'Препятствия', desc: 'Что может помешать? Какую поддержку стоит найти?', placeholder: 'Не хватает времени, нужна помощь…', key: 't', next: 'values' },
+    } as const;
+    if (s2Phase in reflections) {
+      const item = reflections[s2Phase as keyof typeof reflections];
+      return <InputStep title={item.title} desc={item.desc} placeholder={item.placeholder}
+        value={s2Inputs[item.key]} onChange={value => saveInput(item.key, value)} onNext={() => setS2Phase(item.next)} />;
+    }
 
     if (s2Phase === 'values') {
         return (
@@ -467,7 +407,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
                         const isSelected = s2Values.includes(v);
                         return (
                             <button
-                                key={v}
+                                key={v} aria-pressed={isSelected}
                                 onClick={() => {
                                     if (isSelected) setS2Values(prev => prev.filter(i => i !== v));
                                     else if (s2Values.length < 5) setS2Values(prev => [...prev, v]);
@@ -499,61 +439,28 @@ export const CourseView: React.FC<CourseViewProps> = ({
             <div className="p-6 h-full flex flex-col justify-center max-w-md mx-auto animate-fade-in text-center">
                 <h3 className="text-2xl font-serif font-bold text-white mb-6">Сколько тебе лет? 🎂</h3>
                 <input 
-                    type="number" 
+                    type="number" min={6} max={100} step={1} aria-label="Возраст в годах"
                     className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl p-4 text-white text-center text-2xl focus:border-purple-500 outline-none mb-6"
                     placeholder="18"
                     value={s2Inputs.age}
                     onChange={(e) => saveInput('age', e.target.value)}
                 />
-                <Button fullWidth disabled={!s2Inputs.age} onClick={() => setS2Phase('gifts')}>Далее</Button>
+                <p className="text-sm text-slate-300 mb-4">Целое число от 6 до 100.</p>
+                <Button fullWidth disabled={!validAge(s2Inputs.age)} onClick={() => setS2Phase('gifts')}>Далее</Button>
             </div>
         );
     }
 
     if (s2Phase === 'gifts') {
-         const handleGiftSubmit = () => {
-             const val = s2Inputs.gift.toLowerCase();
-             const forbidden = ["деньг", "бабло", "рубл", "доллар", "евро", "валют", "money", "cash"];
-             
-             if (forbidden.some(word => val.includes(word))) {
-                 showToast("🚫 Никаких денег! Придумай мечту.");
-                 return;
-             }
-
-             // Humor logic
-             if (val.includes("еда") || val.includes("тор") || val.includes("пицц")) {
-                 showToast("🍕 Вкусно жить не запретишь!");
-             } else if (val.includes("мир") || val.includes("путеш") || val.includes("море")) {
-                 showToast("🌍 Дух приключений!");
-             } else if (val.includes("машин") || val.includes("авто") || val.includes("bmw")) {
-                 showToast("🚍 Бип-бип!");
-             } else {
-                 showToast("👍 Классный выбор!");
-             }
-             
-             // Wait for toast then finish
-             setTimeout(() => setS2Phase('done'), 1500);
-         };
-
-        return (
-             <div className="p-6 h-full flex flex-col justify-center max-w-md mx-auto animate-fade-in">
-                <h3 className="text-2xl font-serif font-bold text-white mb-2">Тебе исполняется {parseInt(s2Inputs.age) + 1}! 🎉</h3>
-                <p className="text-slate-400 mb-6">Что ты хочешь в подарок? (Что сделает тебя счастливее? <b>Деньги загадывать нельзя!</b>)</p>
-                <textarea 
-                    className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl p-4 text-white focus:border-purple-500 outline-none h-32 mb-6"
-                    placeholder="Машину, остров, собаку..."
-                    value={s2Inputs.gift}
-                    onChange={(e) => saveInput('gift', e.target.value)}
-                />
-                <Button 
-                    fullWidth 
-                    disabled={s2Inputs.gift.length < 2}
-                    onClick={handleGiftSubmit}
-                >
-                    Хочу!
-                </Button>
-            </div>
-        );
+      const idx = course.s2GiftIndex;
+      const key = (['gift', 'gift2', 'gift3'] as const)[idx];
+      return <div className="p-6 max-w-md mx-auto space-y-6">
+        <h3 className="text-2xl font-serif text-white">Тебе исполняется {Number(s2Inputs.age) + idx + 1}!</h3>
+        <p className="text-slate-200">Подарок {idx + 1} из 3: что бы ты хотел получить? Здесь можно мечтать. Ответ не определяет твою профессию.</p>
+        <label htmlFor="future-gift" className="block text-slate-200">Желаемый подарок</label>
+        <textarea id="future-gift" maxLength={1200} className="w-full h-32 bg-slate-800 border border-slate-600 rounded-xl p-4 text-white" value={s2Inputs[key]} onChange={e => saveInput(key, e.target.value)} />
+        <Button fullWidth disabled={!validGift(s2Inputs[key])} onClick={() => onChange(prev => ({ ...prev, s2GiftIndex: Math.min(idx + 1, 2), s2Phase: idx === 2 ? 'done' : 'gifts' }))}>{idx === 2 ? 'Сохранить подарки' : 'Следующий день рождения'}</Button>
+      </div>;
     }
 
     if (s2Phase === 'done') {
@@ -564,7 +471,6 @@ export const CourseView: React.FC<CourseViewProps> = ({
                 </div>
                 <h2 className="text-3xl font-serif font-bold text-white mb-2">Этап 2 Пройден!</h2>
                 <p className="text-slate-300 mb-8">Ты проанализировал себя.</p>
-                <div className="text-4xl font-bold text-amber-400 mb-8 drop-shadow-glow">+40 XP</div>
                 <Button variant="fantasy" onClick={() => finishStage(1, 40)}>На карту</Button>
             </div>
         );
@@ -577,7 +483,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
     if (s3Phase === 'intro') {
         return (
             <div className="flex flex-col items-center justify-center h-full text-center p-6 animate-fade-in">
-                <VideoPlaceholder label="ВИДЕО ТУРНИР" />
+                <p className="max-w-sm text-slate-300 mb-6">Выбери привычный подход к задачам, команде и учёбе. Затем попробуй четыре практические ситуации.</p>
                 <h2 className="text-3xl font-serif font-bold text-white mb-4">Турнир Мастеров 🤺</h2>
                 <p className="text-slate-300 mb-8 max-w-sm">
                     Здесь сражаются головой. Узнаем твой стиль мышления!
@@ -587,7 +493,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
         );
     }
 
-    const ScenarioQuestion = ({ idx, setter, next }: any) => {
+    const renderScenarioQuestion = ({ idx, setter, next }: { idx: number; setter: (value: string) => void; next: CourseState['s3Phase'] }) => {
         const q = SKILLS_QUESTIONS[idx];
         return (
             <div className="p-6 h-full flex flex-col justify-center max-w-md mx-auto animate-fade-in">
@@ -611,9 +517,9 @@ export const CourseView: React.FC<CourseViewProps> = ({
         );
     };
 
-    if (s3Phase === 'q1') return <ScenarioQuestion idx={0} setter={setS3Thinking} next="q2" />;
-    if (s3Phase === 'q2') return <ScenarioQuestion idx={1} setter={setS3Team} next="q3" />;
-    if (s3Phase === 'q3') return <ScenarioQuestion idx={2} setter={setS3Learning} next="crisis_intro" />;
+    if (s3Phase === 'q1') return renderScenarioQuestion({ idx: 0, setter: setS3Thinking, next: 'q2' });
+    if (s3Phase === 'q2') return renderScenarioQuestion({ idx: 1, setter: setS3Team, next: 'q3' });
+    if (s3Phase === 'q3') return renderScenarioQuestion({ idx: 2, setter: setS3Learning, next: 'crisis_intro' });
 
     if (s3Phase === 'crisis_intro') {
         return (
@@ -623,49 +529,16 @@ export const CourseView: React.FC<CourseViewProps> = ({
                 </div>
                 <h2 className="text-3xl font-serif font-bold text-red-400 mb-4">БЛИЦ-КРИЗИС! 🚨</h2>
                 <p className="text-slate-300 mb-8 max-w-sm">
-                    Тебя ждет 4 ситуации. На решение каждой — всего 20 секунд.
+                    Тебя ждет 4 ситуации. На решение каждой — 20 секунд. Можно отключить ограничение времени.
                 </p>
-                <Button variant="primary" onClick={() => {
-                    setS3CrisisIdx(0);
-                    setS3Phase('crisis');
-                }}>Начать Блиц</Button>
+                <label className="flex gap-3 items-center text-slate-200 mb-6"><input type="checkbox" checked={course.untimed}
+                  onChange={e => onChange(prev => ({ ...prev, untimed: e.target.checked }))} />Без ограничения времени</label>
+                <Button variant="primary" onClick={() => onChange(prev => ({ ...prev, s3CrisisIdx: 0, s3CrisisAnswers: [], s3Phase: 'crisis' }))}>Начать Блиц</Button>
             </div>
         );
     }
 
     if (s3Phase === 'crisis') {
-        if (s3CrisisIdx >= CRISIS_QUESTIONS.length) {
-            setS3Phase('done');
-            return null;
-        }
-        
-        // Timer Logic
-        // eslint-disable-next-line react-hooks/rules-of-hooks
-        useEffect(() => {
-            setS3Timer(20);
-            timerRef.current = setInterval(() => {
-                setS3Timer(prev => {
-                    if (prev <= 1) {
-                        handleCrisisAnswer("Тормоз"); // Auto-fail logic equivalent
-                        return 20;
-                    }
-                    return prev - 1;
-                });
-            }, 1000);
-            return () => { if (timerRef.current) clearInterval(timerRef.current); };
-        }, [s3CrisisIdx]);
-
-        const handleCrisisAnswer = (ansType: string) => {
-            if (timerRef.current) clearInterval(timerRef.current);
-            // Log logic here if needed
-            showToast(`Принято: ${ansType}`);
-            if (s3CrisisIdx + 1 >= CRISIS_QUESTIONS.length) {
-                setS3Phase('done');
-            } else {
-                setS3CrisisIdx(prev => prev + 1);
-            }
-        };
-
         const q = CRISIS_QUESTIONS[s3CrisisIdx];
 
         return (
@@ -673,12 +546,12 @@ export const CourseView: React.FC<CourseViewProps> = ({
                 <div className="absolute top-6 left-6 right-6">
                     <div className="flex justify-between text-red-400 font-bold mb-1">
                         <span>СИТУАЦИЯ {s3CrisisIdx + 1}/4</span>
-                        <span>{s3Timer}с</span>
+                        <span>{course.untimed ? 'Без таймера' : s3Timer + 'с'}</span>
                     </div>
                     <div className="w-full bg-slate-800 h-3 rounded-full overflow-hidden">
                         <div 
                             className={`h-full transition-all duration-1000 linear ${s3Timer < 5 ? 'bg-red-600' : 'bg-red-400'}`}
-                            style={{ width: `${(s3Timer / 20) * 100}%` }}
+                            style={{ width: `${course.untimed ? 100 : (s3Timer / 20) * 100}%` }}
                         ></div>
                     </div>
                 </div>
@@ -689,7 +562,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
                         {q.opts.map((opt, i) => (
                             <button
                                 key={i}
-                                onClick={() => handleCrisisAnswer(opt.type)}
+                                onClick={() => answerCrisis(opt.type)}
                                 className="w-full p-4 rounded-xl text-left bg-slate-800 border border-slate-700 hover:border-red-500 hover:bg-slate-750 transition-all text-slate-200"
                             >
                                 {opt.t}
@@ -732,7 +605,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
                         <div className="text-2xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-200 to-amber-400 mb-2 uppercase tracking-widest drop-shadow-md">
                             {fullTitle}
                         </div>
-                        <div className="text-xs text-indigo-300 uppercase tracking-[0.2em] mb-6">Уровень 3 • Арена</div>
+                        <div className="text-sm text-indigo-300 mb-6">Турнир мастеров</div>
                         
                         <div className="grid grid-cols-3 gap-2 border-t border-white/10 pt-4">
                             <div className="flex flex-col items-center">
@@ -750,8 +623,6 @@ export const CourseView: React.FC<CourseViewProps> = ({
                         </div>
                     </div>
                 </div>
-
-                <div className="text-2xl font-bold text-amber-400 mb-6 drop-shadow-glow">+20 XP</div>
                 <Button variant="fantasy" onClick={() => finishStage(2, 20)}>На карту</Button>
             </div>
         );
@@ -768,7 +639,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
         <p className="text-slate-300 mb-8 leading-relaxed max-w-md">
             Ты прошел Путь Мастера. Твои интересы, личность и навыки теперь едины.
             <br/><br/>
-            Нажми кнопку ниже, чтобы ИИ проанализировал твой уникальный путь и выдал финальное пророчество.
+            Собери профкарту: выбранные сферы, ценности, сильные стороны и подход к задачам. Её можно сохранить и обсудить с наставником.
         </p>
         <Button 
             variant="fantasy" 
@@ -776,7 +647,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
             disabled={isGeneratingAi}
             className="text-xl px-10 py-4"
         >
-            {isGeneratingAi ? "Призыв Оракула..." : "Получить Пророчество"}
+            {isGeneratingAi ? "Собираем профкарту…" : "Собрать профкарту"}
         </Button>
     </div>
   );
@@ -796,11 +667,11 @@ export const CourseView: React.FC<CourseViewProps> = ({
                 </div>
             </>
         ) : (
-            <div className="absolute inset-0 bg-slate-900 z-50 overflow-y-auto">
+            <div className="min-h-screen bg-slate-900 z-50 relative pt-12 pb-10">
                 {/* Simple Back button for stages */}
                 <button 
                     onClick={() => setActiveStage(null)} 
-                    className="absolute top-4 right-4 text-slate-500 hover:text-white z-50 p-2 bg-black/20 rounded-full"
+                    aria-label="Вернуться к карте курса" className="absolute top-4 right-4 text-slate-300 hover:text-white z-50 p-2 bg-black/20 rounded-full"
                 >
                     ✕
                 </button>
@@ -808,7 +679,9 @@ export const CourseView: React.FC<CourseViewProps> = ({
                 {activeStage === 0 && renderStage1()}
                 {activeStage === 1 && renderStage2()}
                 {activeStage === 2 && renderStage3()}
-                {activeStage === 3 && renderFinal()}
+                {activeStage === 3 && <DreamStage course={course} onChange={onChange} onFinish={() => finishStage(3, 0)} />}
+                {activeStage === 4 && <AssessmentStage course={course} onChange={onChange} onFinish={() => finishStage(4, 0)} />}
+                {activeStage === 5 && renderFinal()}
             </div>
         )}
     </div>

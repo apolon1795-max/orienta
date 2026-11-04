@@ -113,7 +113,7 @@ const CONTENT_MAP: Record<string, string> = {
             </div>
         </div>
         <h2 class="text-2xl md:text-3xl font-serif text-white mb-4 flex items-center border-b border-slate-700 pb-4">
-            <span class="text-3xl mr-4">&#128640;</span> Часть 1. Топ-15 профессий
+            <span class="text-3xl mr-4">&#128640;</span> Профессии для исследования
         </h2>
         <div class="category-header"><span class="text-2xl mr-2">&#128101;</span> Люди и Развитие</div>
         <div class="space-y-4">
@@ -209,9 +209,9 @@ const CONTENT_MAP: Record<string, string> = {
                 Это была лишь демо-версия твоих возможностей.<br>
                 На курсе мы учим монетизировать этот талант системно.
             </p>
-            <div id="guide-action-btn" class="inline-block group relative w-full md:w-auto cursor-pointer">
+            <div data-guide-action-wrapper="true" class="inline-block group relative w-full md:w-auto cursor-pointer">
                 <div class="absolute inset-0 bg-amber-500 blur-lg opacity-40 group-hover:opacity-60 transition-opacity rounded-full"></div>
-                <button class="relative w-full md:w-auto bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-serif font-bold py-5 px-12 rounded-xl shadow-2xl transform group-hover:-translate-y-1 transition-all text-xl border-t border-amber-400/30 pointer-events-none">
+                <button id="guide-action-btn" type="button" class="relative w-full md:w-auto bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-serif font-bold py-5 px-12 rounded-xl shadow-2xl transform group-hover:-translate-y-1 transition-all text-xl border-t border-amber-400/30">
                    &#10024; Перейти к Курсу &#8594;
                 </button>
             </div>
@@ -255,7 +255,7 @@ const CONTENT_MAP: Record<string, string> = {
             </ul>
         </div>
         <h2 class="text-2xl md:text-3xl font-serif text-white mb-4 flex items-center border-b border-slate-700 pb-4">
-            <span class="text-3xl mr-4">&#128640;</span> Часть 1. Топ-15 профессий
+            <span class="text-3xl mr-4">&#128640;</span> Профессии для исследования
         </h2>
         <div class="category-header"><span class="text-2xl mr-2">&#127912;</span> Визуал и Дизайн</div>
         <div class="space-y-4">
@@ -333,9 +333,9 @@ const CONTENT_MAP: Record<string, string> = {
             </p>
         </div>
         <div class="text-center mt-16 mb-8">
-            <div id="guide-action-btn" class="inline-block group relative w-full md:w-auto cursor-pointer">
+            <div data-guide-action-wrapper="true" class="inline-block group relative w-full md:w-auto cursor-pointer">
                 <div class="absolute inset-0 bg-amber-500 blur-lg opacity-40 group-hover:opacity-60 transition-opacity rounded-full"></div>
-                <button class="relative w-full md:w-auto bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-serif font-bold py-5 px-12 rounded-xl shadow-2xl transform group-hover:-translate-y-1 transition-all text-xl border-t border-amber-400/30 pointer-events-none">
+                <button id="guide-action-btn" type="button" class="relative w-full md:w-auto bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-serif font-bold py-5 px-12 rounded-xl shadow-2xl transform group-hover:-translate-y-1 transition-all text-xl border-t border-amber-400/30">
                    &#10024; Перейти к Курсу &#8594;
                 </button>
             </div>
@@ -375,7 +375,7 @@ const CONTENT_MAP: Record<string, string> = {
             </p>
         </div>
         <h2 class="text-2xl md:text-3xl font-serif text-white mb-4 flex items-center border-b border-slate-700 pb-4">
-            <span class="text-3xl mr-4">&#128640;</span> Часть 1. Топ-15 профессий
+            <span class="text-3xl mr-4">&#128640;</span> Профессии для исследования
         </h2>
         <div class="category-header"><span class="text-2xl mr-2">&#128188;</span> Бизнес и Топ-менеджмент</div>
         <div class="space-y-4">
@@ -438,9 +438,9 @@ const CONTENT_MAP: Record<string, string> = {
             </table>
         </div>
         <div class="text-center mt-16 mb-8">
-            <div id="guide-action-btn" class="inline-block group relative w-full md:w-auto cursor-pointer">
+            <div data-guide-action-wrapper="true" class="inline-block group relative w-full md:w-auto cursor-pointer">
                 <div class="absolute inset-0 bg-amber-500 blur-lg opacity-40 group-hover:opacity-60 transition-opacity rounded-full"></div>
-                <button class="relative w-full md:w-auto bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-serif font-bold py-5 px-12 rounded-xl shadow-2xl transform group-hover:-translate-y-1 transition-all text-xl border-t border-amber-400/30 pointer-events-none">
+                <button id="guide-action-btn" type="button" class="relative w-full md:w-auto bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-serif font-bold py-5 px-12 rounded-xl shadow-2xl transform group-hover:-translate-y-1 transition-all text-xl border-t border-amber-400/30">
                    &#10024; Перейти к Курсу &#8594;
                 </button>
             </div>
@@ -479,7 +479,7 @@ const CONTENT_MAP: Record<string, string> = {
             </p>
         </div>
         <h2 class="text-2xl md:text-3xl font-serif text-white mb-4 flex items-center border-b border-slate-700 pb-4">
-            <span class="text-3xl mr-4">&#128640;</span> Часть 1. Топ-15 профессий
+            <span class="text-3xl mr-4">&#128640;</span> Профессии для исследования
         </h2>
         <div class="category-header"><span class="text-2xl mr-2">&#128187;</span> IT и Данные (Архитекторы систем)</div>
         <div class="space-y-4">
@@ -542,9 +542,9 @@ const CONTENT_MAP: Record<string, string> = {
             </table>
         </div>
         <div class="text-center mt-16 mb-8">
-            <div id="guide-action-btn" class="inline-block group relative w-full md:w-auto cursor-pointer">
+            <div data-guide-action-wrapper="true" class="inline-block group relative w-full md:w-auto cursor-pointer">
                 <div class="absolute inset-0 bg-amber-500 blur-lg opacity-40 group-hover:opacity-60 transition-opacity rounded-full"></div>
-                <button class="relative w-full md:w-auto bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-serif font-bold py-5 px-12 rounded-xl shadow-2xl transform group-hover:-translate-y-1 transition-all text-xl border-t border-amber-400/30 pointer-events-none">
+                <button id="guide-action-btn" type="button" class="relative w-full md:w-auto bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-serif font-bold py-5 px-12 rounded-xl shadow-2xl transform group-hover:-translate-y-1 transition-all text-xl border-t border-amber-400/30">
                    &#10024; Перейти к Курсу &#8594;
                 </button>
             </div>
@@ -579,7 +579,7 @@ export const GuideView: React.FC<GuideViewProps> = ({ archetype, onBack, onStart
   return (
     <div className="w-full h-full relative">
        {/* Кнопка "Назад" поверх контента */}
-      <div className="fixed top-4 left-4 z-50">
+      <div className="sticky top-0 z-50 p-4 bg-slate-950">
         <button 
           onClick={onBack}
           className="bg-slate-900/80 backdrop-blur-md border border-slate-700 text-slate-300 hover:text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 transition-all hover:bg-slate-800"

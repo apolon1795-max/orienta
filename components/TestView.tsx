@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from './Button';
 import { TestResult, ARCHETYPES } from '../types';
+import { readTestDraft, createTestDraft, getTestWinners, TestDraft } from '../services/testProgress';
 import { ExternalLink, Image as ImageIcon } from 'lucide-react';
 
 const STORAGE_KEY = 'hero_game_progress_v2'; 
@@ -51,53 +52,53 @@ const Archetype = {
 
 const IMAGES = {
     general: {
-        allCharacters: "https://i.postimg.cc/0QqPFksf/Obsaa-fotka-personazej.png",
-        pigeon: "https://i.postimg.cc/k4dqzJms/Golub'.png"
+        allCharacters: import.meta.env.BASE_URL + "images/0QqPFksf/Obsaa-fotka-personazej.png",
+        pigeon: import.meta.env.BASE_URL + "images/k4dqzJms/Golub'.png"
     },
     races: {
         'Человек': {
-            q1: "https://i.postimg.cc/x1h0GGp7/Celovek-1.png",
-            q2: "https://i.postimg.cc/3xVKjjfS/Celovek-2.png",
-            q3: "https://i.postimg.cc/zG6Jww2F/Celovek-3.png",
-            q4: "https://i.postimg.cc/P5PX8Vyz/Celovek-4.png",
-            q5: "https://i.postimg.cc/pLpWncCQ/Celovek-5.png",
-            [Archetype.Commander]: "https://i.postimg.cc/x1cfbp50/Celovek-komandir.png",
-            [Archetype.Creator]: "https://i.postimg.cc/dtWQ3c27/Celovek-sozidatel'.png",
-            [Archetype.Researcher]: "https://i.postimg.cc/2SVkB9Gq/Celovek-issledovatel'.png",
-            [Archetype.Communicator]: "https://i.postimg.cc/fRJz0qC9/Celovek-dusa-kompanii.png"
+            q1: import.meta.env.BASE_URL + "images/x1h0GGp7/Celovek-1.png",
+            q2: import.meta.env.BASE_URL + "images/3xVKjjfS/Celovek-2.png",
+            q3: import.meta.env.BASE_URL + "images/zG6Jww2F/Celovek-3.png",
+            q4: import.meta.env.BASE_URL + "images/P5PX8Vyz/Celovek-4.png",
+            q5: import.meta.env.BASE_URL + "images/pLpWncCQ/Celovek-5.png",
+            [Archetype.Commander]: import.meta.env.BASE_URL + "images/x1cfbp50/Celovek-komandir.png",
+            [Archetype.Creator]: import.meta.env.BASE_URL + "images/dtWQ3c27/Celovek-sozidatel'.png",
+            [Archetype.Researcher]: import.meta.env.BASE_URL + "images/2SVkB9Gq/Celovek-issledovatel'.png",
+            [Archetype.Communicator]: import.meta.env.BASE_URL + "images/fRJz0qC9/Celovek-dusa-kompanii.png"
         },
         'Эльф': {
-            q1: "https://i.postimg.cc/tCrRJG3q/El'fijka-1.png",
-            q2: "https://i.postimg.cc/Prfrd58W/El'fika-2.png",
-            q3: "https://i.postimg.cc/gkckG263/El'fika-3.png",
-            q4: "https://i.postimg.cc/VLsLzkbV/El'fika-4.png",
-            q5: "https://i.postimg.cc/59S2cCjj/El'fika-5.png",
-            [Archetype.Commander]: "https://i.postimg.cc/Pr6fJnmF/El'fijka-komandir.png",
-            [Archetype.Creator]: "https://i.postimg.cc/BQZQJn1R/El'fijka-sozidatel'.png",
-            [Archetype.Researcher]: "https://i.postimg.cc/yYf6xCFw/El'fijka-issledovatel'.png",
-            [Archetype.Communicator]: "https://i.postimg.cc/vHP8TwrM/El'fijka-dusa-kompanii.png"
+            q1: import.meta.env.BASE_URL + "images/tCrRJG3q/El'fijka-1.png",
+            q2: import.meta.env.BASE_URL + "images/Prfrd58W/El'fika-2.png",
+            q3: import.meta.env.BASE_URL + "images/gkckG263/El'fika-3.png",
+            q4: import.meta.env.BASE_URL + "images/VLsLzkbV/El'fika-4.png",
+            q5: import.meta.env.BASE_URL + "images/59S2cCjj/El'fika-5.png",
+            [Archetype.Commander]: import.meta.env.BASE_URL + "images/Pr6fJnmF/El'fijka-komandir.png",
+            [Archetype.Creator]: import.meta.env.BASE_URL + "images/BQZQJn1R/El'fijka-sozidatel'.png",
+            [Archetype.Researcher]: import.meta.env.BASE_URL + "images/yYf6xCFw/El'fijka-issledovatel'.png",
+            [Archetype.Communicator]: import.meta.env.BASE_URL + "images/vHP8TwrM/El'fijka-dusa-kompanii.png"
         },
         'Орк': {
-            q1: "https://i.postimg.cc/sXRsqjrp/Ork-1.png",
-            q2: "https://i.postimg.cc/63NtgWXR/Ork-2.png",
-            q3: "https://i.postimg.cc/mDGBJLs9/Ork-3.png",
-            q4: "https://i.postimg.cc/rmLM3VkR/Ork-4.png",
-            q5: "https://i.postimg.cc/zB186zrV/Ork-5.png",
-            [Archetype.Commander]: "https://i.postimg.cc/Xv5nsZTG/Ork-komandir.png",
-            [Archetype.Creator]: "https://i.postimg.cc/HLMT6JfV/Ork-sozidatel'.png",
-            [Archetype.Researcher]: "https://i.postimg.cc/vmnG01pn/Ork-issledovatel'.png",
-            [Archetype.Communicator]: "https://i.postimg.cc/7LzqKCp0/Ork-dusa-kompanii.png"
+            q1: import.meta.env.BASE_URL + "images/sXRsqjrp/Ork-1.png",
+            q2: import.meta.env.BASE_URL + "images/63NtgWXR/Ork-2.png",
+            q3: import.meta.env.BASE_URL + "images/mDGBJLs9/Ork-3.png",
+            q4: import.meta.env.BASE_URL + "images/rmLM3VkR/Ork-4.png",
+            q5: import.meta.env.BASE_URL + "images/zB186zrV/Ork-5.png",
+            [Archetype.Commander]: import.meta.env.BASE_URL + "images/Xv5nsZTG/Ork-komandir.png",
+            [Archetype.Creator]: import.meta.env.BASE_URL + "images/HLMT6JfV/Ork-sozidatel'.png",
+            [Archetype.Researcher]: import.meta.env.BASE_URL + "images/vmnG01pn/Ork-issledovatel'.png",
+            [Archetype.Communicator]: import.meta.env.BASE_URL + "images/7LzqKCp0/Ork-dusa-kompanii.png"
         },
         'Тролль': {
-            q1: "https://i.postimg.cc/rp4qfdvV/Trol'-1.png",
-            q2: "https://i.postimg.cc/pdjPs9gX/Trol'-2.png",
-            q3: "https://i.postimg.cc/3wG3tyPh/Trol'-3.png",
-            q4: "https://i.postimg.cc/6QZBM7Dw/Trol'-4.png",
-            q5: "https://i.postimg.cc/mr9Tmc0W/Trol'-5.png",
-            [Archetype.Commander]: "https://i.postimg.cc/KYTm0KC6/Trol'-Komandir.png",
-            [Archetype.Creator]: "https://i.postimg.cc/wjZ6554C/Trol'-sozidatel'.png",
-            [Archetype.Researcher]: "https://i.postimg.cc/XYmVKKD0/Trol'-issledovatel'.png",
-            [Archetype.Communicator]: "https://i.postimg.cc/y8tVhhrs/Trol'-dusa-kompanii.png"
+            q1: import.meta.env.BASE_URL + "images/rp4qfdvV/Trol'-1.png",
+            q2: import.meta.env.BASE_URL + "images/pdjPs9gX/Trol'-2.png",
+            q3: import.meta.env.BASE_URL + "images/3wG3tyPh/Trol'-3.png",
+            q4: import.meta.env.BASE_URL + "images/6QZBM7Dw/Trol'-4.png",
+            q5: import.meta.env.BASE_URL + "images/mr9Tmc0W/Trol'-5.png",
+            [Archetype.Commander]: import.meta.env.BASE_URL + "images/KYTm0KC6/Trol'-Komandir.png",
+            [Archetype.Creator]: import.meta.env.BASE_URL + "images/wjZ6554C/Trol'-sozidatel'.png",
+            [Archetype.Researcher]: import.meta.env.BASE_URL + "images/XYmVKKD0/Trol'-issledovatel'.png",
+            [Archetype.Communicator]: import.meta.env.BASE_URL + "images/y8tVhhrs/Trol'-dusa-kompanii.png"
         }
     }
 };
@@ -108,10 +109,13 @@ const ImageWithSkeleton: React.FC<{ src: string; alt: string; className?: string
     const [error, setError] = useState(false);
 
     useEffect(() => {
+        setLoaded(false); setError(false);
         const img = new Image();
-        img.src = src;
         img.onload = () => setLoaded(true);
         img.onerror = () => setError(true);
+        img.src = src;
+        if (img.complete && img.naturalWidth) setLoaded(true);
+        return () => { img.onload = null; img.onerror = null; };
     }, [src]);
 
     return (
@@ -125,13 +129,13 @@ const ImageWithSkeleton: React.FC<{ src: string; alt: string; className?: string
             <img 
                 src={src} 
                 alt={alt} 
-                className={`w-full h-full object-contain transition-opacity duration-700 ease-in-out ${loaded ? 'opacity-100' : 'opacity-0'}`}
+                className="w-full h-full object-contain"
                 loading="eager"
             />
             {error && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900 text-slate-500 text-xs p-2 text-center">
                     <ImageIcon className="w-6 h-6 mb-1" />
-                    <span>Failed to load</span>
+                    <span>Не удалось загрузить иллюстрацию</span>
                 </div>
             )}
         </div>
@@ -200,69 +204,39 @@ interface TestViewProps {
   onComplete: (result: TestResult) => void;
   onCancel: () => void;
   onResultCalculated?: (result: TestResult) => void;
+  initialDraft?: TestDraft;
+  onDraftChange?: (draft: TestDraft) => void;
+  onRequestRestart?: () => void;
 }
 
-export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResultCalculated }) => {
-    // State
-    const [step, setStep] = useState<Step>(() => {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        // @ts-ignore
-        return saved ? JSON.parse(saved).step : Step.Start;
+export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResultCalculated, initialDraft, onDraftChange, onRequestRestart }) => {
+    const [initial] = useState(() => {
+      if (initialDraft) return initialDraft;
+      try { return readTestDraft(window.localStorage); } catch { return createTestDraft(); }
     });
-    const [heroData, setHeroData] = useState(() => {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        return saved ? JSON.parse(saved).heroData : { name: '', race: '' };
-    });
-    const [scores, setScores] = useState<any>(() => {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        return saved ? JSON.parse(saved).scores : {
-            [Archetype.Commander]: 0,
-            [Archetype.Creator]: 0,
-            [Archetype.Researcher]: 0,
-            [Archetype.Communicator]: 0,
-        };
-    });
-    const [history, setHistory] = useState<any[]>(() => {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        return saved ? JSON.parse(saved).history || [] : [];
-    });
+    const [step, setStep] = useState<Step>(initial.step as Step);
+    const [heroData, setHeroData] = useState(initial.heroData);
+    const [scores, setScores] = useState<Record<string, number>>(initial.scores);
+    const [history, setHistory] = useState(initial.history);
 
     // New state for selection confirmation
     const [selectedOptionIdx, setSelectedOptionIdx] = useState<number | null>(null);
 
-    const [isTransitioning, setIsTransitioning] = useState(false);
+    const isTransitioning = false;
     const scrollRef = useRef<HTMLDivElement>(null);
     const hasCalculatedResult = useRef(false);
+    const transitionLock = useRef(false);
     const touchStartRef = useRef<{x: number, y: number} | null>(null);
 
-    // BACKGROUND PRELOADING
     useEffect(() => {
-        const priorityImages = [IMAGES.general.allCharacters];
-        const otherImages: string[] = [];
-
-        Object.values(IMAGES.general).forEach(url => { 
-            if (url !== IMAGES.general.allCharacters) otherImages.push(url); 
-        });
-        Object.values(IMAGES.races).forEach((raceObj: any) => {
-            Object.values(raceObj).forEach((url: any) => otherImages.push(url));
-        });
-
-        const loadList = (list: string[]) => {
-            list.forEach(url => {
-                const img = new Image();
-                img.src = url;
-            });
-        };
-
-        loadList(priorityImages);
-        setTimeout(() => loadList(otherImages), 1000);
-
+      const image = new Image(); image.src = IMAGES.general.allCharacters;
     }, []);
 
     useEffect(() => {
         const stateToSave = { step, heroData, scores, history };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
-    }, [step, heroData, scores, history]);
+        if (onDraftChange) onDraftChange(stateToSave);
+        else { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave)); } catch { /* Keep in-memory progress. */ } }
+    }, [step, heroData, scores, history, onDraftChange]);
 
     useEffect(() => {
         if (scrollRef.current) {
@@ -272,61 +246,22 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResu
         setSelectedOptionIdx(null);
     }, [step]);
 
-    const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-    const changeStep = async (nextStep: Step, newHistoryItem: any = null) => {
-        setIsTransitioning(true);
-        await wait(300); 
-        
-        if (newHistoryItem) {
-            setHistory((prev: any) => [...prev, newHistoryItem]);
-        }
-        
-        if (scrollRef.current) {
-            scrollRef.current.scrollTo(0, 0);
-        }
-        window.scrollTo(0, 0);
-        
+    const changeStep = (nextStep: Step, newHistoryItem: any = null) => {
+        if (transitionLock.current) return;
+        transitionLock.current = true;
+        if (newHistoryItem) setHistory(prev => [...prev, newHistoryItem]);
         setStep(nextStep);
-        setIsTransitioning(false);
     };
-
-    const handleBack = async () => {
-        if (history.length === 0) {
-             onCancel(); 
-             return;
-        }
-        
-        setIsTransitioning(true);
-        await wait(300);
-
-        if (scrollRef.current) {
-            scrollRef.current.scrollTo(0, 0);
-        }
-        window.scrollTo(0, 0);
-
+    useEffect(() => { transitionLock.current = false; }, [step]);
+    const handleBack = () => {
+        if (transitionLock.current) return;
+        if (!history.length) { onCancel(); return; }
+        transitionLock.current = true;
         const previousState = history[history.length - 1];
-        setStep(previousState.step);
-        setScores(previousState.scores); 
-        setHeroData(previousState.heroData); 
-        
-        setHistory((prev: any) => prev.slice(0, -1)); 
-        setIsTransitioning(false);
+        setStep(previousState.step as Step); setScores(previousState.scores); setHeroData(previousState.heroData);
+        setHistory(prev => prev.slice(0, -1));
     };
-
-    const handleRestart = () => {
-        localStorage.removeItem(STORAGE_KEY);
-        setStep(Step.Start);
-        setHeroData({ name: '', race: '' });
-        setScores({
-            [Archetype.Commander]: 0,
-            [Archetype.Creator]: 0,
-            [Archetype.Researcher]: 0,
-            [Archetype.Communicator]: 0,
-        });
-        setHistory([]);
-        hasCalculatedResult.current = false;
-    };
+    const handleRestart = () => { onRequestRestart?.(); };
 
     const createSnapshot = () => ({
         step,
@@ -338,6 +273,7 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResu
     const handleIntroComplete = () => changeStep(Step.ChooseCharacter, createSnapshot());
     
     const handleRaceSelect = (race: string) => {
+        if (transitionLock.current) return;
         const snapshot = createSnapshot();
         setHeroData((prev: any) => ({ ...prev, race }));
         changeStep(Step.ChooseName, snapshot);
@@ -353,6 +289,7 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResu
     const handleLoreComplete = () => changeStep(Step.Question1, createSnapshot());
 
     const handleAnswer = (archetype: string, nextStep: Step) => {
+        if (transitionLock.current) return;
         const snapshot = createSnapshot();
         setScores((prev: any) => ({
             ...prev,
@@ -361,15 +298,7 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResu
         changeStep(nextStep, snapshot);
     };
 
-    const getWinner = () => {
-        const { Commander, Creator, Researcher, Communicator } = scores;
-        const maxScore = Math.max(Commander, Creator, Researcher, Communicator);
-
-        if (scores[Archetype.Commander] === maxScore) return Archetype.Commander;
-        if (scores[Archetype.Creator] === maxScore) return Archetype.Creator;
-        if (scores[Archetype.Researcher] === maxScore) return Archetype.Researcher;
-        return Archetype.Communicator;
-    };
+    const getWinner = () => getTestWinners(scores)[0];
 
     const handleComplete = () => {
          const winner = getWinner();
@@ -379,7 +308,7 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResu
              scoreType: winner,
              title: resultData.title,
              description: resultData.description.join('\n\n'),
-             timestamp: new Date().toISOString()
+             timestamp: new Date().toISOString(), scores: { ...scores }, tiedTypes: getTestWinners(scores), heroName: heroData.name.trim()
          };
          
          onComplete(finalResult);
@@ -395,7 +324,7 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResu
                 scoreType: winner,
                 title: resultData.title,
                 description: resultData.description.join('\n\n'),
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(), scores: { ...scores }, tiedTypes: getTestWinners(scores), heroName: heroData.name.trim()
             };
             
             onResultCalculated(finalResult);
@@ -432,7 +361,7 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResu
                             <p>Ты оказался здесь не случайно.</p>
                             <p>Это не просто тест — это Путь Героя.</p>
                             <p>В ближайшие 5 минут ты создашь своего персонажа, попадёшь в волшебный мир Ориенты и пройдёшь через цепочку испытаний.</p>
-                            <p>Они покажут, кем ты являешься на самом деле — и какие профессии тебе реально подойдут.</p>
+                            <p>Выборы помогут заметить твои предпочтения и наметить профессии для знакомства.</p>
                             <p className="font-semibold text-white pt-2">Готов? Тогда вперёд {EMOJI.ROCKET}</p>
                         </div>
                         <div className="pt-6 w-full max-w-md space-y-3">
@@ -474,7 +403,7 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResu
                     <div className="text-center space-y-6">
                         <h2 className="text-3xl font-serif text-white">Выбор происхождения</h2>
                         <div className="rounded-xl overflow-hidden shadow-2xl border border-slate-600 max-w-lg mx-auto mb-6 h-64 md:h-80 w-full">
-                            <ImageWithSkeleton src={IMAGES.general.allCharacters} alt="Races" className="w-full h-full" />
+                            <ImageWithSkeleton src={IMAGES.general.allCharacters} alt="Персонажи Ориенты" className="w-full h-full" />
                         </div>
                         <p className="text-slate-300">В Ориенте 4 великие расы. У каждой — свой стиль и подход к жизни. Кто ты?</p>
                         <p className="text-xs text-slate-500 uppercase tracking-widest">(Это только визуал)</p>
@@ -487,18 +416,7 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResu
                             ].map((r) => (
                                 <button
                                     key={r.val}
-                                    onPointerDown={(e) => {
-                                        touchStartRef.current = { x: e.clientX, y: e.clientY };
-                                    }}
                                     onClick={(e) => {
-                                        if (touchStartRef.current) {
-                                            const dx = e.clientX - touchStartRef.current.x;
-                                            const dy = e.clientY - touchStartRef.current.y;
-                                            if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
-                                                e.preventDefault();
-                                                return;
-                                            }
-                                        }
                                         handleRaceSelect(r.val);
                                     }}
                                     className="bg-slate-800/60 hover:bg-purple-900/40 border border-slate-600 hover:border-purple-400 p-6 rounded-xl transition-all duration-300 text-xl font-serif text-white shadow-lg"
@@ -524,12 +442,12 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResu
                             <input
                                 type="text"
                                 autoFocus
-                                placeholder="Введи имя героя..."
+                                aria-label="Имя героя" maxLength={40} autoComplete="off" placeholder="Введи имя героя..."
                                 value={heroData.name}
                                 onChange={(e) => setHeroData((prev: any) => ({ ...prev, name: e.target.value }))}
                                 className="w-full bg-slate-900/80 border-2 border-slate-600 focus:border-purple-500 outline-none rounded-lg p-4 text-white text-center text-xl placeholder-slate-600 transition-colors"
                             />
-                            <Button type="submit" disabled={!heroData.name} variant="fantasy" fullWidth>Подтвердить имя</Button>
+                            <Button type="submit" disabled={!heroData.name.trim()} variant="fantasy" fullWidth>Подтвердить имя</Button>
                         </form>
                     </div>
                 );
@@ -563,13 +481,11 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResu
                 
                 return (
                     <div className="space-y-8 animate-fade-in pb-12">
-                        <div className="bg-purple-900/20 px-4 py-1 rounded-full w-fit mx-auto text-xs font-bold tracking-widest text-purple-300 uppercase border border-purple-500/30">
-                            Испытание
-                        </div>
+                        <p className="text-center text-slate-300">Ситуация {Object.keys(QUESTIONS).indexOf(step) + 1} из 5</p>
                         
                         {questionImage && (
                             <div className="rounded-xl overflow-hidden shadow-2xl border border-indigo-500/30 max-w-md mx-auto h-64 md:h-72 w-full">
-                                <ImageWithSkeleton src={questionImage} alt="Situation" className="w-full h-full" />
+                                <ImageWithSkeleton src={questionImage} alt="Сцена игрового вопроса" className="w-full h-full" />
                             </div>
                         )}
 
@@ -583,19 +499,8 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResu
                                 const isSelected = selectedOptionIdx === idx;
                                 return (
                                     <button
-                                        key={idx}
-                                        onPointerDown={(e) => {
-                                            touchStartRef.current = { x: e.clientX, y: e.clientY };
-                                        }}
+                                        key={idx} aria-pressed={isSelected}
                                         onClick={(e) => {
-                                            if (touchStartRef.current) {
-                                                const dx = e.clientX - touchStartRef.current.x;
-                                                const dy = e.clientY - touchStartRef.current.y;
-                                                if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
-                                                    e.preventDefault();
-                                                    return;
-                                                }
-                                            }
                                             setSelectedOptionIdx(idx);
                                         }}
                                         className={`w-full text-left border p-4 rounded-lg transition-all duration-200 group relative overflow-hidden ${
@@ -665,7 +570,7 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResu
                         <h2 className="text-3xl md:text-4xl font-serif text-amber-100">О, {heroData.name}!</h2>
                         
                         <div className="rounded-xl overflow-hidden shadow-2xl border border-amber-500/30 max-w-md mx-auto h-64 w-full">
-                            <ImageWithSkeleton src={IMAGES.general.pigeon} alt="Messenger Pigeon" className="w-full h-full" />
+                            <ImageWithSkeleton src={IMAGES.general.pigeon} alt="Почтовый голубь со свитком" className="w-full h-full" />
                         </div>
 
                         <div className="space-y-4 text-slate-300 max-w-lg mx-auto">
@@ -709,8 +614,9 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResu
                             ))}
                         </div>
 
+                        {getTestWinners(scores).length > 1 && <p className="text-slate-200">У тебя смешанный результат: {getTestWinners(scores).map(k => ARCHETYPES[k].title).join(', ')}. Основной персонаж выбран по порядку архетипов в игре.</p>}
                         <div className="bg-indigo-950/40 p-6 rounded-xl border border-indigo-500/20">
-                            <h4 className="text-indigo-300 font-bold mb-2 uppercase text-sm">Тебе подойдут профессии:</h4>
+                            <h4 className="text-indigo-300 font-bold mb-2 uppercase text-sm">Профессии для исследования:</h4>
                             <p className="text-white font-serif text-lg leading-relaxed">{result.professions}</p>
                         </div>
 
