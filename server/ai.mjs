@@ -114,6 +114,16 @@ const reserve = async (store, key, limit, code) => {
   throw new AiError('ai_busy', 429);
 };
 
+export const clearAiCache = async (store, learnerId) => {
+  for (const record of await store.scan('ai:' + learnerId + ':')) {
+    if (!await store.compareAndSet(record.key, record.revision, { status: 'cleared' })) {
+      // A concurrent completion must be cleared too; never touch billing counters.
+      const current = await store.get(record.key);
+      if (current && !await store.compareAndSet(record.key, current.revision, { status: 'cleared' })) throw new AiError('ai_storage_failed');
+    }
+  }
+};
+
 // Counters and leases live in the database, so limits also hold across function instances.
 export const createAiService = ({ store, provider, now = Date.now, maxCalls = 100, dailyCalls = 3 }) => ({
   fingerprint: state => aiFingerprint(state, provider.model),

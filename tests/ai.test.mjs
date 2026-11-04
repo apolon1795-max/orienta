@@ -103,7 +103,7 @@ test('authenticated API reads saved answers, rejects arbitrary prompts, incomple
   assert.equal((await f.invoke({ baseRevision: 0 })).status, 400);
   assert.equal((await f.invoke({ baseRevision: 9 })).status, 409);
   assert.equal(f.calls.length, 0);
-  await f.store.compareAndSet('progress:' + f.learner.learnerId, 1, { ...f.payload, payload: { ...f.payload, state: createUserState() } });
+  await f.store.compareAndSet('progress:' + f.learner.learnerId, 1, { payload: { ...f.payload, state: createUserState() }, updatedAt: Date.now() });
   assert.equal((await f.invoke({ baseRevision: 2 })).data.error, 'ai_profile_incomplete');
   assert.equal(f.calls.length, 0);
 });
@@ -201,4 +201,28 @@ test('real HTTP and ProgressSync use pupil authorization and save the summary wi
   await second.signIn(learner.code);
   assert.equal(restored.state.aiSummary, text); assert.equal(restored.state.summarySource, 'ai');
   assert.equal(await second.generateAi(restored), text); assert.equal(calls, 1);
+});
+
+test('full progress reset clears stored AI text, preserves counters and invalidates an in-flight cache write', async t => {
+  const f = await fixture(t);
+  await f.invoke();
+  const reset = { baseRevision: 1, mutationId: 'reset-ai-progress-0001', payload: { state: createUserState(), testDraft: createTestDraft() } };
+  const headers = { authorization: 'Bearer ' + f.session.token };
+  const result = await f.api({ method: 'PUT', path: '/progress', headers, body: JSON.stringify(reset) });
+  assert.equal(result.status, 200);
+  const records = await f.store.scan('ai:' + f.learner.learnerId + ':');
+  assert.ok(records.length > 0);
+  for (const record of records) assert.deepEqual(record.value, { status: 'cleared' });
+  assert.equal((await f.store.get('ai-budget:test-account')).value.used, 1);
+  // Lost reset responses are safe to retry.
+  assert.equal((await f.api({ method: 'PUT', path: '/progress', headers, body: JSON.stringify(reset) })).status, 200);
+
+  let finish; const gate = new Promise(resolve => { finish = resolve; });
+  const g = await fixture(t, { generate: async () => { await gate; return text; } });
+  const request = g.invoke();
+  while (!g.calls.length) await new Promise(resolve => setTimeout(resolve, 0));
+  await g.api({ method: 'PUT', path: '/progress', headers: { authorization: 'Bearer ' + g.session.token }, body: JSON.stringify(reset) });
+  finish();
+  assert.notEqual((await request).status, 200);
+  for (const record of await g.store.scan('ai:' + g.learner.learnerId + ':')) assert.deepEqual(record.value, { status: 'cleared' });
 });

@@ -1,7 +1,7 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { normalizeUserState } from '../services/progress.ts';
 import { normalizeTestDraft } from '../services/testProgress.ts';
-import { AiError } from './ai.mjs';
+import { AiError, clearAiCache } from './ai.mjs';
 
 export const digest = value => createHash('sha256').update(value).digest('hex');
 export const normalizeCode = value => typeof value === 'string' ? value.toUpperCase().replace(/[\s-]/g, '') : '';
@@ -79,7 +79,11 @@ export const createApi = ({ store, allowedOrigins = [], now = Date.now, sessionD
           const currentLearner = await store.get('learner:' + session.value.learnerId);
           if (!currentSession || currentSession.value.expiresAt <= now() || !currentLearner?.value.active) return reply(401, { error: 'session_expired' });
           const current = await store.get(key);
-          if (!current || ai.fingerprint(current.value.payload.state) !== fingerprint) return reply(409, { error: 'ai_progress_changed' });
+          if (!current || !current.value.payload.state.testResult && !current.value.payload.state.course.completedStages.length) {
+            await clearAiCache(store, session.value.learnerId);
+            return reply(409, { error: 'ai_progress_changed' });
+          }
+          if (ai.fingerprint(current.value.payload.state) !== fingerprint) return reply(409, { error: 'ai_progress_changed' });
           return reply(200, result);
         } catch (error) {
           if (error instanceof AiError) return reply(error.status, { error: error.code });
@@ -90,16 +94,20 @@ export const createApi = ({ store, allowedOrigins = [], now = Date.now, sessionD
         if (!Number.isSafeInteger(input.baseRevision) || input.baseRevision < 0 || !/^[A-Za-z0-9_-]{16,64}$/.test(input.mutationId || '')) return reply(400, { error: 'invalid_revision' });
         let payload;
         try { payload = normalizePayload(input.payload); } catch { return reply(400, { error: 'invalid_payload' }); }
+        const accepted = async record => {
+          if (!payload.state.testResult && !payload.state.course.completedStages.length) await clearAiCache(store, session.value.learnerId);
+          return reply(200, { progress: snapshot(record) });
+        };
         const existing = await store.get(key);
         if (existing?.value.mutationId === input.mutationId) {
           if (JSON.stringify(existing.value.payload) !== JSON.stringify(payload)) return reply(400, { error: 'reused_mutation_id' });
-          return reply(200, { progress: snapshot(existing) });
+          return await accepted(existing);
         }
         const value = { payload, mutationId: input.mutationId, updatedAt: now() };
-        if (await store.compareAndSet(key, input.baseRevision, value)) return reply(200, { progress: snapshot({ revision: input.baseRevision + 1, value }) });
+        if (await store.compareAndSet(key, input.baseRevision, value)) return await accepted({ revision: input.baseRevision + 1, value });
         const current = await store.get(key);
         // A lost response or concurrent duplicate request must be safe to retry.
-        if (current?.value.mutationId === input.mutationId && JSON.stringify(current.value.payload) === JSON.stringify(payload)) return reply(200, { progress: snapshot(current) });
+        if (current?.value.mutationId === input.mutationId && JSON.stringify(current.value.payload) === JSON.stringify(payload)) return await accepted(current);
         return reply(409, { error: 'progress_changed', progress: snapshot(current) });
       }
       return reply(404, { error: 'not_found' });
