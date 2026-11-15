@@ -19,9 +19,9 @@ import { lessonSource, normalizeLessons, updateLesson } from '../services/lesson
 const memoryStorage = () => { const values = new Map(); return { getItem: key => values.get(key) || null, setItem: (key, value) => values.set(key, value), removeItem: key => values.delete(key) }; };
 const payload = () => ({ state: normalizeUserState(createUserState()), testDraft: createTestDraft() });
 const until = async condition => { for (let i = 0; i < 200; i++) { if (condition()) return; await new Promise(resolve => setTimeout(resolve, 5)); } assert.ok(condition(), 'condition not reached'); };
-const fixture = async t => {
+const fixture = async (t, serverOptions = {}) => {
   const directory = await mkdtemp(join(tmpdir(), 'orienta-sync-'));
-  const { server, store } = startServer({ filename: join(directory, 'progress.sqlite'), port: 0, allowedOrigins: ['https://pilot.example'] });
+  const { server, store } = startServer({ filename: join(directory, 'progress.sqlite'), port: 0, allowedOrigins: ['https://pilot.example'], ...serverOptions });
   await once(server, 'listening');
   t.after(async () => { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); await rm(directory, { recursive: true, force: true }); });
   const base = `http://127.0.0.1:${server.address().port}`;
@@ -201,4 +201,44 @@ test('Cloud Functions HTTP adapter forwards CORS, base64 bodies and context IAM 
   const login = await handler({ httpMethod: 'POST', path: '/api/session', isBase64Encoded: true, body: Buffer.from(JSON.stringify({ code: 'ORI-' + 'A'.repeat(32) })).toString('base64') }, { token: { access_token: 'short-lived-test-token' } });
   assert.equal(login.statusCode, 401); assert.equal(authorization, 'Bearer short-lived-test-token');
   assert.equal((await createFunctionHandler({ env: {} })({ httpMethod: 'GET', path: '/api/health' }, {})).statusCode, 503);
+});
+
+test('explicit free-intro transfer reaches the same account on another real HTTP client without changing another pupil', async t => {
+ const { importFreeIntro } = await import('../services/profileIntro.ts');
+ const { freshFreeProgress } = await import('../services/freeProgress.ts');
+ const { learner, client, store } = await fixture(t);
+ const first=client();await first.sync.signIn(learner.code);
+ const free=freshFreeProgress();free.draft.step='result';free.draft.scores.Creator=5;free.draft.heroData={name:'Пробный творец',race:'Человек'};free.result={scoreType:'Creator',title:'Творец'};
+ const before=structuredClone(first.value);assert.equal(before.state.testResult,null);
+ first.sync.offer(importFreeIntro(first.value,free));await first.sync.flush();assert.equal(first.sync.state.status,'saved');
+ const second=client();await second.sync.signIn(learner.code);
+ assert.equal(second.value.state.testResult.scoreType,'Creator');assert.equal(second.value.testDraft.heroData.name,'Пробный творец');
+ const other=await provisionLearner(store,'other synthetic');const third=client();await third.sync.signIn(other.code);assert.equal(third.value.state.testResult,null);
+ await first.sync.signOut();assert.equal(first.value.state.testResult,null);assert.equal(second.value.state.testResult.scoreType,'Creator');
+});
+
+test('late code or Telegram login cannot restore a profile after sign-out', async () => {
+  for (const method of ['signIn', 'signInTelegram']) {
+    let respond, restored = false;
+    const sync = new ProgressSync({ base: 'https://test.invalid', sessionStorage: memoryStorage(), storage: memoryStorage(), restore: () => { restored = true; }, reset: () => {}, fetch: () => new Promise(resolve => { respond = resolve; }) });
+    const pending = sync[method]('synthetic');
+    await sync.signOut();
+    respond(new Response(JSON.stringify({ token: 'a'.repeat(43), learnerId: randomUUID(), expiresAt: Date.now() + 10000, progress: { revision: 0, payload: null, updatedAt: 0 } }), { status: 200 }));
+    await pending;
+    assert.equal(sync.state.status, 'signed-out'); assert.equal(restored, false); sync.dispose();
+  }
+});
+
+test('public free registration over real HTTP saves archetype across devices without granting course', async t => {
+ const f=await fixture(t,{freeRegistrationEnabled:true}),first=f.client();
+ await first.sync.start(); assert.equal(first.sync.state.registrationAvailable,true);
+ const bytes=crypto.getRandomValues(new Uint8Array(16));const code='ORI-'+Buffer.from(bytes).toString('hex');
+ await first.sync.registerFree(code); assert.equal(first.sync.state.status,'saved');assert.equal(first.sync.state.courseAvailable,false);
+ const { freshFreeProgress }=await import('../services/freeProgress.ts');const { importFreeIntro }=await import('../services/profileIntro.ts');
+ const free=freshFreeProgress();free.draft.step='result';free.draft.heroData.name='Локальный герой';free.draft.scores.Creator=5;free.result={scoreType:'Creator',title:'Творец'};
+ first.sync.offer(importFreeIntro(first.value,free));await first.sync.flush();assert.equal(first.sync.state.status,'saved');
+ const second=f.client();await second.sync.signIn(code);assert.equal(second.value.state.testResult.scoreType,'Creator');assert.equal(second.sync.state.courseAvailable,false);
+ const body={code,consent:true};const again=await fetch(f.base+'/register',{method:'POST',body:JSON.stringify(body)});assert.equal(again.status,200);assert.equal((await again.json()).learnerId,first.sync.state.learnerId);
+ const forged=structuredClone(second.value);forged.state.course.s2Inputs.s='paid';second.sync.offer(forged);await second.sync.flush();assert.notEqual(second.sync.state.status,'saved');
+ const third=f.client();await third.sync.signIn(code);assert.equal(third.value.state.course.s2Inputs.s,'');
 });

@@ -11,6 +11,8 @@ import { downloadText, courseFingerprint } from './services/profile';
 import { createTestDraft, readTestDraft, TestDraft } from './services/testProgress';
 import { LessonMedia } from './components/LessonMedia';
 import { ProgressAccount, ProgressAccess } from './components/ProgressAccount';
+import { readFreeProgress, type FreeProgress } from './services/freeProgress';
+import { importFreeIntro } from './services/profileIntro';
 import { apiBase, ProgressSync, type ProgressPayload, type SyncState } from './services/cloudProgress';
 
 const CLOUD_API = apiBase(import.meta.env.VITE_PROGRESS_API_URL);
@@ -33,6 +35,10 @@ const App: React.FC = () => {
   const [storageAvailable, setStorageAvailable] = useState(true);
   const [isGeneratingAi, setIsGeneratingAi] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [freeCandidate, setFreeCandidate] = useState<FreeProgress | null>(() => {
+    if (!CLOUD_API) return null;
+    try { const candidate = readFreeProgress(window.localStorage); return candidate.result ? candidate : null; } catch { return null; }
+  });
   const [notice, setNotice] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<'test' | 'all' | 'import' | null>(null);
   const pendingImport = useRef<ReturnType<typeof importBackup> | null>(null);
@@ -95,7 +101,7 @@ const App: React.FC = () => {
   const handleTestCalculated = (result: TestResult) => updateUserState({ testResult: result, aiSummary: null });
   const handleTestComplete = (result: TestResult) => { handleTestCalculated(result); setView(AppView.GUIDE); };
   const handleOpenResult = () => setView(userState.testResult ? AppView.GUIDE : AppView.TEST);
-  const handleOpenCourse = () => setView(userState.testResult ? AppView.COURSE : AppView.TEST);
+  const handleOpenCourse = () => { if (CLOUD_API && !syncState.courseAvailable) { setNotice('Твой бесплатный профиль сохраняет вводную и архетип. Доступ к полному курсу подключается отдельно. Оплата пока не настроена.'); return; } setView(userState.testResult ? AppView.COURSE : AppView.TEST); };
   const handleRetakeTest = () => setConfirmation('test');
   const handleGenerateSummary = () => { if (profileReady) setView(AppView.AI_SUMMARY); };
   const handleGenerateAi = async () => {
@@ -331,6 +337,14 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen text-slate-200 font-sans selection:bg-indigo-500/30">
       <ProgressAccount client={sync} state={syncState} onExport={handleExport} />
+      {CLOUD_API && syncState.learnerId && freeCandidate && !userState.testResult && testDraft.current.step === 'start' && !userState.course.completedStages.length && <section aria-label="Перенос вводной в профиль" className="max-w-5xl mx-auto m-4 p-6 border border-amber-400/40 rounded-xl bg-slate-900 space-y-4 print-hidden">
+        <h2 className="text-xl font-serif">Сохранить архетип в этом профиле?</h2>
+        <p className="text-slate-300">В этом браузере есть результат: {freeCandidate.result?.title}. Подтверди, что это твоя вводная. Псевдоним, результат и ход теста будут сохранены в твоём профиле Ориенты на сервере Яндекса в России и доступны по твоему коду с других устройств. В Telegram или ИИ они не отправляются.</p>
+        <div className="flex flex-wrap gap-3"><Button variant="fantasy" disabled={syncState.status !== 'saved' || syncState.dirty} onClick={() => {
+          try { const merged = importFreeIntro({ state: userState, testDraft: testDraft.current }, freeCandidate); setUserState(merged.state); testDraft.current = merged.testDraft; setDraftRevision(n => n + 1); setTestResetKey(n => n + 1); setView(AppView.DASHBOARD); setFreeCandidate(null); setNotice('Результат добавлен в профиль. Дождись статуса «Прогресс сохранён в облаке» перед переходом на другое устройство.'); }
+          catch { setNotice('В этом профиле уже есть прогресс. Он не заменён.'); }
+        }}>Это мой результат, сохранить</Button><Button variant="secondary" onClick={() => setFreeCandidate(null)}>Не переносить</Button></div>
+      </section>}
       {!storageAvailable && <div role="alert" className="p-4 bg-amber-950 text-amber-100 print-hidden">Браузер не сохраняет прогресс. Скачай резервную копию перед закрытием страницы. <button className="underline" onClick={handleExport}>Скачать копию</button></div>}
       {notice && <div role="status" className="p-4 bg-slate-800 text-slate-100 print-hidden">{notice} <button onClick={() => setNotice(null)} className="underline ml-3">Закрыть</button></div>}
       {view === AppView.LANDING && renderLanding()}
@@ -352,7 +366,7 @@ const App: React.FC = () => {
           onResultCalculated={handleTestCalculated}
         />
       )}
-      {view === AppView.COURSE && (
+      {view === AppView.COURSE && (!CLOUD_API || syncState.courseAvailable) && (
         <>
         {userState.course.activeStage !== null && userState.course.activeStage < 5 && <LessonMedia key={userState.course.activeStage} stage={userState.course.activeStage + 1}
           progress={userState.course.lessons[String(userState.course.activeStage + 1)]}
@@ -366,7 +380,7 @@ const App: React.FC = () => {
         />
         </>
       )}
-      {view === AppView.AI_SUMMARY && profileReady && <ProfileView state={userState}
+      {view === AppView.AI_SUMMARY && profileReady && (!CLOUD_API || syncState.courseAvailable) && <ProfileView state={userState}
         onBack={() => setView(AppView.DASHBOARD)} onConsultation={() => setView(AppView.CONSULTATION)}
         onAi={handleGenerateAi} aiConfigured={syncState.aiAvailable === true} generating={isGeneratingAi} error={aiError} />}
       {view === AppView.CONSULTATION && renderConsultation()}

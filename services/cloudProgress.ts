@@ -8,7 +8,7 @@ interface Session { token: string; learnerId: string; expiresAt: number }
 interface Mutation { baseRevision: number; mutationId: string; payload: ProgressPayload }
 interface Cache { revision: number; saved: string; pending: Mutation | null; queued: ProgressPayload | null }
 export type SyncStatus = 'local' | 'signed-out' | 'checking' | 'saved' | 'pending' | 'offline' | 'conflict' | 'error';
-export interface SyncState { status: SyncStatus; learnerId?: string; message?: string; dirty: boolean; cacheAvailable: boolean; aiAvailable?: boolean }
+export interface SyncState { status: SyncStatus; learnerId?: string; message?: string; dirty: boolean; cacheAvailable: boolean; aiAvailable?: boolean; telegramAvailable?: boolean; courseAvailable?: boolean; registrationAvailable?: boolean }
 const SESSION_KEY = 'orienta_session_v1';
 const cacheKey = (id: string) => 'orienta_sync_v1:' + id;
 const clean = (value: ProgressPayload): ProgressPayload => {
@@ -33,6 +33,9 @@ export class ProgressSync {
   private started = false;
   private cacheAvailable = true;
   private aiAvailable = false;
+  private telegramAvailable = false;
+  private courseAvailable = false;
+  private registrationAvailable = false;
   private timer: ReturnType<typeof setTimeout> | undefined;
   private listeners = new Set<(state: SyncState) => void>();
   state: SyncState;
@@ -41,7 +44,7 @@ export class ProgressSync {
   }
   subscribe(listener: (state: SyncState) => void) { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; }
   private publish(status: SyncStatus, message?: string) {
-    const next = { status, message, learnerId: this.session?.learnerId, dirty: !!(this.cache.pending || this.cache.queued), cacheAvailable: this.cacheAvailable, aiAvailable: !!this.session && this.aiAvailable };
+    const next = { status, message, learnerId: this.session?.learnerId, dirty: !!(this.cache.pending || this.cache.queued), cacheAvailable: this.cacheAvailable, registrationAvailable: this.registrationAvailable, telegramAvailable: this.telegramAvailable, courseAvailable: !!this.session && this.courseAvailable, aiAvailable: !!this.session && this.aiAvailable };
     if (JSON.stringify(next) === JSON.stringify(this.state)) return;
     this.state = next;
     this.listeners.forEach(listener => listener(this.state));
@@ -61,6 +64,9 @@ export class ProgressSync {
   async start() {
     if (!this.options.base || this.started) return;
     this.started = true;
+    const generation = this.generation;
+    try { const health = await this.request('/health'); this.registrationAvailable = health.registrationAvailable === true; this.telegramAvailable = health.telegramAvailable === true; this.publish(this.state.status); } catch { /* Optional Telegram capability must not block code login. */ }
+    if (generation !== this.generation) return;
     try {
       const session = JSON.parse(this.options.sessionStorage.getItem(SESSION_KEY) || 'null');
       if (!session || !/^[A-Za-z0-9_-]{43}$/.test(session.token) || !/^[a-f0-9-]{36}$/.test(session.learnerId) || session.expiresAt <= Date.now()) return;
@@ -78,18 +84,46 @@ export class ProgressSync {
       }
     } catch { /* A corrupt cache never replaces the cloud copy. */ }
   }
+  async registerFree(code: string) {
+    const generation = this.generation;
+    try { await this.request('/register', 'POST', { code, consent: true }, ''); }
+    catch (error: any) { throw new Error(error.status === 429 ? 'Сегодня с этой сети создано много профилей. Попробуй завтра или обратись к наставнику.' : 'Не удалось создать профиль. Сохрани этот код и повтори попытку: новый код генерировать не нужно.'); }
+    if (generation !== this.generation) return;
+    await this.signIn(code);
+  }
   async signIn(code: string) {
+    const generation = ++this.generation;
     this.publish('checking');
     try {
       const data = await this.request('/session', 'POST', { code }, '');
+      if (generation !== this.generation) return;
       if (!/^[A-Za-z0-9_-]{43}$/.test(data.token) || !/^[a-f0-9-]{36}$/.test(data.learnerId) || !Number.isFinite(data.expiresAt)) throw new Error('invalid_response');
-      this.generation++; this.session = { token: data.token, learnerId: data.learnerId, expiresAt: data.expiresAt };
+      this.session = { token: data.token, learnerId: data.learnerId, expiresAt: data.expiresAt };
       // Session storage deliberately ends the browser session on shared school computers.
       try { this.options.sessionStorage.setItem(SESSION_KEY, JSON.stringify(this.session)); } catch { /* This tab can still work until it is closed. */ }
-      this.aiAvailable = data.aiAvailable === true;
+      this.courseAvailable = data.courseAvailable === true; this.aiAvailable = data.aiAvailable === true; this.telegramAvailable = data.telegramAvailable === true;
       this.readCache(); this.receive(normalizeSnapshot(data.progress));
-    } catch (error: any) { this.publish('signed-out', error.status === 401 ? 'Код не подошёл. Проверь символы или обратись к наставнику.' : error.status === 429 ? 'Слишком много попыток. Подожди минуту.' : 'Сейчас не удалось войти. Проверь интернет и попробуй ещё раз.'); }
+    } catch (error: any) { if (generation !== this.generation) return; this.publish('signed-out', error.status === 401 ? 'Код не подошёл. Проверь символы или обратись к наставнику.' : error.status === 429 ? 'Слишком много попыток. Подожди минуту.' : 'Сейчас не удалось войти. Проверь интернет и попробуй ещё раз.'); }
   }
+  async signInTelegram(initData: string) {
+    const generation = ++this.generation;
+    this.publish('checking');
+    try {
+      const data = await this.request('/telegram-session', 'POST', { initData }, '');
+      if (generation !== this.generation) return;
+      if (!/^[A-Za-z0-9_-]{43}$/.test(data.token) || !/^[a-f0-9-]{36}$/.test(data.learnerId) || !Number.isFinite(data.expiresAt)) throw new Error('invalid_response');
+      this.session = { token: data.token, learnerId: data.learnerId, expiresAt: data.expiresAt };
+      try { this.options.sessionStorage.setItem(SESSION_KEY, JSON.stringify(this.session)); } catch {}
+      this.courseAvailable = data.courseAvailable === true; this.aiAvailable = data.aiAvailable === true; this.telegramAvailable = data.telegramAvailable === true;
+      this.readCache(); this.receive(normalizeSnapshot(data.progress));
+    } catch (error: any) { if (generation !== this.generation) return; this.publish('signed-out', error.message === 'telegram_not_linked' ? 'Сначала войди по личному коду и привяжи Telegram к этому профилю.' : 'Не удалось проверить Telegram. Закрой и заново открой мини-приложение; либо войди по личному коду.'); }
+  }
+  async linkTelegram(initData: string) {
+    if (!this.session || this.state.status !== 'saved' || this.state.dirty) throw new Error('Сначала войди по личному коду и дождись сохранения.');
+    try { return await this.request('/telegram-link', 'POST', { initData, confirmLink: true }); }
+    catch (error: any) { throw new Error(error.message === 'telegram_link_conflict' ? 'Этот Telegram или профиль уже связан с другой учётной записью. Старая связь не изменена. Обратись к наставнику.' : 'Связать Telegram не удалось. Войди по личному коду в заново открытом мини-приложении и повтори подтверждение.'); }
+  }
+  async profileIdentity(): Promise<{ telegramLinked: boolean }> { return this.request('/profile-identity'); }
   private receive(remote: CloudSnapshot) {
     this.paused = false; this.remote = null;
     const pending = this.cache.pending;
@@ -111,7 +145,7 @@ export class ProgressSync {
     if (!this.session) return;
     const generation = this.generation;
     this.ready = false; this.publish('checking');
-    try { const data = await this.request('/progress'); if (generation === this.generation) { this.aiAvailable = data.aiAvailable === true; this.receive(normalizeSnapshot(data.progress)); } }
+    try { const data = await this.request('/progress'); if (generation === this.generation) { this.courseAvailable = data.courseAvailable === true; this.aiAvailable = data.aiAvailable === true; this.receive(normalizeSnapshot(data.progress)); } }
     catch (error: any) { if (generation === this.generation) this.publish(error.status === 401 ? 'signed-out' : 'error', error.status === 401 ? 'Сессия закончилась. Введи личный код ещё раз.' : 'Облако недоступно. Повтори подключение, когда появится интернет.'); }
   }
   offer(payload: ProgressPayload) {
@@ -203,5 +237,5 @@ export class ProgressSync {
     this.options.reset(); this.publish('signed-out');
     if (token) { try { await this.request('/session', 'DELETE', undefined, token); } catch { /* The token is already gone from this device and expires server-side. */ } }
   }
-  dispose() { clearTimeout(this.timer); this.listeners.clear(); }
+  dispose() { this.generation++; clearTimeout(this.timer); this.listeners.clear(); }
 }

@@ -14,15 +14,15 @@ const read = () => {
 };
 export const FreeEntry = () => {
   const [saved, setSaved] = useState(read);
-  const [view, setView] = useState<'intro' | 'test' | 'guide' | 'course' | 'hub' | 'community'>(() => location.hash === '#course' ? 'course' : saved.result || location.hash === '#hub' ? 'hub' : 'intro');
-  const [course, setCourse] = useState(() => location.hash === '#course');
+  const [view, setView] = useState<'intro' | 'test' | 'guide' | 'course' | 'hub' | 'community'>(() => ['#course', '#profile'].includes(location.hash) ? 'course' : saved.result || location.hash === '#hub' ? 'hub' : 'intro');
+  const [course, setCourse] = useState(() => ['#course', '#profile'].includes(location.hash));
   const [storageFailed, setStorageFailed] = useState(false);
   const [reset, setReset] = useState(false);
   const resetDialog = useRef<HTMLDialogElement>(null);
   useEffect(() => { if (reset) resetDialog.current?.showModal(); else resetDialog.current?.close(); }, [reset]);
   const [epoch, setEpoch] = useState(0);
   useEffect(() => {
-    const changed = () => { setCourse(location.hash === '#course'); setView(location.hash === '#course' ? 'course' : location.hash === '#hub' ? 'hub' : 'intro'); };
+    const changed = () => { setCourse(['#course', '#profile'].includes(location.hash)); setView(['#course', '#profile'].includes(location.hash) ? 'course' : location.hash === '#hub' ? 'hub' : 'intro'); };
     addEventListener('hashchange', changed); return () => removeEventListener('hashchange', changed);
   }, []);
   useEffect(() => {
@@ -46,6 +46,7 @@ export const FreeEntry = () => {
     <nav aria-label="Вводная" className="max-w-4xl mx-auto flex flex-wrap gap-4 items-center justify-between p-5">
       <button className="font-serif text-amber-200 text-xl" onClick={() => setView('intro')}>Ориента</button>
       <button className="text-sm underline text-amber-200" onClick={openHub}>Мой кабинет</button>
+      {configured && <a href="#profile" className="text-sm underline text-amber-200">Войти в сохраняемый профиль</a>}
       <button className="text-sm underline text-slate-300" onClick={() => setView('course')}>Уже есть доступ к курсу</button>
     </nav>
     {storageFailed && <p role="status" className="px-6 text-amber-200">Не удалось сохранить кабинет в браузере. Пока не закрывай вкладку: после закрытия результат может потеряться.</p>}
@@ -76,15 +77,15 @@ export const FreeEntry = () => {
         <article className="rounded-2xl border border-slate-700 bg-slate-900 p-7 space-y-4"><p className="text-sm text-amber-200">Следующий шаг</p><h2 className="text-2xl font-semibold">Курс «Ориента»</h2><p className="text-slate-300">Пять этапов: интересы, ценности, навыки и твоя профкарта. Для пилота нужен личный код наставника.</p><Button variant="secondary" onClick={() => setView('course')}>Открыть курс</Button><p className="text-sm text-slate-400">Онлайн-оплата ещё не подключена.</p></article>
         <article className="rounded-2xl border border-slate-700 bg-slate-900 p-7 space-y-4"><p className="text-sm text-indigo-200">Не в одиночку</p><h2 className="text-2xl font-semibold">Сообщество</h2><p className="text-slate-300">Общее пространство участников. Переход в Telegram не отправляет твой результат теста.</p><Button variant="secondary" onClick={() => setView('community')}>Открыть сообщество</Button></article>
       </div>
-      <aside className="border-t border-slate-800 pt-6 space-y-3 text-sm text-slate-400"><h2 className="text-base font-semibold text-slate-200">Сохранение на этом устройстве</h2><p>Это браузерный кабинет без регистрации, пароля и синхронизации между устройствами. После очистки данных браузера результат исчезнет. На общем компьютере удали вводную перед уходом.</p><p>Ответы курса и бесплатной вводной пока хранятся отдельно. Вход по коду не переносит архетип в учебный профиль автоматически.</p><button className="underline text-slate-300" onClick={() => setReset(true)}>Удалить результат вводной</button></aside>
+      <aside className="border-t border-slate-800 pt-6 space-y-3 text-sm text-slate-400"><h2 className="text-base font-semibold text-slate-200">Сохранение на этом устройстве</h2><p>Это браузерный кабинет без регистрации, пароля и синхронизации между устройствами. После очистки данных браузера результат исчезнет. На общем компьютере удали вводную перед уходом.</p><p>Чтобы продолжить с другого устройства, войди в свой профиль по личному коду. После входа можно отдельно подтвердить перенос результата вводной; существующий результат профиля не заменится.</p>{configured && <a href="#profile" className="inline-block underline text-amber-200">Сохранить в моём профиле</a>}<button className="underline text-slate-300" onClick={() => setReset(true)}>Удалить результат вводной</button></aside>
     </section>}
     {view === 'community' && <section className="max-w-xl mx-auto p-6 py-12 space-y-6"><h1 className="text-3xl font-semibold">Сообщество Ориенты</h1><p className="text-slate-300">Общее сообщество участников находится в Telegram. Откроется отдельная вкладка; результаты и ответы не передаются.</p><a className="inline-block rounded-xl bg-indigo-600 px-6 py-4 font-semibold" href="https://t.me/sense_house" target="_blank" rel="noopener noreferrer">Перейти в Telegram</a><div><Button variant="secondary" onClick={openHub}>Вернуться в кабинет</Button></div></section>}
     {view === 'course' && <section className="max-w-xl mx-auto p-6 py-12 space-y-6">
       <h1 className="text-3xl font-serif">Продолжить в полном курсе</h1>
       <p className="text-slate-300">Вводная и твой архетип остаются бесплатными. Дальше: пять этапов, задания и личная профкарта.</p>
-      <p className="text-slate-300">Онлайн-оплата пока не подключена. Если наставник уже выдал тебе личный код для пилота, войди с ним. Сам тест не открывает полный курс.</p>
+      <p className="text-slate-300">Онлайн-оплата пока не подключена. Личный код наставника открывает твой сохраняемый профиль пилота. Сам тест не подтверждает оплату курса.</p>
       {configured || existingCourse ? <a href={configured ? "#course" : existingCourse} className="inline-block rounded-xl bg-amber-600 px-6 py-4 font-bold">Войти по личному коду</a> : <p role="status" className="text-amber-200">Вход в курс пока настраивается. Бесплатный тест уже доступен.</p>}
-      <p className="text-sm text-slate-400">Вводная и учебный профиль хранятся раздельно. Вход не заменит уже сохранённые ответы курса.</p>
+      <p className="text-sm text-slate-400">После входа можно перенести результат вводной в свой профиль отдельным подтверждением. Уже сохранённые ответы не заменятся.</p>
       <Button variant="secondary" onClick={openHub}>Вернуться в кабинет</Button>
     </section>}
     <dialog ref={resetDialog} onCancel={() => setReset(false)} onClose={() => setReset(false)} aria-labelledby="free-reset-title" className="max-w-md rounded-xl bg-slate-900 text-slate-100 p-6 space-y-4 backdrop:bg-black/80">

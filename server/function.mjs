@@ -15,7 +15,7 @@ export const createFunctionHandler = ({ env = process.env, transport = fetch } =
       } });
       const provider = createProxyAi({ env, transport });
       const ai = provider ? createAiService({ store, provider }) : null;
-      const api = createApi({ store, ai, loginLimits, allowedOrigins: (env.ORIENTA_ALLOWED_ORIGINS || '').split(',').filter(Boolean) });
+      const api = createApi({ store, ai, loginLimits, freeRegistrationEnabled: env.ORIENTA_FREE_REGISTRATION_ENABLED === 'true', telegramBotToken: env.ORIENTA_TELEGRAM_ENABLED === 'true' ? env.ORIENTA_TELEGRAM_BOT_TOKEN : null, allowedOrigins: (env.ORIENTA_ALLOWED_ORIGINS || '').split(',').filter(Boolean) });
       const response = await api({ method: event.httpMethod, path: String(event.path || '').replace(/^\/api(?=\/)/, ''), headers: event.headers,
         body: event.isBase64Encoded ? Buffer.from(event.body || '', 'base64').toString('utf8') : event.body || '', ip: event.requestContext?.identity?.sourceIp || '' });
       return { statusCode: response.status, headers: response.headers, body: response.body, isBase64Encoded: false };
