@@ -14,7 +14,7 @@ try {
   const url=route.request().url();
   if(url.includes(':59999')){apiRequests.push(url);return route.abort();}
   if(!url.startsWith(base))return route.abort();
-  // No external images are fetched; local image assets are unavailable in this workspace.
+  // Keep this test deterministic; original image rendering is checked separately.
   if(url.includes('/images/'))return route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect width="400" height="300" fill="#302044"/></svg>'});
   return route.continue();
  });
@@ -34,7 +34,11 @@ try {
  await page.getByRole('button',{name:/Сорвать|Развернуть|Открыть.*свиток|Снять.*печать/}).click();
  await click('Открыть Персональный Гайд');await page.locator('#guide-action-btn').waitFor();
  await page.screenshot({path:'output/free-browser/02-guide-mobile.png',fullPage:true});
- await page.locator('#guide-action-btn').click();await page.getByRole('heading',{name:'Продолжить в полном курсе'}).waitFor();
+ await page.locator('#guide-action-btn').click();await page.getByRole('heading',{name:'Мой кабинет',exact:true}).waitFor();
+ await page.reload();await page.getByRole('heading',{name:'Мой кабинет',exact:true}).waitFor();
+ const second=await context.newPage();await second.goto(base);await second.getByRole('heading',{name:'Мой кабинет',exact:true}).waitFor();await second.close();
+ await click('Открыть сообщество');await page.getByRole('heading',{name:'Сообщество Ориенты'}).waitFor();assert.equal(await page.getByRole('link',{name:'Перейти в Telegram'}).getAttribute('href'),'https://t.me/sense_house');await click('Вернуться в кабинет');
+ await click('Открыть курс');await page.getByRole('heading',{name:'Продолжить в полном курсе'}).waitFor();
  await page.getByText('Онлайн-оплата пока не подключена.',{exact:false}).waitFor();
  assert.equal(apiRequests.length,0,'free flow must not call backend/AI');
  assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('appState_ru')).private),'PRIVATE_COURSE_SENTINEL');

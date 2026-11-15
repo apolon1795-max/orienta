@@ -6,6 +6,7 @@ interface GuideViewProps {
   archetype: string; // 'Commander', 'Creator', 'Researcher', 'Communicator'
   onBack: () => void;
   onStartCourse: () => void;
+  actionLabel?: string;
 }
 
 // Вставляем стили, общие для всех гайдов, чтобы они работали внутри React
@@ -555,9 +556,10 @@ const CONTENT_MAP: Record<string, string> = {
   `
 };
 
-export const GuideView: React.FC<GuideViewProps> = ({ archetype, onBack, onStartCourse }) => {
-  const content = CONTENT_MAP[archetype] || '<div class="text-center text-white p-10">Гайд не найден</div>';
+export const GuideView: React.FC<GuideViewProps> = ({ archetype, onBack, onStartCourse, actionLabel }) => {
+  const rawContent = CONTENT_MAP[archetype] || '<div class="text-center text-white p-10">Гайд не найден</div>';
 
+  const content = actionLabel ? rawContent.replace(/(<button id="guide-action-btn"[^>]*>)[\s\S]*?(<\/button>)/g, '$1Перейти в мой кабинет$2').replace(/Начать обучение/g, 'Твой результат и следующие шаги') : rawContent;
   useEffect(() => {
     const btn = document.getElementById('guide-action-btn');
     const handleClick = (e: MouseEvent) => {
