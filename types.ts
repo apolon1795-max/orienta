@@ -145,6 +145,8 @@ export const INITIAL_COURSE_MODULES: CourseModule[] = [
 // Extend Window interface for Telegram
 declare global {
   interface Window {
+        __ORIENTA_API?: string;
+        __ORIENTA_LESSONS?: { video: string; captions: string }[];
     Telegram: {
       WebApp: {
         initData: string;

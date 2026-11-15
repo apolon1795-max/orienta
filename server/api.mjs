@@ -29,7 +29,7 @@ export const provisionLearner = async (store, label = '') => {
   return { learnerId, code, label: account.label };
 };
 
-export const createApi = ({ store, allowedOrigins = [], now = Date.now, sessionDays = 7, loginLimits = new Map(), ai = null, telegramBotToken = null, freeRegistrationEnabled = false }) => {
+export const createApi = ({ store, allowedOrigins = [], now = Date.now, sessionDays = 7, loginLimits = new Map(), ai = null, telegramBotToken = null, freeRegistrationEnabled = false, coursePackage = null, lessonConfig = [] }) => {
   const limits = loginLimits;
   const courseAllowed = async learnerId => { const account = await store.get('learner:' + learnerId); return account?.value.active === true && (account.value.kind !== 'free' || await hasCourseAccess(store, learnerId)); };
   return async ({ method, path, headers = {}, body = '', ip = '' }) => {
@@ -101,6 +101,11 @@ export const createApi = ({ store, allowedOrigins = [], now = Date.now, sessionD
         const reverse = await store.get('telegram-learner:' + session.value.learnerId);
         const forward = reverse && await store.get(reverse.value.subjectKey);
         return reply(200, { telegramAvailable: !!telegramBotToken, telegramLinked: forward?.value.learnerId === session.value.learnerId });
+      }
+      if (method === 'GET' && path === '/course-content') {
+        if (!await courseAllowed(session.value.learnerId)) return reply(403, { error: 'course_access_required' });
+        if (!coursePackage?.script || !coursePackage?.css) return reply(503, { error: 'course_unavailable' });
+        return reply(200, { ...coursePackage, lessons: lessonConfig });
       }
       const key = 'progress:' + session.value.learnerId;
       if (method === 'GET' && path === '/progress') return reply(200, { learnerId: session.value.learnerId, progress: snapshot(await store.get(key)), aiAvailable: !!ai && await courseAllowed(learner.value.learnerId), courseAvailable: await courseAllowed(learner.value.learnerId), telegramAvailable: !!telegramBotToken });

@@ -1,3 +1,4 @@
+import { buildProtectedCourse } from '../scripts/build-protected-course.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -16,15 +17,14 @@ const directory = await fs.mkdtemp(join(tmpdir(), 'orienta-browser-'));
 const base = 'http://127.0.0.1:5175';
 let aiCalls = 0;
 const aiText = 'Синтетический ИИ-разбор: попробуй создать прототип игры, опираясь на интерес к рисованию, свободе и работе в небольшой команде.';
-const { server, store } = startServer({ aiProvider: { model: 'openai/gpt-4o-mini', scope: 'browser-test', generate: async () => { aiCalls++; return aiText; } }, filename: join(directory, 'progress.sqlite'), port: 0, allowedOrigins: [base] });
+const { server, store } = startServer({ coursePackage: await buildProtectedCourse(), lessonConfig: Array.from({length:5},(_,i)=>({video:'https://kinescope.io/testvideo000'+(i+1),captions:''})), aiProvider: { model: 'openai/gpt-4o-mini', scope: 'browser-test', generate: async () => { aiCalls++; return aiText; } }, filename: join(directory, 'progress.sqlite'), port: 0, allowedOrigins: [base] });
 await once(server, 'listening');
 const api = `http://127.0.0.1:${server.address().port}`;
 const learner = await provisionLearner(store, 'Браузерная проверка'), other = await provisionLearner(store, 'Второй ученик');
 const state = completedState(); Object.assign(state.course, { activeStage: 3, completedStages: [0, 1, 2], s4Phase: 'dream', s4Dream: 'Пока ищу работу мечты', lessons: {} });
 const testDraft = createTestDraft(); testDraft.step = 'choose_name'; testDraft.heroData = { name: 'Искатель', race: 'Эльф' };
 await store.compareAndSet('progress:' + learner.learnerId, 0, { payload: { state: normalizeUserState(state), testDraft }, mutationId: 'initial-browser-fixture', updatedAt: Date.now() });
-const vite = spawn(process.execPath, ['node_modules/vite/bin/vite.js', '--host', '127.0.0.1', '--port', '5175', '--strictPort'], { stdio: 'inherit', env: { ...process.env, VITE_PROGRESS_API_URL: api,
-  ...Object.fromEntries([1, 2, 3, 4, 5].map(stage => [`VITE_LESSON_${stage}_VIDEO`, `https://kinescope.io/testvideo000${stage}`])) } });
+const vite = spawn(process.execPath, ['node_modules/vite/bin/vite.js', '--host', '127.0.0.1', '--port', '5175', '--strictPort'], { stdio: 'inherit', env: { ...process.env, VITE_PROGRESS_API_URL: api } });
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const until = async check => { for (let i = 0; i < 160; i++) { if (await check()) return; await sleep(50); } assert.ok(await check(), 'expected saved progress'); };
 const progress = async () => (await store.get('progress:' + learner.learnerId)).value.payload;
@@ -57,11 +57,11 @@ try {
   await firstContext.addInitScript(() => { localStorage.setItem('appState_ru', JSON.stringify({ hasOnboarded: true, course: { s4Dream: 'Прежний локальный ответ' } })); });
   const a = await firstContext.newPage(), b = await secondContext.newPage();
   for (const page of [a, b]) page.on('pageerror', error => errors.push(String(error)));
-  const login = async (page, code) => { await page.goto(base + '/#course'); await page.getByLabel('Личный код', { exact: true }).fill(code); await page.getByRole('button', { name: 'Войти по коду', exact: true }).click(); };
+  const login = async (page, code) => { await page.goto(base + '/#course'); await page.getByLabel('Личный код', { exact: true }).fill(code); await page.getByRole('button', { name: 'Войти по коду', exact: true }).click(); await page.getByRole('button', {name:'Открыть полный курс',exact:true}).click(); };
   await a.goto(base + '/#course'); await a.screenshot({ path: output + '/01-access-mobile.png', fullPage: true });
   assert.equal(await a.getByRole('button', { name: 'Скачать ответы с устройства', exact: true }).count(), 0);
   await a.getByLabel('Личный код', { exact: true }).fill('неправильный код'); await a.getByRole('button', { name: 'Войти по коду', exact: true }).click();
-  await a.getByRole('alert').filter({ hasText: 'Код не подошёл' }).waitFor(); record('invalid code rejected without exposing another pupil');
+  await a.getByRole('alert').filter({ hasText: 'Не удалось войти' }).waitFor(); record('invalid code rejected without exposing another pupil');
   await login(a, learner.code); await a.getByRole('button', { name: 'Курс', exact: false }).click();
   const dream = a.getByRole('textbox', { name: 'Твоя работа мечты' });
   assert.equal(await dream.inputValue(), state.course.s4Dream); await dream.fill('Создавать игры с небольшой командой');
@@ -87,7 +87,7 @@ try {
   await b.getByText('Нет связи с облаком. Ответы пока на этом устройстве.', { exact: true }).waitFor();
   await secondContext.setOffline(false);
   await until(async () => (await progress()).state.course.s4Dream === 'Ответ, написанный без интернета');
-  await b.reload(); await b.getByRole('button', { name: 'Курс', exact: false }).click();
+  await b.reload(); await b.getByRole('button', {name:'Открыть полный курс',exact:true}).click(); await b.getByRole('button', { name: 'Курс', exact: false }).click();
   assert.equal(await b.getByRole('textbox', { name: 'Твоя работа мечты' }).inputValue(), 'Ответ, написанный без интернета'); record('offline edits upload on reconnection and survive page reload');
   await b.frameLocator('iframe[title="Kinescope test player"]').getByRole('button', { name: 'Завершить видео', exact: true }).click();
   await until(async () => (await progress()).state.course.lessons[4]?.completed === true);

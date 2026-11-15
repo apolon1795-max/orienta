@@ -1,7 +1,9 @@
+import { buildProtectedCourse } from './build-protected-course.mjs';
+const protectedCourse = await buildProtectedCourse();
 import { build } from 'vite';
 import { builtinModules } from 'node:module';
 import { writeFile } from 'node:fs/promises';
-for (const name of ['function', 'bootstrap']) await build({ configFile: false, publicDir: false, build: { outDir: 'dist-server', emptyOutDir: name === 'function', target: 'node22', minify: false,
+for (const name of ['function', 'bootstrap']) await build({ configFile: false, publicDir: false, plugins: [{ name: 'server-only-course-artifact', load(id) { if (id.endsWith('/server/course-artifact.mjs')) return 'export default ' + JSON.stringify(protectedCourse); } }], build: { outDir: 'dist-server', emptyOutDir: name === 'function', target: 'node22', minify: false,
   lib: { entry: `server/${name}.mjs`, formats: ['cjs'], fileName: () => `${name}.js` }, rollupOptions: { external: ['ydb-sdk', ...builtinModules, ...builtinModules.map(module => 'node:' + module)] } } });
 await writeFile('dist-server/package.json', JSON.stringify({ type: 'commonjs', private: true, dependencies: { 'ydb-sdk': '5.11.1' } }));
 const { handler } = await import('../dist-server/function.js');

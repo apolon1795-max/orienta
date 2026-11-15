@@ -3,8 +3,8 @@ import type { LessonProgress } from '../types';
 import { lessonSource, playbackTime, updateLesson } from '../services/lessonProgress';
 import { loadKinescope, type KinescopePlayer, type KinescopeEvent } from '../services/kinescope';
 
-const videos = [import.meta.env.VITE_LESSON_1_VIDEO, import.meta.env.VITE_LESSON_2_VIDEO, import.meta.env.VITE_LESSON_3_VIDEO, import.meta.env.VITE_LESSON_4_VIDEO, import.meta.env.VITE_LESSON_5_VIDEO];
-const captions = [import.meta.env.VITE_LESSON_1_CAPTIONS, import.meta.env.VITE_LESSON_2_CAPTIONS, import.meta.env.VITE_LESSON_3_CAPTIONS, import.meta.env.VITE_LESSON_4_CAPTIONS, import.meta.env.VITE_LESSON_5_CAPTIONS];
+const videos = Array.from({length:5},(_,index)=>window.__ORIENTA_LESSONS?.[index]?.video || '');
+const captions = Array.from({length:5},(_,index)=>window.__ORIENTA_LESSONS?.[index]?.captions || '');
 export const lessonConfigured = (stage: number) => !!videos[stage - 1];
 export const currentLessonProgress = (stage: number, progress?: LessonProgress) => progress?.source === lessonSource(videos[stage - 1], window.location.href)?.id ? progress : undefined;
 

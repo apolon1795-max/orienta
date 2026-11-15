@@ -1,10 +1,11 @@
+import builtCourse from './course-artifact.mjs';
 import { createApi } from './api.mjs';
 import { createCloudStore } from './cloud-store.mjs';
 import { createProxyAi, createAiService } from './ai.mjs';
 
 // Cloud Functions: attach a service account with database-scoped ydb.editor.
 // No permanent cloud keys are shipped to browsers or stored in the source tree.
-export const createFunctionHandler = ({ env = process.env, transport = fetch } = {}) => {
+export const createFunctionHandler = ({ env = process.env, transport = fetch, coursePackage = builtCourse } = {}) => {
   const loginLimits = new Map();
   return async (event, context) => {
     let store;
@@ -15,7 +16,7 @@ export const createFunctionHandler = ({ env = process.env, transport = fetch } =
       } });
       const provider = createProxyAi({ env, transport });
       const ai = provider ? createAiService({ store, provider }) : null;
-      const api = createApi({ store, ai, loginLimits, freeRegistrationEnabled: env.ORIENTA_FREE_REGISTRATION_ENABLED === 'true', telegramBotToken: env.ORIENTA_TELEGRAM_ENABLED === 'true' ? env.ORIENTA_TELEGRAM_BOT_TOKEN : null, allowedOrigins: (env.ORIENTA_ALLOWED_ORIGINS || '').split(',').filter(Boolean) });
+      const api = createApi({ store, ai, loginLimits, coursePackage, lessonConfig: Array.from({length:5}, (_,i) => ({video: env['ORIENTA_LESSON_'+(i+1)+'_VIDEO'] || '', captions: env['ORIENTA_LESSON_'+(i+1)+'_CAPTIONS'] || ''})), freeRegistrationEnabled: env.ORIENTA_FREE_REGISTRATION_ENABLED === 'true', telegramBotToken: env.ORIENTA_TELEGRAM_ENABLED === 'true' ? env.ORIENTA_TELEGRAM_BOT_TOKEN : null, allowedOrigins: (env.ORIENTA_ALLOWED_ORIGINS || '').split(',').filter(Boolean) });
       const response = await api({ method: event.httpMethod, path: String(event.path || '').replace(/^\/api(?=\/)/, ''), headers: event.headers,
         body: event.isBase64Encoded ? Buffer.from(event.body || '', 'base64').toString('utf8') : event.body || '', ip: event.requestContext?.identity?.sourceIp || '' });
       return { statusCode: response.status, headers: response.headers, body: response.body, isBase64Encoded: false };

@@ -17,7 +17,8 @@
     "assets": "node scripts/cache-assets.mjs",
     "prebuild": "npm run assets",
     "predev": "npm run assets",
-    "test:component": "node tests/free-component.mjs"
+    "test:component": "node tests/free-component.mjs",
+    "test:protected-build": "node --experimental-transform-types tests/protected-build.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.344.0",

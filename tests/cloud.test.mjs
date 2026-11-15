@@ -242,3 +242,15 @@ test('public free registration over real HTTP saves archetype across devices wit
  const forged=structuredClone(second.value);forged.state.course.s2Inputs.s='paid';second.sync.offer(forged);await second.sync.flush();assert.notEqual(second.sync.state.status,'saved');
  const third=f.client();await third.sync.signIn(code);assert.equal(third.value.state.course.s2Inputs.s,'');
 });
+
+test('public profile client registers, transfers intro, restores on another device and cannot fetch protected course',async t=>{
+ const {ProfileSession}=await import('../services/profileSession.ts');const {freshFreeProgress}=await import('../services/freeProgress.ts');
+ const f=await fixture(t,{freeRegistrationEnabled:true,coursePackage:{script:'SYNTHETIC_COURSE',css:'x'}});
+ const a=new ProfileSession(f.base,fetch,memoryStorage());await a.start();assert.equal(a.state.registrationAvailable,true);
+ const code='ORI-'+Buffer.from(crypto.getRandomValues(new Uint8Array(16))).toString('hex');await a.registerFree(code);assert.equal(a.state.status,'saved');
+ const free=freshFreeProgress();free.draft.step='result';free.draft.heroData.name='Герой';free.draft.scores.Creator=5;free.result={scoreType:'Creator',title:'Творец'};
+ await a.saveIntro(free);assert.equal(a.snapshot.payload.state.testResult.scoreType,'Creator');await assert.rejects(()=>a.loadCourse(),/доступ/);
+ const b=new ProfileSession(f.base,fetch,memoryStorage());await b.signIn(code);assert.equal(b.snapshot.payload.state.testResult.heroName,'Герой');await assert.rejects(()=>b.saveIntro(free),/не заменён/);
+ const legacy=new ProfileSession(f.base,fetch,memoryStorage());await legacy.signIn(f.learner.code);assert.equal((await legacy.loadCourse()).script,'SYNTHETIC_COURSE');
+ await a.signOut();await b.signOut();await legacy.signOut();a.dispose();b.dispose();legacy.dispose();
+});

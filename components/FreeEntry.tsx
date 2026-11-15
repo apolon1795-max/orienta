@@ -7,7 +7,7 @@ import { ARCHETYPES, type TestResult } from '../types';
 import { freshFreeProgress, readFreeProgress, saveFreeProgress } from '../services/freeProgress';
 import { apiBase } from '../services/apiBase';
 
-const PilotCourse = lazy(() => import('../App'));
+const PilotCourse = lazy(() => import('./ProfileShell').then(module => ({ default: module.ProfileShell })));
 const read = () => {
   try { if (localStorage.getItem('orienta_free_intro_v1')) return readFreeProgress(localStorage); } catch {}
   try { return readFreeProgress(sessionStorage); } catch { return freshFreeProgress(); }

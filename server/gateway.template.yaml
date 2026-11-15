@@ -11,7 +11,7 @@ paths:
           required: true
           schema:
             type: string
-            enum: [health, register, session, progress, ai-summary, telegram-session, telegram-link, profile-identity]
+            enum: [health, register, session, progress, ai-summary, telegram-session, telegram-link, profile-identity, course-content]
       x-yc-apigateway-integration:
         type: cloud_functions
         payload_format_version: '1.0'

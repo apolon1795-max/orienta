@@ -3,7 +3,7 @@ import { telegramProof } from '../services/telegramBrowser';
 import { Button } from './Button';
 import type { ProgressSync, SyncState } from '../services/cloudProgress';
 
-type Props = { client: ProgressSync; state: SyncState; onExport: () => void; hasLocalAnswers: boolean };
+type Props = { client: Pick<ProgressSync, 'signIn' | 'signInTelegram' | 'registerFree' | 'signOut' | 'linkTelegram' | 'retry' | 'useCloudCopy'>; state: SyncState; onExport: () => void; hasLocalAnswers: boolean };
 export const ProgressAccess = ({ client, state, onExport, hasLocalAnswers }: Props) => {
   const [code, setCode] = useState('');
   const [newCode, setNewCode] = useState('');

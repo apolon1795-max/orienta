@@ -15,7 +15,7 @@ import { readFreeProgress, type FreeProgress } from './services/freeProgress';
 import { importFreeIntro } from './services/profileIntro';
 import { apiBase, ProgressSync, type ProgressPayload, type SyncState } from './services/cloudProgress';
 
-const CLOUD_API = apiBase(import.meta.env.VITE_PROGRESS_API_URL);
+const CLOUD_API = apiBase(import.meta.env.VITE_PROGRESS_API_URL || window.__ORIENTA_API);
 const browserStorage = (name: 'localStorage' | 'sessionStorage'): Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> => {
   try { return window[name]; } catch { return { getItem: () => null, removeItem: () => {}, setItem: () => { throw new Error('storage_unavailable'); } }; }
 };

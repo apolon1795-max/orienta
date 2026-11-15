@@ -1,0 +1,12 @@
+import { readFile, readdir } from 'node:fs/promises';
+import assert from 'node:assert/strict';
+import { QUIZ_DATA } from '../data/course.ts';
+import { HOLLAND_QUESTIONS } from '../data/assessments.ts';
+const files=await readdir('dist/assets');
+const publicJs=(await Promise.all(files.filter(f=>f.endsWith('.js')).map(f=>readFile('dist/assets/'+f,'utf8')))).join('\n');
+for(const text of [...QUIZ_DATA.map(x=>x.q),...HOLLAND_QUESTIONS.map(x=>x.text)])assert.ok(!publicJs.includes(text),'Paid text leaked in public JS: '+text);
+assert.ok(!files.some(f=>f.endsWith('.map')),'Public sourcemaps must not be emitted');
+assert.ok(!publicJs.includes('VITE_LESSON_1_VIDEO'));
+assert.ok(!publicJs.includes('PAID_MEDIA_ENV_SENTINEL'));
+const backend=await readFile('dist-server/function.js','utf8');assert.ok(backend.includes(QUIZ_DATA[0].q),'Paid package missing from backend');
+console.log('PASS: course and assessment question corpus absent from public JS; protected package present only in server build; no public sourcemaps.');
