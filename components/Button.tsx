@@ -24,6 +24,7 @@ export const Button: React.FC<ButtonProps> = ({
 
   return (
     <button type="button"
+      data-button-variant={variant}
       className={`${baseStyles} ${variants[variant]} ${fullWidth ? 'w-full' : ''} ${className}`}
       {...props}
     >

@@ -28,16 +28,16 @@ try {
  await page.getByRole('textbox',{name:'Имя героя'}).fill('Синтетический герой');await click('Подтвердить имя');await click('Отправиться в путь');
  for(let i=0;i<5;i++){
   if(i===4)await click('Сжать артефакт');
-  await page.locator('button[aria-pressed]').first().click();await click('Подтвердить выбор');
+  await page.locator('button[aria-pressed]').first().click();await click('Продолжить приключение');
   if(i===0){await page.reload();await click('Продолжить бесплатный тест');await page.getByText('Ситуация 2 из 5',{exact:false}).waitFor();}
  }
  await page.getByRole('button',{name:/Сорвать|Развернуть|Открыть.*свиток|Снять.*печать/}).click();
  await click('Открыть Персональный Гайд');await page.locator('#guide-action-btn').waitFor();
  await page.screenshot({path:'output/free-browser/02-guide-mobile.png',fullPage:true});
- await page.locator('#guide-action-btn').click();await page.getByRole('heading',{name:'Мой кабинет',exact:true}).waitFor();
- await page.reload();await page.getByRole('heading',{name:'Мой кабинет',exact:true}).waitFor();
- const second=await context.newPage();await second.goto(base);await second.getByRole('heading',{name:'Мой кабинет',exact:true}).waitFor();await second.close();
- await click('Открыть сообщество');await page.getByRole('heading',{name:'Сообщество Ориенты'}).waitFor();assert.equal(await page.getByRole('link',{name:'Перейти в Telegram'}).getAttribute('href'),'https://t.me/sense_house');await click('Вернуться в кабинет');
+ await page.locator('#guide-action-btn').click();await page.getByRole('heading',{name:'Мой лагерь',exact:true}).waitFor();
+ await page.reload();await page.getByRole('heading',{name:'Мой лагерь',exact:true}).waitFor();
+ const second=await context.newPage();await second.goto(base);await second.getByRole('heading',{name:'Мой лагерь',exact:true}).waitFor();await second.close();
+ await click('Открыть сообщество');await page.getByRole('heading',{name:'Сообщество Ориенты'}).waitFor();assert.equal(await page.getByRole('link',{name:'Перейти в Telegram'}).getAttribute('href'),'https://t.me/sense_house');await click('Вернуться в лагерь');
  await click('Открыть курс');await page.getByRole('heading',{name:'Продолжить в полном курсе'}).waitFor();
  await page.getByText('Онлайн-оплата пока не подключена.',{exact:false}).waitFor();
  assert.equal(apiRequests.length,0,'free flow must not call backend/AI');

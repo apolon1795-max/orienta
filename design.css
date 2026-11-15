@@ -1,0 +1,128 @@
+/* Approved adventure v5. Scoped to the free journey: never recolours the paid app. */
+.adventure {
+  --ink:#443923; --muted:#706044; --paper:#f5e8c5; --line:#b9a16e; --green:#3c5b3e;
+  color-scheme:light; color:var(--ink); background:#343f2e;
+  font-family:Arial,sans-serif; font-size:16px; line-height:1.6;
+  padding:24px 20px 56px; min-height:100svh;
+}
+.adventure > section,.adventure > .adventure-test,.adventure > div:not(.adventure-glows) {
+  background-color:var(--paper); background-image:url('./public/design/paper.png'); background-size:cover;background-repeat:no-repeat;
+  border:1px solid #b8a06c; border-radius:26px; box-shadow:0 12px 28px #1c27141c;
+  margin-left:auto; margin-right:auto; max-width:1000px;
+}
+.adventure h1,.adventure h2,.adventure h3,.adventure h4,.adventure .font-serif {font-family:Georgia,'Times New Roman',serif; color:#574120; font-weight:400; text-wrap:pretty;}
+.adventure h1 {line-height:1.12;} .adventure h2 {line-height:1.2;}
+.adventure [class*='text-slate-'],.adventure .text-white,.adventure .text-slate-500 {color:var(--ink);}
+.adventure [class*='text-purple-'],.adventure [class*='text-indigo-'],.adventure [class*='text-amber-'] {color:#6c532b;}
+.adventure .text-transparent {color:#574120; background:none; -webkit-text-fill-color:currentColor;}
+.adventure [class*='bg-slate-'],.adventure [class*='bg-indigo-'],.adventure [class*='bg-purple-'] {background-color:#f4e7c8; background-image:none;}
+.adventure [class*='border-slate-'],.adventure [class*='border-indigo-'],.adventure [class*='border-purple-'],.adventure [class*='border-amber-'] {border-color:var(--line);}
+.adventure .bg-gradient-to-br,.adventure .bg-gradient-to-r {background-image:none;}
+.adventure .shadow-2xl,.adventure .shadow-inner {box-shadow:none;}
+.adventure .animate-pulse,.adventure .animate-pulse-slow {animation:none;}
+.adventure-nav {max-width:1000px;padding:0 8px 22px;gap:12px;}
+.adventure .adventure-nav button {color:#f2e3b9;min-height:44px;line-height:1.3;}
+.adventure .adventure-nav button:first-child {font-family:Georgia,serif;font-size:30px;color:#f5d99c;text-decoration:none;margin-right:auto;}
+.adventure .adventure-nav button:not(:first-child) {font-size:14px;padding:6px 10px;border:1px solid #9b8f67;border-radius:10px;text-decoration:none;}
+.adventure [data-button-variant] {min-height:52px; border-radius:12px;font-family:Arial,sans-serif;letter-spacing:0;line-height:1.35;text-align:center; white-space:normal;box-shadow:none;transform:none;transition:background .15s,box-shadow .15s;}
+.adventure [data-button-variant='fantasy'],.adventure [data-button-variant='primary'] {background:#3c5b3e;color:#f7e9c1;border:1px solid #b99450;border-bottom:4px solid #243c29;box-shadow:none;font-weight:700;}
+.adventure [data-button-variant='fantasy']:hover:not(:disabled),.adventure [data-button-variant='primary']:hover:not(:disabled) {background:#2f4b33;box-shadow:0 3px 10px #243c2920;}
+.adventure [data-button-variant='secondary'],.adventure [data-button-variant='outline'] {background:#f3e4ba;color:#514125;border:1px solid #ad935a;border-bottom:3px solid #ad935a;}
+.adventure [data-button-variant='secondary']:hover:not(:disabled) {background:#e8d7a8;}
+.adventure [data-button-variant='ghost'] {background:transparent;color:var(--muted);}
+.adventure button:focus-visible,.adventure a:focus-visible,.adventure input:focus-visible {outline:3px solid #37664d;outline-offset:4px;}
+.adventure input {background:#fff8e4!important;color:var(--ink)!important;border-color:#b7a171!important;caret-color:var(--green);font-size:18px;}
+.adventure input::placeholder {color:#8b7959;}
+.adventure dialog {background:#f5e8c5;color:var(--ink);border:1px solid #b9a16e;box-shadow:0 20px 70px #0006;}
+.adventure-intro {max-width:760px!important;padding:40px;}
+.adventure-party {width:100%;max-height:390px;object-fit:contain;border-radius:18px;margin:24px auto;background:#e7dab1;}
+.adventure-test-content {max-width:740px;padding:28px 38px 36px;}
+.adventure-glows {display:none;}
+.adventure-question {padding-bottom:0;}
+.adventure-progress {margin:0 0 20px;}
+.adventure-progress [role='progressbar'] {height:9px;background:#d7ccaa;border-radius:8px;overflow:hidden;}
+.adventure-progress [role='progressbar'] span {display:block;height:100%;background:#b4944d;border-radius:8px;}
+.adventure-progress p {font-size:12px;text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin:12px 0 0;color:#6a542d;}
+.adventure .adventure-scene {max-width:500px;height:auto;aspect-ratio:1.3;border:1px solid #a78a4e;border-radius:18px;}
+.adventure-scene img {object-fit:contain;}
+.adventure .adventure-question-copy {font-family:Arial,sans-serif;font-weight:400;font-size:18px;line-height:1.6;background:#f2e5c7;border:1px solid #b9a16e;border-radius:16px;padding:20px;text-align:left;}
+.adventure .adventure-answer {
+  position:relative;display:flex;align-items:center;justify-content:center;width:100%;min-height:88px;
+  padding:18px 56px;border:1px solid #b5a078;border-bottom-width:2px;border-radius:14px;
+  background:#f5e8c8;color:#443923;line-height:1.5;text-align:center;transition:background .15s,border-color .15s;
+}
+.adventure .adventure-answer:hover {background:#eadcb7;border-color:#967538;}
+.adventure .adventure-answer.is-selected {background:#e3d49f;border:2px solid #94763b;padding:17px 55px;}
+.adventure .answer-letter {position:absolute;left:13px;top:50%;transform:translateY(-50%);width:28px;height:28px;display:flex;align-items:center;justify-content:center;line-height:1;font-size:13px;font-weight:700;background:#e9d4a1;border:1px solid #ad9154;border-radius:7px;color:#514225;flex:none;}
+.adventure .answer-copy {display:block;width:100%;text-align:center;font-size:16px;line-height:1.5;overflow-wrap:anywhere;}
+.adventure-continue {z-index:15;margin-top:16px;background:linear-gradient(to bottom,#f4e7c800,#f4e7c8 24px);padding-top:26px;padding-bottom:max(12px,env(safe-area-inset-bottom));}
+.adventure-result > h2 {font-size:clamp(32px,6vw,48px);}
+.adventure-result > div:has(> .adventure-professions) {padding:0;}
+.adventure-result .adventure-professions {font-size:16px;}
+.adventure .adventure-professions h4 {font-size:22px;text-transform:none;margin-bottom:12px;}
+.adventure .adventure-professions p {font-family:Arial,sans-serif;font-size:17px;line-height:1.65;}
+.adventure-result p {font-size:16px;}
+.adventure-result > div:has(> p.border-l-2) {background:transparent;padding:0;border:0;}
+.adventure-result p.border-l-2 {border:0;padding:0;}
+.adventure-camp {padding:38px;}
+.adventure-camp header {padding-bottom:24px;border-bottom:1px solid #b9a16e;}
+.adventure .camp-next {background:#f2e5c7;border:1px solid #b9a16e;max-width:100%;padding:28px;}
+.camp-destinations {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;align-items:stretch;}
+.adventure .camp-destination {border:1px solid #b5a078;background:#f4e7c8;border-radius:18px;padding:22px;display:flex;flex-direction:column;gap:16px;min-width:0;}
+.camp-destination > img {width:72px;height:72px;object-fit:contain;border-radius:12px;flex:none;}
+.camp-destination > div {min-width:0;overflow-wrap:anywhere;display:flex;flex-direction:column;gap:12px;flex:1;}
+.camp-destination h2 {font-size:26px;}
+.camp-destination p {font-size:15px;line-height:1.55;}
+.camp-destination [data-button-variant] {margin-top:auto;width:100%;padding:12px;font-size:14px;}
+.adventure-camp aside {font-size:14px;line-height:1.65;}
+.adventure-camp aside h2 {font-family:Arial,sans-serif;}
+.adventure .hero-guide-root {font-family:Arial,sans-serif!important;color:var(--ink)!important;background:transparent!important;}
+.adventure .hero-guide-root > .absolute {display:none;}
+.adventure .glass-panel,.adventure .prof-item,.adventure .shadow-side-box {background:#f1e2bc!important;border-color:#b9a16e!important;box-shadow:none!important;backdrop-filter:none!important;}
+.adventure .blacklist-item {background:#f3ded0!important;}
+.adventure .category-header,.adventure th {color:#66502b!important;border-color:#b9a16e!important;}
+.adventure .hero-guide-root td {border-color:#cbb98d;}
+.adventure #guide-action-btn {background:#3c5b3e!important;color:#f7e9c1!important;border:1px solid #b99450!important;min-height:52px;}
+.adventure > section a {color:#465f37;text-decoration:underline;text-underline-offset:3px;}
+.adventure > section a[class*='bg-'] {background:#3c5b3e;color:#f7e9c1;border:1px solid #b99450;border-radius:12px;text-decoration:none;}
+@media(max-width:720px){
+ .adventure {padding:12px 10px 28px;}
+ .adventure-nav {padding:0 4px 14px;gap:8px;}
+ .adventure-nav button:first-child {flex:1 0 100%;}
+ .adventure > section,.adventure > .adventure-test,.adventure > div:not(.adventure-glows) {border-radius:22px;}
+ .adventure-intro,.adventure-camp {padding:26px 20px;}
+ .adventure-test-content {padding:22px 18px 18px;}
+ .adventure .adventure-question-copy {font-size:16px;padding:16px;}
+ .adventure .adventure-answer {padding:16px 45px;min-height:88px;}
+ .adventure .adventure-answer.is-selected {padding:15px 44px;}
+ .adventure .answer-letter {left:9px;width:26px;height:26px;font-size:12px;}
+ .adventure .answer-copy {font-size:15px;}
+ .adventure .camp-next {padding:22px;}
+ .camp-destinations {grid-template-columns:1fr;}
+ .adventure .camp-destination {flex-direction:row;padding:18px;gap:14px;}
+ .camp-destination > img {width:62px;height:62px;}
+ .camp-destination h2 {font-size:24px;}
+ .adventure h1 {font-size:38px;}
+ .adventure-test .min-h-\[500px\] {min-height:380px;}
+ .adventure .hero-guide-root {padding:0!important;}
+ .adventure .glass-panel {padding:20px!important;}
+}
+@media(prefers-reduced-motion:reduce){.adventure *{transition:none!important;animation:none!important;}}
+.adventure .camp-avatar {float:left;width:86px;height:86px;object-fit:cover;border:2px solid #a78a4e;border-radius:16px;margin:0 20px 12px 0;}
+.adventure-camp header::after {content:'';display:block;clear:both;}
+.adventure .adventure-scene {max-width:420px;aspect-ratio:1;}
+.adventure .adventure-result > div:has(> div > img) {max-width:360px;height:360px;border:3px solid #a78a4e;border-radius:18px;}
+@media(max-width:400px){.adventure .adventure-result > div:has(> div > img) {height:auto;aspect-ratio:1;}}
+.adventure .result-kicker {font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#6a542d;font-weight:700;text-align:left;}
+.adventure .adventure-result > h2 {text-align:left;margin-top:12px;}
+.adventure details summary {min-height:36px;display:list-item;}
+.adventure details[open] summary {margin-bottom:12px;}
+
+@media(max-width:360px){.adventure .camp-destination{flex-direction:column}.adventure .camp-avatar{float:none;margin:0 0 16px}.adventure-nav button{max-width:100%;white-space:normal}}
+
+/* Allow narrow embedded/mobile viewports without the global 320px body floor. */
+body:has(.adventure){min-width:0}
+
+/* Profile integration: keep links readable beside the camp navigation. */
+.adventure .adventure-nav a {color:#f2e3b9;min-height:44px;display:inline-flex;align-items:center;line-height:1.3;font-size:14px;padding:6px 10px;border:1px solid #9b8f67;border-radius:10px;text-decoration:none;}
+.adventure-camp aside > a,.adventure-camp aside > button {display:block;width:fit-content;margin-top:12px;}

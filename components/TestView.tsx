@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from './Button';
+import { adventureArt, partyArt, pigeonArt } from '../services/adventureArt';
 import { TestResult, ARCHETYPES } from '../types';
 import { readTestDraft, createTestDraft, getTestWinners, TestDraft } from '../services/testProgress';
 import { TEST_CHOICES } from '../data/testChoices';
 import { ExternalLink, Image as ImageIcon } from 'lucide-react';
 
-const STORAGE_KEY = 'hero_game_progress_v2'; 
+const STORAGE_KEY = 'hero_game_progress_v2';
 
 const EMOJI = {
     SWORDS: String.fromCodePoint(9876),
@@ -25,7 +26,7 @@ const EMOJI = {
     CHECK: String.fromCodePoint(9989),
     STOP: String.fromCodePoint(9940),
     MONEY: String.fromCodePoint(128176),
-    BACK: String.fromCodePoint(11013) 
+    BACK: String.fromCodePoint(11013)
 };
 
 enum Step {
@@ -52,56 +53,10 @@ const Archetype = {
 };
 
 const IMAGES = {
-    general: {
-        allCharacters: import.meta.env.BASE_URL + "images/0QqPFksf/Obsaa-fotka-personazej.png",
-        pigeon: import.meta.env.BASE_URL + "images/k4dqzJms/Golub'.png"
-    },
-    races: {
-        'Человек': {
-            q1: import.meta.env.BASE_URL + "images/x1h0GGp7/Celovek-1.png",
-            q2: import.meta.env.BASE_URL + "images/3xVKjjfS/Celovek-2.png",
-            q3: import.meta.env.BASE_URL + "images/zG6Jww2F/Celovek-3.png",
-            q4: import.meta.env.BASE_URL + "images/P5PX8Vyz/Celovek-4.png",
-            q5: import.meta.env.BASE_URL + "images/pLpWncCQ/Celovek-5.png",
-            [Archetype.Commander]: import.meta.env.BASE_URL + "images/x1cfbp50/Celovek-komandir.png",
-            [Archetype.Creator]: import.meta.env.BASE_URL + "images/dtWQ3c27/Celovek-sozidatel'.png",
-            [Archetype.Researcher]: import.meta.env.BASE_URL + "images/2SVkB9Gq/Celovek-issledovatel'.png",
-            [Archetype.Communicator]: import.meta.env.BASE_URL + "images/fRJz0qC9/Celovek-dusa-kompanii.png"
-        },
-        'Эльф': {
-            q1: import.meta.env.BASE_URL + "images/tCrRJG3q/El'fijka-1.png",
-            q2: import.meta.env.BASE_URL + "images/Prfrd58W/El'fika-2.png",
-            q3: import.meta.env.BASE_URL + "images/gkckG263/El'fika-3.png",
-            q4: import.meta.env.BASE_URL + "images/VLsLzkbV/El'fika-4.png",
-            q5: import.meta.env.BASE_URL + "images/59S2cCjj/El'fika-5.png",
-            [Archetype.Commander]: import.meta.env.BASE_URL + "images/Pr6fJnmF/El'fijka-komandir.png",
-            [Archetype.Creator]: import.meta.env.BASE_URL + "images/BQZQJn1R/El'fijka-sozidatel'.png",
-            [Archetype.Researcher]: import.meta.env.BASE_URL + "images/yYf6xCFw/El'fijka-issledovatel'.png",
-            [Archetype.Communicator]: import.meta.env.BASE_URL + "images/vHP8TwrM/El'fijka-dusa-kompanii.png"
-        },
-        'Орк': {
-            q1: import.meta.env.BASE_URL + "images/sXRsqjrp/Ork-1.png",
-            q2: import.meta.env.BASE_URL + "images/63NtgWXR/Ork-2.png",
-            q3: import.meta.env.BASE_URL + "images/mDGBJLs9/Ork-3.png",
-            q4: import.meta.env.BASE_URL + "images/rmLM3VkR/Ork-4.png",
-            q5: import.meta.env.BASE_URL + "images/zB186zrV/Ork-5.png",
-            [Archetype.Commander]: import.meta.env.BASE_URL + "images/Xv5nsZTG/Ork-komandir.png",
-            [Archetype.Creator]: import.meta.env.BASE_URL + "images/HLMT6JfV/Ork-sozidatel'.png",
-            [Archetype.Researcher]: import.meta.env.BASE_URL + "images/vmnG01pn/Ork-issledovatel'.png",
-            [Archetype.Communicator]: import.meta.env.BASE_URL + "images/7LzqKCp0/Ork-dusa-kompanii.png"
-        },
-        'Тролль': {
-            q1: import.meta.env.BASE_URL + "images/rp4qfdvV/Trol'-1.png",
-            q2: import.meta.env.BASE_URL + "images/pdjPs9gX/Trol'-2.png",
-            q3: import.meta.env.BASE_URL + "images/3wG3tyPh/Trol'-3.png",
-            q4: import.meta.env.BASE_URL + "images/6QZBM7Dw/Trol'-4.png",
-            q5: import.meta.env.BASE_URL + "images/mr9Tmc0W/Trol'-5.png",
-            [Archetype.Commander]: import.meta.env.BASE_URL + "images/KYTm0KC6/Trol'-Komandir.png",
-            [Archetype.Creator]: import.meta.env.BASE_URL + "images/wjZ6554C/Trol'-sozidatel'.png",
-            [Archetype.Researcher]: import.meta.env.BASE_URL + "images/XYmVKKD0/Trol'-issledovatel'.png",
-            [Archetype.Communicator]: import.meta.env.BASE_URL + "images/y8tVhhrs/Trol'-dusa-kompanii.png"
-        }
-    }
+    general: { allCharacters: partyArt, pigeon: pigeonArt },
+    races: Object.fromEntries(['Человек','Эльф','Орк','Тролль'].map(race => [race,
+        Object.fromEntries(['q1','q2','q3','q4','q5',...Object.values(Archetype)].map(scene => [scene, adventureArt(race,scene)]))
+    ]))
 };
 
 // --- NEW COMPONENT: Image with Skeleton Loader ---
@@ -127,9 +82,9 @@ const ImageWithSkeleton: React.FC<{ src: string; alt: string; className?: string
                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent skew-x-12 animate-[shimmer_1.5s_infinite]"></div>
                 </div>
             )}
-            <img 
-                src={src} 
-                alt={alt} 
+            <img
+                src={src}
+                alt={alt}
                 className="w-full h-full object-contain"
                 loading="eager"
             />
@@ -183,9 +138,10 @@ interface TestViewProps {
   initialDraft?: TestDraft;
   onDraftChange?: (draft: TestDraft) => void;
   onRequestRestart?: () => void;
+  onOpenCamp?: () => void;
 }
 
-export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResultCalculated, initialDraft, onDraftChange, onRequestRestart }) => {
+export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResultCalculated, initialDraft, onDraftChange, onRequestRestart, onOpenCamp }) => {
     const [initial] = useState(() => {
       if (initialDraft) return initialDraft;
       try { return readTestDraft(window.localStorage); } catch { return createTestDraft(); }
@@ -247,7 +203,7 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResu
 
     const handleStart = () => changeStep(Step.CreateCharacterIntro, createSnapshot());
     const handleIntroComplete = () => changeStep(Step.ChooseCharacter, createSnapshot());
-    
+
     const handleRaceSelect = (race: string) => {
         if (transitionLock.current) return;
         const snapshot = createSnapshot();
@@ -279,14 +235,14 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResu
     const handleComplete = () => {
          const winner = getWinner();
          const resultData = ARCHETYPES[winner];
-         
+
          const finalResult: TestResult = {
              scoreType: winner,
              title: resultData.title,
              description: resultData.description.join('\n\n'),
              timestamp: new Date().toISOString(), scores: { ...scores }, tiedTypes: getTestWinners(scores), heroName: heroData.name.trim()
          };
-         
+
          onComplete(finalResult);
     };
 
@@ -295,14 +251,14 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResu
             hasCalculatedResult.current = true;
             const winner = getWinner();
             const resultData = ARCHETYPES[winner];
-            
+
             const finalResult: TestResult = {
                 scoreType: winner,
                 title: resultData.title,
                 description: resultData.description.join('\n\n'),
                 timestamp: new Date().toISOString(), scores: { ...scores }, tiedTypes: getTestWinners(scores), heroName: heroData.name.trim()
             };
-            
+
             onResultCalculated(finalResult);
         }
     }, [step, scores, onResultCalculated]);
@@ -342,7 +298,7 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResu
                         </div>
                         <div className="pt-6 w-full max-w-md space-y-3">
                             <Button onClick={handleStart} variant="fantasy" fullWidth>Начать игру</Button>
-                            <button onClick={onCancel} className="text-slate-500 hover:text-white underline text-sm">Назад в Хаб</button>
+                            <button onClick={onCancel} className="text-slate-500 hover:text-white underline text-sm">Вернуться к началу</button>
                         </div>
                     </div>
                 );
@@ -353,21 +309,21 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResu
                         <h2 className="text-4xl font-serif text-white drop-shadow-lg">
                             Рождение Легенды {EMOJI.SPARKLES}
                         </h2>
-                        
+
                         <div className="space-y-6 text-slate-200 leading-relaxed max-w-lg mx-auto text-lg">
                             <p>
-                                Прежде чем ты отправишься в путь — 
+                                Прежде чем ты отправишься в путь —
                                 нужно выбрать, кем ты будешь в этом мире.
                             </p>
                             <p>
-                                Ты создашь своего аватара — 
+                                Ты создашь своего аватара —
                                 выберешь расу и дашь ему имя.
                             </p>
                             <p className="text-purple-300 italic text-xl border-t border-purple-500/30 pt-4 mt-2">
                                 Именно он станет героем твоей истории в Ориенте.
                             </p>
                         </div>
-                        
+
                         <div className="pt-4 w-full max-w-md">
                             <Button onClick={handleIntroComplete} variant="fantasy" fullWidth>Создать персонажа</Button>
                         </div>
@@ -408,7 +364,7 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResu
                 return (
                     <div className="flex flex-col h-full justify-center items-center space-y-8 text-center min-h-[500px]">
                         <h2 className="text-4xl font-serif text-white">Твое Имя</h2>
-                        
+
                         <div className="space-y-2">
                             <p className="text-slate-300 text-lg">Ну не будешь же ты весь путь "Герой №17"...</p>
                             <p className="text-slate-400 text-sm">Дай своему персонажу имя. Любое — от Бруталиуса до Ванильного Кекса.</p>
@@ -446,7 +402,7 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResu
                         </div>
                     </div>
                 );
-            
+
             case Step.Question1:
             case Step.Question2:
             case Step.Question3:
@@ -454,21 +410,21 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResu
             case Step.Question5:
                 const question = QUESTIONS[step];
                 const questionImage = getQuestionImage(step);
-                
+
                 return (
-                    <div className="space-y-8 animate-fade-in pb-12">
-                        <p className="text-center text-slate-300">Ситуация {Object.keys(QUESTIONS).indexOf(step) + 1} из 5</p>
-                        
+                    <div className="adventure-question space-y-8 animate-fade-in pb-12">
+                        <div className="adventure-progress"><div role="progressbar" aria-label="Прогресс приключения" aria-valuemin={0} aria-valuemax={5} aria-valuenow={Object.keys(QUESTIONS).indexOf(step) + 1}><span style={{ width: `${(Object.keys(QUESTIONS).indexOf(step) + 1) * 20}%` }} /></div><p>Испытание {Object.keys(QUESTIONS).indexOf(step) + 1} из 5</p></div>
+
                         {questionImage && (
-                            <div className="rounded-xl overflow-hidden shadow-2xl border border-indigo-500/30 max-w-md mx-auto h-64 md:h-72 w-full">
+                            <div className="adventure-scene rounded-xl overflow-hidden shadow-2xl border border-indigo-500/30 max-w-md mx-auto h-64 md:h-72 w-full">
                                 <ImageWithSkeleton src={questionImage} alt="Сцена игрового вопроса" className="w-full h-full" />
                             </div>
                         )}
 
-                        <h3 className="text-xl md:text-2xl font-serif text-white text-center leading-relaxed">
+                        <h3 className="adventure-question-copy text-xl md:text-2xl font-serif text-white text-center leading-relaxed">
                             {question.text}
                         </h3>
-                        
+
                         {/* Options */}
                         <div className="grid gap-3 pt-2">
                             {question.options.map((option: any, idx: number) => {
@@ -479,29 +435,17 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResu
                                         onClick={(e) => {
                                             setSelectedOptionId(option.id);
                                         }}
-                                        className={`w-full text-left border p-4 rounded-lg transition-all duration-200 group relative overflow-hidden ${
-                                            isSelected 
-                                                ? 'bg-purple-600/30 border-purple-400 text-white shadow-[0_0_15px_rgba(168,85,247,0.3)]' 
-                                                : 'bg-slate-800/50 hover:bg-slate-700/80 border-slate-600 hover:border-purple-400 text-slate-200'
-                                        }`}
+                                        className={`adventure-answer ${isSelected ? 'is-selected' : ''}`}
                                     >
-                                        <div className="flex items-start relative z-10">
-                                            <span className={`w-6 h-6 rounded flex items-center justify-center text-xs mr-3 mt-1 flex-shrink-0 font-sans transition-colors ${
-                                                isSelected 
-                                                    ? 'bg-purple-500 text-white' 
-                                                    : 'bg-slate-700 text-slate-300 group-hover:bg-purple-600 group-hover:text-white'
-                                            }`}>
-                                                {String.fromCharCode(65 + idx)}
-                                            </span>
-                                            {option.text}
-                                        </div>
+                                        <span className="answer-letter" aria-hidden="true">{'АБВГ'[idx]}</span>
+                                        <span className="answer-copy">{option.text}</span>
                                     </button>
                                 );
                             })}
                         </div>
 
                         {/* Confirmation Button */}
-                        <div className="pt-4 sticky bottom-0 bg-gradient-to-t from-slate-950 pt-6 pb-2 -mx-2 px-2">
+                        <div className="adventure-continue pt-4 sticky bottom-0 pt-6 pb-2 -mx-2 px-2">
                             <Button 
                                 variant="fantasy" 
                                 fullWidth 
@@ -514,7 +458,7 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResu
                                 }}
                                 className="shadow-2xl"
                             >
-                                Подтвердить выбор {EMOJI.SWORDS}
+                                Продолжить приключение
                             </Button>
                         </div>
                     </div>
@@ -544,7 +488,7 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResu
                 return (
                     <div className="flex flex-col h-full justify-center items-center text-center space-y-8">
                         <h2 className="text-3xl md:text-4xl font-serif text-amber-100">О, {heroData.name}!</h2>
-                        
+
                         <div className="rounded-xl overflow-hidden shadow-2xl border border-amber-500/30 max-w-md mx-auto h-64 w-full">
                             <ImageWithSkeleton src={IMAGES.general.pigeon} alt="Почтовый голубь со свитком" className="w-full h-full" />
                         </div>
@@ -571,17 +515,18 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResu
                 const resultImage = IMAGES.races[heroData.race]?.[winner];
 
                 return (
-                    <div className="text-center space-y-6 animate-fade-in pb-8">
-                        <h2 className="text-4xl md:text-5xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-200 to-amber-500 mb-6">
-                            {result.title}
-                        </h2>
-                        
+                    <div className="adventure-result text-center space-y-6 animate-fade-in pb-8">
                         {resultImage && (
                             <div className="rounded-xl overflow-hidden shadow-2xl border-2 border-amber-500/50 max-w-md mx-auto mb-6 transform hover:scale-[1.02] transition-transform duration-500 h-80 w-full">
                                 <ImageWithSkeleton src={resultImage} alt={result.title} className="w-full h-full" />
                             </div>
                         )}
-                        
+
+                        <p className="result-kicker">Твой архетип</p>
+                        <h2 className="text-4xl md:text-5xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-200 to-amber-500 mb-6">
+                            {result.title}
+                        </h2>
+
                         <div className="bg-slate-900/50 p-6 rounded-xl text-left space-y-4 shadow-inner border border-slate-700/50">
                             {result.description.map((desc: string, i: number) => (
                                 <p key={i} className="text-slate-300 leading-relaxed pl-4 border-l-2 border-purple-500/30">
@@ -591,7 +536,7 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResu
                         </div>
 
                         {getTestWinners(scores).length > 1 && <p className="text-slate-200">У тебя смешанный результат: {getTestWinners(scores).map(k => ARCHETYPES[k].title).join(', ')}. Основной персонаж выбран по порядку архетипов в игре.</p>}
-                        <div className="bg-indigo-950/40 p-6 rounded-xl border border-indigo-500/20">
+                        <div className="adventure-professions bg-indigo-950/40 p-6 rounded-xl border border-indigo-500/20">
                             <h4 className="text-indigo-300 font-bold mb-2 uppercase text-sm">Профессии для исследования:</h4>
                             <p className="text-white font-serif text-lg leading-relaxed">{result.professions}</p>
                         </div>
@@ -600,19 +545,20 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResu
                             <p className="text-amber-400 font-bold text-xl mb-4 animate-pulse">
                                     Открыт полный доступ к Гайду!
                             </p>
-                            
-                            <Button 
+
+                            <Button
                                 onClick={handleComplete}
-                                variant="fantasy"
+                                variant="secondary"
                                 fullWidth
                                 className="text-xl py-4 shadow-[0_0_20px_rgba(245,158,11,0.3)]"
                             >
                                 {EMOJI.SCROLL} Открыть Персональный Гайд
                             </Button>
                         </div>
-                        
+
+                        {onOpenCamp && <Button variant="fantasy" fullWidth onClick={onOpenCamp}>Вернуться в лагерь</Button>}
                         <div className="pt-8 space-y-4">
-                            <button 
+                            <button
                                 onClick={handleRestart}
                                 className="text-slate-500 hover:text-white underline text-sm transition-colors block mx-auto"
                                 title="Сбросить прогресс и начать сначала"
@@ -629,21 +575,21 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResu
     };
 
     return (
-        <div className="w-full h-full flex flex-col relative overflow-hidden">
+        <div className="adventure-test w-full h-full flex flex-col relative overflow-hidden">
              {/* Background Elements */}
-            <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
+            <div className="adventure-glows absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
                 <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-purple-900/20 blur-[120px]"></div>
                 <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-indigo-900/20 blur-[120px]"></div>
                 <div className="absolute top-[20%] right-[20%] w-[20%] h-[20%] rounded-full bg-amber-500/5 blur-[80px]"></div>
             </div>
 
-            <div 
+            <div
                 ref={scrollRef}
-                className={`relative z-10 w-full max-w-2xl mx-auto flex-1 flex flex-col p-6 transition-all duration-500 ${isTransitioning ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'}`}
+                className={`adventure-test-content relative z-10 w-full max-w-2xl mx-auto flex-1 flex flex-col p-6 transition-all duration-500 ${isTransitioning ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'}`}
                 style={{ overflowY: 'auto' }}
             >
                 {step !== Step.Start && step !== Step.Result && (
-                    <button 
+                    <button
                         onClick={handleBack}
                         className="self-start mb-4 px-3 py-1 bg-slate-800/50 border border-slate-700 rounded text-slate-400 hover:text-white text-sm"
                     >

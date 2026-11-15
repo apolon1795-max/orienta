@@ -559,7 +559,7 @@ const CONTENT_MAP: Record<string, string> = {
 export const GuideView: React.FC<GuideViewProps> = ({ archetype, onBack, onStartCourse, actionLabel }) => {
   const rawContent = CONTENT_MAP[archetype] || '<div class="text-center text-white p-10">Гайд не найден</div>';
 
-  const content = actionLabel ? rawContent.replace(/(<button id="guide-action-btn"[^>]*>)[\s\S]*?(<\/button>)/g, '$1Перейти в мой кабинет$2').replace(/Начать обучение/g, 'Твой результат и следующие шаги') : rawContent;
+  const content = actionLabel ? rawContent.replace(/(<button id="guide-action-btn"[^>]*>)[\s\S]*?(<\/button>)/g, '$1Вернуться в лагерь$2').replace(/Начать обучение/g, 'Твой результат и следующие шаги') : rawContent;
   useEffect(() => {
     const btn = document.getElementById('guide-action-btn');
     const handleClick = (e: MouseEvent) => {
@@ -587,7 +587,7 @@ export const GuideView: React.FC<GuideViewProps> = ({ archetype, onBack, onStart
           className="bg-slate-900/80 backdrop-blur-md border border-slate-700 text-slate-300 hover:text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 transition-all hover:bg-slate-800"
         >
           <ArrowLeft className="w-4 h-4" />
-          В Хаб
+          {actionLabel ? 'Вернуться в лагерь' : 'Назад'}
         </button>
       </div>
 

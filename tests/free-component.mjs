@@ -15,13 +15,13 @@ try {
  assert.doesNotMatch(html, /PRIVATE_COURSE_SENTINEL/);
  globalThis.location = { hash: '#hub' };
  const hub = renderToString(React.createElement(FreeEntry));
- assert.match(hub, /Мой кабинет/); assert.match(hub, /Открыть курс/); assert.match(hub, /Открыть сообщество/); assert.match(hub, /без регистрации, пароля и синхронизации/);
+ assert.match(hub, /Мой лагерь/); assert.match(hub, /Открыть курс/); assert.match(hub, /Открыть сообщество/); assert.match(hub, /без регистрации, пароля и синхронизации/);
  const { freshFreeProgress } = await vite.ssrLoadModule('/services/freeProgress.ts');
  const completed = freshFreeProgress(); completed.draft.step = 'result'; completed.draft.scores.Commander = 5; completed.draft.heroData.name = 'Пробный герой'; completed.result = { scoreType: 'Commander' };
  globalThis.localStorage = { getItem: () => JSON.stringify(completed) };
  globalThis.location = { hash: '' };
  const restored = renderToString(React.createElement(FreeEntry));
- assert.match(restored, /Мой кабинет/); assert.match(restored, /Командир/); assert.match(restored, /Пробный герой/);
+ assert.match(restored, /Мой лагерь/); assert.match(restored, /Командир/); assert.match(restored, /Пробный герой/);
  const { ProgressAccess } = await vite.ssrLoadModule('/components/ProgressAccount.tsx');
  const access = enabled => renderToString(React.createElement(ProgressAccess, { client: {}, state: { status: 'signed-out', registrationAvailable: enabled, telegramAvailable: enabled }, onExport() {}, hasLocalAnswers: false }));
  assert.match(access(true), /Новый бесплатный профиль/); assert.match(access(true), /Войти через Telegram/); assert.doesNotMatch(access(false), /Новый бесплатный профиль|Войти через Telegram/);
