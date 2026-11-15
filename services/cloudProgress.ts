@@ -20,14 +20,7 @@ const normalizeSnapshot = (value: CloudSnapshot): CloudSnapshot => {
   if (!value || !Number.isSafeInteger(value.revision) || value.revision < 0 || !Number.isFinite(value.updatedAt)) throw new Error('invalid_response');
   return { ...value, payload: value.payload ? clean(value.payload) : null };
 };
-export const apiBase = (value: string | undefined): string => {
-  if (!value) return '';
-  try {
-    const url = new URL(value, typeof window === 'undefined' ? 'https://orienta.invalid/' : window.location.href);
-    if (url.username || url.password || url.search || url.hash || (url.protocol !== 'https:' && !(url.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)))) return '';
-    return url.href.replace(/\/$/, '');
-  } catch { return ''; }
-};
+export { apiBase } from './apiBase.ts';
 
 export class ProgressSync {
   private session: Session | null = null;

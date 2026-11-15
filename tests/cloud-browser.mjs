@@ -57,8 +57,8 @@ try {
   await firstContext.addInitScript(() => { localStorage.setItem('appState_ru', JSON.stringify({ hasOnboarded: true, course: { s4Dream: 'Прежний локальный ответ' } })); });
   const a = await firstContext.newPage(), b = await secondContext.newPage();
   for (const page of [a, b]) page.on('pageerror', error => errors.push(String(error)));
-  const login = async (page, code) => { await page.goto(base); await page.getByLabel('Личный код', { exact: true }).fill(code); await page.getByRole('button', { name: 'Войти по коду', exact: true }).click(); };
-  await a.goto(base); await a.screenshot({ path: output + '/01-access-mobile.png', fullPage: true });
+  const login = async (page, code) => { await page.goto(base + '/#course'); await page.getByLabel('Личный код', { exact: true }).fill(code); await page.getByRole('button', { name: 'Войти по коду', exact: true }).click(); };
+  await a.goto(base + '/#course'); await a.screenshot({ path: output + '/01-access-mobile.png', fullPage: true });
   assert.equal(await a.getByRole('button', { name: 'Скачать ответы с устройства', exact: true }).count(), 0);
   await a.getByLabel('Личный код', { exact: true }).fill('неправильный код'); await a.getByRole('button', { name: 'Войти по коду', exact: true }).click();
   await a.getByRole('alert').filter({ hasText: 'Код не подошёл' }).waitFor(); record('invalid code rejected without exposing another pupil');
