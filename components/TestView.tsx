@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Button } from './Button';
 import { TestResult, ARCHETYPES } from '../types';
 import { readTestDraft, createTestDraft, getTestWinners, TestDraft } from '../services/testProgress';
+import { TEST_CHOICES } from '../data/testChoices';
 import { ExternalLink, Image as ImageIcon } from 'lucide-react';
 
 const STORAGE_KEY = 'hero_game_progress_v2'; 
@@ -147,56 +148,31 @@ const QUESTIONS: any = {
         id: Step.Question1,
         text: "Ты просыпаешься в таверне, где проходил обряд вступления в Гильдию. Всё хорошо… пока из твоего супа не выныривает мини-дракон и требует отдать ему ложку. Что ты сделаешь?",
         nextStep: Step.Question2,
-        options: [
-            { text: "Строго скажу: «Ложка моя! Но ты можешь работать на меня, будешь греть чай».", archetype: Archetype.Commander },
-            { text: "Достану лупу: «Ого! А как ты дышишь в бульоне? Давай я тебя изучу!»", archetype: Archetype.Researcher },
-            { text: "Улыбнусь: «О, говорящий суп! Давай сфоткаемся и поболтаем!»", archetype: Archetype.Communicator },
-            { text: "Слеплю ему новую ложку из хлебного мякиша. Мне не жалко!", archetype: Archetype.Creator },
-        ],
+        options: TEST_CHOICES[Step.Question1],
     },
     [Step.Question2]: {
         id: Step.Question2,
         text: "Ты идёшь по дороге и натыкаешься на странного гоблина с табличкой: «Прокачаю навыки. Недорого.» Что делаешь?",
         nextStep: Step.Question3,
-        options: [
-            { text: "Устраиваю бартер — он учит меня, а я делаю ему бренд.", archetype: Archetype.Creator },
-            { text: "Убеждаю гоблина стать моим ассистентом.", archetype: Archetype.Commander },
-            { text: "Спрашиваю, где источник данных, на чём основаны его навыки, требую портфолио.", archetype: Archetype.Researcher },
-            { text: "Беру урок, мы болтаем, потом я становлюсь крёстным у его сына.", archetype: Archetype.Communicator },
-        ],
+        options: TEST_CHOICES[Step.Question2],
     },
     [Step.Question3]: {
         id: Step.Question3,
         text: "Ты входишь в логово. Тебя встречает тролль и предлагает выбрать артефакт. Что берёшь?",
         nextStep: Step.Question4,
-        options: [
-            { text: "Кольцо Командующего. Придаёт голосу авторитет, даже если ты говоришь «пельмени».", archetype: Archetype.Commander },
-            { text: "Кисть Идей. Всё, что ты рисуешь, становится частью реальности.", archetype: Archetype.Creator },
-            { text: "Камень Разума. Усиливает мозг. Почти до состояния учителя по химии.", archetype: Archetype.Researcher },
-            { text: "Перо Общения. Можно болтать даже с камнем. И камень будет рад.", archetype: Archetype.Communicator },
-        ],
+        options: TEST_CHOICES[Step.Question3],
     },
     [Step.Question4]: {
         id: Step.Question4,
         text: "Выходишь из логова, а впереди — развилка с табличкой: «Налево — успех. Направо — друзья. Прямо — еда.» Ты...",
         nextStep: Step.Question5Intro,
-        options: [
-            { text: "Иду туда, где весело. Обычно там и еда, и успех.", archetype: Archetype.Communicator },
-            { text: "Заворачиваю налево — потому что я заранее распланировал этот маршрут.", archetype: Archetype.Commander },
-            { text: "Спрашиваю у прохожих, делаю опрос, голосование, устраиваю форум.", archetype: Archetype.Creator },
-            { text: "Придумываю четвёртый путь. Он включает лодку и панду.", archetype: Archetype.Researcher },
-        ],
+        options: TEST_CHOICES[Step.Question4],
     },
     [Step.Question5]: {
         id: Step.Question5,
         text: "У тебя в руках артефакт. Он светится, вибрирует и, кажется, показывает TikTok. Что ты с ним делаешь?",
         nextStep: Step.FinalScroll,
-        options: [
-            { text: "Провожу собрание. Распределяю артефакт по задачам.", archetype: Archetype.Commander },
-            { text: "Разбираю его на части, чтобы понять принцип работы.", archetype: Archetype.Researcher },
-            { text: "Устраиваю его вечеринку и зову всех.", archetype: Archetype.Communicator },
-            { text: "Перепридумываю его заново. Добавляю блёстки и реакцию на музыку.", archetype: Archetype.Creator },
-        ],
+        options: TEST_CHOICES[Step.Question5],
     },
 };
 
@@ -220,7 +196,7 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResu
     const [history, setHistory] = useState(initial.history);
 
     // New state for selection confirmation
-    const [selectedOptionIdx, setSelectedOptionIdx] = useState<number | null>(null);
+    const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
 
     const isTransitioning = false;
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -243,7 +219,7 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResu
             scrollRef.current.scrollTo(0, 0);
         }
         window.scrollTo(0, 0);
-        setSelectedOptionIdx(null);
+        setSelectedOptionId(null);
     }, [step]);
 
     const changeStep = (nextStep: Step, newHistoryItem: any = null) => {
@@ -496,12 +472,12 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResu
                         {/* Options */}
                         <div className="grid gap-3 pt-2">
                             {question.options.map((option: any, idx: number) => {
-                                const isSelected = selectedOptionIdx === idx;
+                                const isSelected = selectedOptionId === option.id;
                                 return (
                                     <button
-                                        key={idx} aria-pressed={isSelected}
+                                        key={option.id} aria-pressed={isSelected}
                                         onClick={(e) => {
-                                            setSelectedOptionIdx(idx);
+                                            setSelectedOptionId(option.id);
                                         }}
                                         className={`w-full text-left border p-4 rounded-lg transition-all duration-200 group relative overflow-hidden ${
                                             isSelected 
@@ -529,11 +505,11 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResu
                             <Button 
                                 variant="fantasy" 
                                 fullWidth 
-                                disabled={selectedOptionIdx === null}
+                                disabled={selectedOptionId === null}
                                 onClick={() => {
-                                    if (selectedOptionIdx !== null) {
-                                        const option = question.options[selectedOptionIdx];
-                                        handleAnswer(option.archetype, question.nextStep);
+                                    if (selectedOptionId !== null) {
+                                        const option = question.options.find((item: { id: string }) => item.id === selectedOptionId);
+                                        if (option) handleAnswer(option.archetype, question.nextStep);
                                     }
                                 }}
                                 className="shadow-2xl"
