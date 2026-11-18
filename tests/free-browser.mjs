@@ -29,10 +29,10 @@ try {
  for(let i=0;i<5;i++){
   if(i===4)await click('Сжать артефакт');
   await page.locator('button[aria-pressed]').first().click();await click('Продолжить приключение');
-  if(i===0){await page.reload();await click('Продолжить бесплатный тест');await page.getByText('Ситуация 2 из 5',{exact:false}).waitFor();}
+  if(i===0){await page.reload();await click('Продолжить бесплатный тест');await page.getByText('Испытание 2 из 5',{exact:false}).waitFor();}
  }
  await page.getByRole('button',{name:/Сорвать|Развернуть|Открыть.*свиток|Снять.*печать/}).click();
- await click('Открыть Персональный Гайд');await page.locator('#guide-action-btn').waitFor();
+ await click('Подробнее о моём архетипе');await page.locator('#guide-action-btn').waitFor();
  await page.screenshot({path:'output/free-browser/02-guide-mobile.png',fullPage:true});
  await page.locator('#guide-action-btn').click();await page.getByRole('heading',{name:'Мой лагерь',exact:true}).waitFor();
  await page.reload();await page.getByRole('heading',{name:'Мой лагерь',exact:true}).waitFor();

@@ -49,7 +49,7 @@ try {
   }
   await page.getByRole('button',{name:/Сорвать|Развернуть|Открыть.*свиток|Снять.*печать/}).click();
   await shown('Открыт полный доступ');assert.equal(Object.values((await draft()).scores).reduce((a,b)=>a+b,0),5);
-  await click('Открыть Персональный Гайд');await page.screenshot({path:'output/playwright/02-guide.png',fullPage:true});
+  await click('Подробнее о моём архетипе');await page.screenshot({path:'output/playwright/02-guide.png',fullPage:true});
   await page.locator('#guide-action-btn').click();await shown('Путь Мастера');
   await page.setViewportSize({width:390,height:844});await page.screenshot({path:'output/playwright/map-mobile.png',fullPage:true});
   console.log('ORIENTA_VISUAL_MAP:'+(await fs.readFile('output/playwright/map-mobile.png')).toString('base64'));

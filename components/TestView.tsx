@@ -1,10 +1,11 @@
+import './test-atlas.css';
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from './Button';
 import { adventureArt, partyArt, pigeonArt } from '../services/adventureArt';
 import { TestResult, ARCHETYPES } from '../types';
 import { readTestDraft, createTestDraft, getTestWinners, TestDraft } from '../services/testProgress';
 import { TEST_CHOICES } from '../data/testChoices';
-import { ExternalLink, Image as ImageIcon } from 'lucide-react';
+import { ExternalLink, Image as ImageIcon, Shield, Leaf, Axe, Mountain, ArrowLeft, ArrowRight, BookOpen, Compass, Sparkles } from 'lucide-react';
 
 const STORAGE_KEY = 'hero_game_progress_v2';
 
@@ -331,34 +332,14 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResu
                 );
 
             case Step.ChooseCharacter:
-                return (
-                    <div className="text-center space-y-6">
-                        <h2 className="text-3xl font-serif text-white">Выбор происхождения</h2>
-                        <div className="rounded-xl overflow-hidden shadow-2xl border border-slate-600 max-w-lg mx-auto mb-6 h-64 md:h-80 w-full">
-                            <ImageWithSkeleton src={IMAGES.general.allCharacters} alt="Персонажи Ориенты" className="w-full h-full" />
-                        </div>
-                        <p className="text-slate-300">В Ориенте 4 великие расы. У каждой — свой стиль и подход к жизни. Кто ты?</p>
-                        <p className="text-xs text-slate-500 uppercase tracking-widest">(Это только визуал)</p>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl mx-auto pt-4">
-                            {[
-                                { label: `Человек ${EMOJI.SHIELD}`, val: 'Человек' },
-                                { label: `Эльф ${EMOJI.BOW}`, val: 'Эльф' },
-                                { label: `Орк ${EMOJI.AXE}`, val: 'Орк' },
-                                { label: `Тролль ${EMOJI.TUBE}`, val: 'Тролль' }
-                            ].map((r) => (
-                                <button
-                                    key={r.val}
-                                    onClick={(e) => {
-                                        handleRaceSelect(r.val);
-                                    }}
-                                    className="bg-slate-800/60 hover:bg-purple-900/40 border border-slate-600 hover:border-purple-400 p-6 rounded-xl transition-all duration-300 text-xl font-serif text-white shadow-lg"
-                                >
-                                    {r.label}
-                                </button>
-                            ))}
-                        </div>
+                return <section className="character-atlas">
+                    <header className="test-atlas-heading"><span>Ориента · Начало пути</span><h2>Выбери своего героя</h2><p>Четыре происхождения. Одна история, которую создаёшь ты.</p></header>
+                    <div className="character-party"><ImageWithSkeleton src={IMAGES.general.allCharacters} alt="Персонажи Ориенты" className="w-full h-full" /></div>
+                    <div className="character-options">
+                        {[{val:'Человек', icon:Shield, desc:'Рыцарь в дорожном плаще'}, {val:'Эльф',icon:Leaf,desc:'Путешественница лесных земель'}, {val:'Орк',icon:Axe,desc:'Герой с могучим топором'}, {val:'Тролль',icon:Mountain,desc:'Странник из горного края'}].map(({val,icon:Icon,desc}) => <button type="button" key={val} className="character-choice" aria-label={val} onClick={()=>handleRaceSelect(val)}><span className="character-seal"><Icon size={26} strokeWidth={1.7} aria-hidden="true" /></span><span><strong>{val}</strong><small>{desc}</small></span><ArrowRight size={18} aria-hidden="true" /></button>)}
                     </div>
-                );
+                    <p className="test-atlas-note">Это только внешний образ. Происхождение не влияет на ответы, баллы и архетип.</p>
+                </section>;
 
             case Step.ChooseName:
                 return (
@@ -514,60 +495,18 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResu
                 // @ts-ignore
                 const resultImage = IMAGES.races[heroData.race]?.[winner];
 
-                return (
-                    <div className="adventure-result text-center space-y-6 animate-fade-in pb-8">
-                        {resultImage && (
-                            <div className="rounded-xl overflow-hidden shadow-2xl border-2 border-amber-500/50 max-w-md mx-auto mb-6 transform hover:scale-[1.02] transition-transform duration-500 h-80 w-full">
-                                <ImageWithSkeleton src={resultImage} alt={result.title} className="w-full h-full" />
-                            </div>
-                        )}
-
-                        <p className="result-kicker">Твой архетип</p>
-                        <h2 className="text-4xl md:text-5xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-200 to-amber-500 mb-6">
-                            {result.title}
-                        </h2>
-
-                        <div className="bg-slate-900/50 p-6 rounded-xl text-left space-y-4 shadow-inner border border-slate-700/50">
-                            {result.description.map((desc: string, i: number) => (
-                                <p key={i} className="text-slate-300 leading-relaxed pl-4 border-l-2 border-purple-500/30">
-                                    {desc}
-                                </p>
-                            ))}
-                        </div>
-
-                        {getTestWinners(scores).length > 1 && <p className="text-slate-200">У тебя смешанный результат: {getTestWinners(scores).map(k => ARCHETYPES[k].title).join(', ')}. Основной персонаж выбран по порядку архетипов в игре.</p>}
-                        <div className="adventure-professions bg-indigo-950/40 p-6 rounded-xl border border-indigo-500/20">
-                            <h4 className="text-indigo-300 font-bold mb-2 uppercase text-sm">Профессии для исследования:</h4>
-                            <p className="text-white font-serif text-lg leading-relaxed">{result.professions}</p>
-                        </div>
-
-                        <div className="mt-8 pt-6 border-t border-slate-700/50">
-                            <p className="text-amber-400 font-bold text-xl mb-4 animate-pulse">
-                                    Открыт полный доступ к Гайду!
-                            </p>
-
-                            <Button
-                                onClick={handleComplete}
-                                variant="secondary"
-                                fullWidth
-                                className="text-xl py-4 shadow-[0_0_20px_rgba(245,158,11,0.3)]"
-                            >
-                                {EMOJI.SCROLL} Открыть Персональный Гайд
-                            </Button>
-                        </div>
-
-                        {onOpenCamp && <Button variant="fantasy" fullWidth onClick={onOpenCamp}>Вернуться в лагерь</Button>}
-                        <div className="pt-8 space-y-4">
-                            <button
-                                onClick={handleRestart}
-                                className="text-slate-500 hover:text-white underline text-sm transition-colors block mx-auto"
-                                title="Сбросить прогресс и начать сначала"
-                            >
-                                Пройти тест заново
-                            </button>
-                        </div>
+                return <section className="archetype-atlas">
+                    <div className="archetype-cover">
+                        <div className="archetype-cover-copy"><span className="test-atlas-kicker">Ориента · Твой игровой архетип</span><h2>{result.title}</h2><p className="archetype-hero-name">{heroData.name}</p><p>Пять испытаний позади. Вот какой способ действовать чаще проявлялся в твоих ответах.</p></div>
+                        {resultImage && <div className="archetype-portrait"><ImageWithSkeleton src={resultImage} alt={result.title} className="w-full h-full" /></div>}
                     </div>
-                );
+                    <div className="archetype-body">
+                        <section className="archetype-chapter"><h3><Sparkles aria-hidden="true" />Твоя сильная сторона</h3>{result.description.map((desc:string,i:number)=><p key={i}>{desc}</p>)}</section>
+                        <section className="archetype-chapter"><h3><Compass aria-hidden="true" />Как сложился результат</h3><div className="archetype-score-grid">{Object.keys(Archetype).map(key=><div className="archetype-score" key={key}><span>{ARCHETYPES[key].title}</span><strong>{scores[key] || 0} / 5</strong></div>)}</div><p className="test-atlas-note">Каждый подтверждённый ответ даёт один балл одному архетипу. Всего пять ответов.</p>{getTestWinners(scores).length > 1 && <p className="archetype-tie">Равные баллы: {getTestWinners(scores).map(k=>ARCHETYPES[k].title).join(' и ')}. Это смешанный результат, а не двойное начисление. На обложке показан {result.title.toLowerCase()} по неизменному порядку архетипов игры.</p>}</section>
+                        <section className="archetype-chapter"><h3><BookOpen aria-hidden="true" />Профессии для исследования</h3><p>{result.professions}</p><p className="test-atlas-note">Это игровые подсказки для знакомства с профессиями, не диагноз и не ограничение твоего выбора.</p></section>
+                        <section className="archetype-next"><h3>Твой путь продолжается</h3><p>Открыт полный доступ к Гайду! В нём — идеи для следующих шагов.</p><Button onClick={handleComplete} variant="fantasy" fullWidth><BookOpen size={20} aria-hidden="true" />Подробнее о моём архетипе</Button>{onOpenCamp && <Button variant="outline" fullWidth onClick={onOpenCamp}>Вернуться в лагерь</Button>}<button type="button" className="archetype-restart" onClick={handleRestart}>Пройти тест заново</button></section>
+                    </div>
+                </section>;
 
             default:
                 return null;
@@ -575,7 +514,7 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResu
     };
 
     return (
-        <div className="adventure-test w-full h-full flex flex-col relative overflow-hidden">
+        <div data-step={step} className="adventure-test test-atlas w-full h-full flex flex-col relative overflow-hidden">
              {/* Background Elements */}
             <div className="adventure-glows absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
                 <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-purple-900/20 blur-[120px]"></div>
@@ -593,7 +532,7 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResu
                         onClick={handleBack}
                         className="self-start mb-4 px-3 py-1 bg-slate-800/50 border border-slate-700 rounded text-slate-400 hover:text-white text-sm"
                     >
-                        {EMOJI.BACK} Назад
+                        <ArrowLeft size={16} aria-hidden="true" /> Назад
                     </button>
                 )}
                 {renderContent()}

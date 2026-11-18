@@ -1,46 +1,67 @@
 import React from 'react';
-import { Download, Printer, Sparkles, Trophy } from 'lucide-react';
+import { Download, Printer, Sparkles, Compass, Feather, Shield, Mountain, Gem, Map, Flag, BookOpen } from 'lucide-react';
 import type { UserState } from '../types';
 import { Button } from './Button';
 import { buildProfileText, downloadText, profileSections } from '../services/profile';
+import { adventureArt } from '../services/adventureArt';
+import './profile-design.css';
+
+const sectionIcons = [Compass, Feather, Shield, Mountain, Gem, Sparkles, Map, Flag];
 export const ProfileView = ({ state, onBack, onConsultation, onAi, aiConfigured, generating, error }: {
   state: UserState; onBack: () => void; onConsultation: () => void; onAi: () => void;
   aiConfigured: boolean; generating: boolean; error: string | null;
-}) => (
-  <article className="max-w-3xl mx-auto p-6 pb-16 profile-page">
-    <div className="print-hidden mb-8"><Button variant="ghost" onClick={onBack}>← Хаб</Button></div>
-    <header className="mb-10">
-      <Trophy className="w-12 h-12 text-amber-400 mb-5" aria-hidden="true" />
-      <h1 className="text-3xl sm:text-4xl font-serif font-bold text-amber-200 mb-3">Профкарта Героя</h1>
-      <p className="text-lg text-slate-200">{state.testResult?.heroName || 'Искатель'} · {state.testResult?.title}</p>
-      <p className="text-slate-300 mt-4 leading-relaxed">Ты собрал ответы всех пяти этапов: интересы, ценности, навыки, образ будущей работы и мотивацию. Профкарта основана на твоих ответах и помогает выбрать, какую профессию попробовать.</p>
-    </header>
-    {profileSections(state).map(section => (
-      <section key={section.title} className="py-6 border-t border-slate-700 break-inside-avoid">
-        <h2 className="text-xl font-serif font-bold text-white mb-4">{section.title}</h2>
-        <ul className="space-y-3 text-slate-200 leading-relaxed list-disc pl-5">
-          {section.lines.map((line, i) => <li key={i} className="break-words">{line}</li>)}
-        </ul>
-      </section>
-    ))}
-    <p className="text-sm text-slate-300 py-6 border-t border-slate-700">Игровой тест и самоанализ помогают исследовать варианты. Они не заменяют психологическую диагностику и не определяют профессиональную пригодность.</p>
-    {state.aiSummary && (
-      <section className="py-6 border-t border-slate-700">
-        <h2 className="text-xl font-serif font-bold text-white mb-4">{state.summarySource === 'ai' ? 'Дополнительный ИИ-разбор' : 'Ранее сохранённый вывод'}</h2>
-        <p className="whitespace-pre-wrap text-slate-200 leading-relaxed">{state.aiSummary}</p>
-      </section>
-    )}
-    <div className="print-hidden pt-6 space-y-4">
-      <div className="flex flex-col sm:flex-row gap-3">
-        <Button variant="fantasy" onClick={() => downloadText('orienta-profmap.txt', buildProfileText(state))}><Download className="w-5 h-5" />Скачать профкарту</Button>
-        <Button variant="secondary" onClick={() => window.print()}><Printer className="w-5 h-5" />Печать / PDF</Button>
+}) => {
+  const sections = profileSections(state);
+  const archetype = state.testResult?.scoreType || 'Creator';
+  const art = ['Commander', 'Creator', 'Researcher', 'Communicator'].includes(archetype) ? adventureArt('Человек', archetype) : undefined;
+  return <article className="profile-page hero-atlas" data-archetype={archetype}>
+    <nav className="print-hidden atlas-nav" aria-label="Навигация профкарты"><Button variant="ghost" onClick={onBack}>← Хаб</Button><span>Ориента / Твой путь</span></nav>
+    <div className="atlas-sheet">
+      <header className="atlas-cover">
+        <div className="atlas-cover-copy">
+          <BookOpen className="atlas-emblem" aria-hidden="true" />
+          <h1>Профкарта <br />Героя</h1>
+          <p className="atlas-name">{state.testResult?.heroName || 'Искатель'}</p>
+          {state.testResult?.title && <p className="atlas-archetype">{state.testResult.title}</p>}
+          <p className="atlas-intro">Ты собрал ответы всех пяти этапов: интересы, ценности, навыки, образ будущей работы и мотивацию. Профкарта основана на твоих ответах и помогает выбрать, какую профессию попробовать.</p>
+        </div>
+        {art && <figure className="atlas-portrait"><img src={art} alt={`Иллюстрация игрового архетипа: ${state.testResult?.title || 'Герой'}`} /><figcaption>Твой игровой архетип</figcaption></figure>}
+      </header>
+      <div className="atlas-chapters">
+        {sections.map((section, index) => {
+          const mixed = section.title === 'Смешанный игровой результат';
+          const iconIndex = index - (sections[0]?.title === 'Смешанный игровой результат' ? 1 : 0);
+          const Icon = mixed ? Compass : sectionIcons[iconIndex] || BookOpen;
+          const isScores = section.title.startsWith('Профессиональные интересы:') || section.title.startsWith('Мотивация:');
+          const isNext = section.title === 'Следующий шаг';
+          const isDream = section.title === 'Башня мечты: желаемая работа';
+          return <section key={section.title} className={`atlas-chapter${isScores ? ' atlas-scores' : ''}${isNext ? ' atlas-next' : ''}${isDream ? ' atlas-dream' : ''}`}>
+            <h2><Icon aria-hidden="true" /><span>{section.title}</span></h2>
+            <ul>
+              {section.lines.map((line, i) => {
+                const score = isScores && line.match(/^(.+): (\d+)(\/4| баллов)$/);
+                return <li key={i} className={score ? 'atlas-score-line' : ''}>
+                  {score ? <><span>{score[1]}</span><span className="atlas-score-value">{score[2]}{score[3]}</span></> : line}
+                </li>;
+              })}
+            </ul>
+          </section>;
+        })}
       </div>
-      {aiConfigured && <div className="py-6 border-t border-slate-700">
-        <p className="text-sm text-slate-300 mb-4">По кнопке ответы из профкарты отправятся в ProxyAPI и OpenAI для разбора. Убери из свободных ответов имена, контакты и название школы. Запрос обрабатывается за пределами России.</p>
+      <p className="atlas-note">Игровой тест и самоанализ помогают исследовать варианты. Они не заменяют психологическую диагностику и не определяют профессиональную пригодность.</p>
+      {state.aiSummary && <section className="atlas-chapter atlas-ai">
+        <h2><Sparkles aria-hidden="true" /><span>{state.summarySource === 'ai' ? 'Дополнительный ИИ-разбор' : 'Ранее сохранённый вывод'}</span></h2>
+        <p className="atlas-ai-text">{state.aiSummary}</p>
+      </section>}
+    </div>
+    <div className="print-hidden atlas-actions">
+      <div className="atlas-export"><Button variant="fantasy" onClick={() => downloadText('orienta-profmap.txt', buildProfileText(state))}><Download className="w-5 h-5" />Скачать профкарту</Button><Button variant="secondary" onClick={() => window.print()}><Printer className="w-5 h-5" />Печать / PDF</Button></div>
+      {aiConfigured && <div className="atlas-ai-consent">
+        <p>По кнопке ответы из профкарты отправятся в ProxyAPI и OpenAI для разбора. Убери из свободных ответов имена, контакты и название школы. Запрос обрабатывается за пределами России.</p>
         <Button disabled={generating || state.summarySource === 'ai' && !!state.aiSummary} onClick={onAi}><Sparkles className="w-5 h-5" />{generating ? 'Готовим разбор…' : state.summarySource === 'ai' && state.aiSummary ? 'Разбор сохранён' : 'Получить ИИ-разбор'}</Button>
-        {error && <p role="alert" className="text-red-300 mt-4">{error} Профкарта сохранена. Можно повторить запрос.</p>}
+        {error && <p role="alert" className="atlas-error">{error} Профкарта сохранена. Можно повторить запрос.</p>}
       </div>}
       <Button variant="outline" onClick={onConsultation}>Обсудить с наставником</Button>
     </div>
-  </article>
-);
+  </article>;
+};

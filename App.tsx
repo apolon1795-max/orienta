@@ -1,5 +1,6 @@
+import './components/journey-theme.css';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { BrainCircuit, GraduationCap, MessageCircle, Users, ChevronRight, Sparkles, ExternalLink, Bot, CheckCircle, AlertTriangle, Download, Upload } from 'lucide-react';
+import { BrainCircuit, GraduationCap, MessageCircle, Users, ChevronRight, Sparkles, ExternalLink, Bot, CheckCircle, AlertTriangle, Download, Upload, Compass, Map, BookOpen } from 'lucide-react';
 import { AppView, UserState, CourseState, TestResult, INITIAL_COURSE_MODULES } from './types';
 import { Button } from './components/Button';
 import { TestView } from './components/TestView';
@@ -144,29 +145,14 @@ const App: React.FC = () => {
   };
 
   const renderLanding = () => (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center relative overflow-hidden">
+    <section className="journey-welcome">
       <StorageIndicator available={storageAvailable} />
-      <div className="absolute top-0 left-0 w-96 h-96 bg-purple-600/20 rounded-full blur-[100px] -translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
-      <div className="absolute bottom-0 right-0 w-96 h-96 bg-indigo-600/20 rounded-full blur-[100px] translate-x-1/2 translate-y-1/2 pointer-events-none"></div>
-
-      <div className="max-w-2xl z-10 space-y-8">
-        
-        <h1 className="text-4xl sm:text-5xl md:text-7xl font-serif font-bold bg-clip-text text-transparent bg-gradient-to-b from-amber-100 to-amber-500 tracking-tight leading-tight">
-          Раскрой Свой <br/> Истинный Потенциал
-        </h1>
-        
-        <p className="text-xl text-slate-400 max-w-lg mx-auto leading-relaxed">
-          {userState.firstName ? `Привет, ${userState.firstName}! ` : ''} 
-          Пройди игровой тест, исследуй свои интересы и собери личную профкарту.
-        </p>
-
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-          <Button onClick={handleStartJourney} variant="fantasy" className="text-lg px-8 py-4">
-            Начать Путь <ChevronRight className="w-5 h-5 ml-1" />
-          </Button>
-        </div>
+      <header className="journey-brand"><Compass size={24} strokeWidth={1.7} aria-hidden="true" /><span>Ориента</span><small>Твоё путешествие к себе</small></header>
+      <div className="journey-welcome-grid">
+        <div className="journey-welcome-copy"><span className="journey-eyebrow">Твоя история начинается здесь</span><h1>Раскрой свой<br/>истинный потенциал</h1><p>{userState.firstName ? `Привет, ${userState.firstName}! ` : ''}Пройди игровой тест, исследуй свои интересы и собери личную профкарту.</p><Button onClick={handleStartJourney} variant="fantasy">Начать Путь <ChevronRight size={20} aria-hidden="true" /></Button><div className="journey-itinerary"><span><Sparkles size={18} aria-hidden="true" />Узнай свой архетип</span><span><Map size={18} aria-hidden="true" />Пройди пять этапов</span><span><BookOpen size={18} aria-hidden="true" />Собери профкарту</span></div><small className="journey-welcome-note">Не нужно знать все ответы заранее. Начни с любопытства.</small></div>
+        <figure className="journey-welcome-art"><img src="/design/course-map-v1.png" alt="Карта Ориенты: от лагеря через лес, зеркальные воды и башню к вершине" /><figcaption>Каждый шаг помогает лучше понять себя.</figcaption></figure>
       </div>
-    </div>
+    </section>
   );
 
   const renderOnboarding = () => (
@@ -335,7 +321,7 @@ const App: React.FC = () => {
 
   if (CLOUD_API && ['signed-out', 'checking', 'error'].includes(syncState.status)) return <ProgressAccess client={sync} state={syncState} onExport={handleExport} hasLocalAnswers={userState.hasOnboarded || testDraft.current.step !== 'start'} />;
   return (
-    <div className="min-h-screen text-slate-200 font-sans selection:bg-indigo-500/30">
+    <div data-view={view} className={`min-h-screen text-slate-200 font-sans selection:bg-indigo-500/30 ${[AppView.LANDING, AppView.ONBOARDING, AppView.DASHBOARD].includes(view) ? "journey-lobby" : ""}`}>
       <ProgressAccount client={sync} state={syncState} onExport={handleExport} />
       {CLOUD_API && syncState.learnerId && freeCandidate && !userState.testResult && testDraft.current.step === 'start' && !userState.course.completedStages.length && <section aria-label="Перенос вводной в профиль" className="max-w-5xl mx-auto m-4 p-6 border border-amber-400/40 rounded-xl bg-slate-900 space-y-4 print-hidden">
         <h2 className="text-xl font-serif">Сохранить архетип в этом профиле?</h2>

@@ -71,8 +71,26 @@ const COMMON_STYLES = `
         border-bottom: 1px solid rgba(251, 191, 36, 0.2);
         padding-bottom: 8px;
       }
+
+      .income-examples { margin:48px 0; padding:24px; border:1px solid #a98c58; border-radius:12px; background:#f3ead6; color:#4e412d; }
+      .income-examples h2 { font:700 26px/1.25 Georgia,serif; margin:0 0 18px; color:#4c371e; }
+      .income-examples h3 { font:700 20px/1.3 Georgia,serif; margin:0 0 12px; color:#4c371e; }
+      .income-examples p { font:14px/1.7 Arial,sans-serif; margin:12px 0; color:#5c4e39; }
+      .income-examples a { color:#365e45; text-decoration:underline; text-underline-offset:3px; }
+      .income-levels { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin:20px 0; }
+      .income-levels>div { padding:14px; border:1px solid #c4af84; border-radius:8px; }
+      .income-levels span { display:block; font:12px/1.5 Arial,sans-serif; color:#736045; }
+      .income-levels strong { display:block; font:700 23px/1.4 Georgia,serif; margin-top:6px; color:#4b6140; }
+      @media(max-width:700px) { .income-examples { padding:18px; } .income-levels { grid-template-columns:1fr; } .income-examples h2 { font-size:23px; } }
   </style>
 `;
+
+
+// Dated professional examples, not income promises based on a game archetype.
+const incomeExample = (kind: 'ux' | 'pm' | 'other') => {
+  const sample = kind === 'ux' ? {role:'UX/UI-дизайнер', values:[73,127,217], source:'https://habr.com/ru/companies/habr_career/articles/1087708/'} : kind === 'pm' ? {role:'Менеджер IT-проектов', values:[100,169,286], source:'https://habr.com/ru/companies/habr_career/articles/1063984/'} : null;
+  return `<section class="income-examples" aria-label="Примеры доходов в профессиях"><h2>Примеры доходов в профессиях</h2>${sample ? `<h3>${sample.role}</h3><p>Медианы по уровням, тыс. ₽ в месяц · данные Хабр Карьеры, 2026</p><div class="income-levels">${sample.values.map((value,i)=>`<div><span>${['Junior · начинающий','Middle · самостоятельный','Senior · опытный'][i]}</span><strong>${value} тыс. ₽</strong></div>`).join('')}</div><p>Медиана — середина выборки: половина указанных доходов ниже, половина выше. Это самоотчёты специалистов в России/IT, не обещание зарплаты. На доход влияют регион, опыт, компания и задачи.</p><p><a href="${sample.source}" target="_blank" rel="noopener noreferrer">Источник: Хабр Карьера, обзор 2026 года</a> · Проверено 18.11.2026.</p><p>Пример относится только к указанной профессии. Он не описывает доходы всех людей с твоим игровым архетипом.</p>` : '<p>Для направлений этого гайда нет проверенной сопоставимой выборки. Поэтому здесь нет числовых обещаний: доходы разных профессий нельзя объединять в одну «зарплату архетипа».</p>'}<p>Для остальных направлений выбери конкретную профессию и свой регион, сравни свежие вакансии с одинаковым уровнем опыта. Проверь требования, формат занятости и условия указанной оплаты.</p></section>`;
+};
 
 // HTML контент для каждого архетипа (вырезан из предоставленных файлов)
 const CONTENT_MAP: Record<string, string> = {
@@ -178,25 +196,7 @@ const CONTENT_MAP: Record<string, string> = {
                 <p class="text-slate-400 text-sm">Сидеть в подвале с проводами? Ты завоешь.</p>
             </div>
         </div>
-        <h2 class="text-2xl md:text-3xl font-serif text-white mb-4 flex items-center border-b border-slate-700 pb-4">
-            <span class="text-3xl mr-4">&#128176;</span> Часть 3. Карта зарплат
-        </h2>
-        <div class="overflow-x-auto rounded-lg border border-slate-700 mb-12 shadow-lg">
-            <table class="w-full text-left bg-slate-900/50">
-                <thead>
-                    <tr class="bg-slate-800">
-                        <th>Уровень</th>
-                        <th>Доход (мес.)</th>
-                        <th>Пример роли</th>
-                    </tr>
-                </thead>
-                <tbody class="text-slate-300">
-                    <tr><td>Новичок</td><td class="font-bold text-white">60–90 т.р.</td><td>Ассистент, Junior Sales</td></tr>
-                    <tr><td>Опытный</td><td class="font-bold text-white">100–200 т.р.</td><td>HR-партнер, Продюсер</td></tr>
-                    <tr><td>Мастер</td><td class="font-bold text-white">250–400 т.р.+</td><td>Руководитель, Топ-тренер</td></tr>
-                </tbody>
-            </table>
-        </div>
+        ${incomeExample('other')}
         <div class="bg-gradient-to-r from-amber-900/40 to-orange-900/40 border border-amber-500/30 p-6 rounded-2xl mb-12 text-center">
             <h3 class="text-amber-400 font-bold text-xl mb-2 flex justify-center items-center">
                 &#9889; Челлендж на 24 часа: «Зеркало Смысла»
@@ -306,25 +306,7 @@ const CONTENT_MAP: Record<string, string> = {
                 <p class="text-slate-400 text-sm">Работа по скрипту. Повторять одно и то же 100 раз в день — пытка.</p>
             </div>
         </div>
-        <h2 class="text-2xl md:text-3xl font-serif text-white mb-4 flex items-center border-b border-slate-700 pb-4">
-            <span class="text-3xl mr-4">&#128176;</span> Часть 3. Карта зарплат
-        </h2>
-        <div class="overflow-x-auto rounded-lg border border-slate-700 mb-12 shadow-lg">
-            <table class="w-full text-left bg-slate-900/50">
-                <thead>
-                    <tr class="bg-slate-800">
-                        <th>Уровень</th>
-                        <th>Доход (мес.)</th>
-                        <th>Пример роли</th>
-                    </tr>
-                </thead>
-                <tbody class="text-slate-300">
-                    <tr><td>Новичок</td><td class="font-bold text-white">50–80 т.р.</td><td>Junior Designer</td></tr>
-                    <tr><td>Опытный</td><td class="font-bold text-white">120–250 т.р.</td><td>Art Director</td></tr>
-                    <tr><td>Мастер</td><td class="font-bold text-white">300–600 т.р.+</td><td>Creative Director</td></tr>
-                </tbody>
-            </table>
-        </div>
+        ${incomeExample('ux')}
         <div class="bg-gradient-to-r from-amber-900/40 to-orange-900/40 border border-amber-500/30 p-6 rounded-2xl mb-12 text-center">
             <h3 class="text-amber-400 font-bold text-xl mb-2 flex justify-center items-center">
                 &#9889; Челлендж на 24 часа: «Кладбище Идей»
@@ -419,25 +401,7 @@ const CONTENT_MAP: Record<string, string> = {
                 <p class="text-slate-400 text-sm">Ты создан принимать решения, а не носить кофе.</p>
             </div>
         </div>
-        <h2 class="text-2xl md:text-3xl font-serif text-white mb-4 flex items-center border-b border-slate-700 pb-4">
-            <span class="text-3xl mr-4">&#128176;</span> Часть 3. Карта зарплат
-        </h2>
-        <div class="overflow-x-auto rounded-lg border border-slate-700 mb-12 shadow-lg">
-            <table class="w-full text-left bg-slate-900/50">
-                <thead>
-                    <tr class="bg-slate-800">
-                        <th>Уровень</th>
-                        <th>Доход (мес.)</th>
-                        <th>Пример роли</th>
-                    </tr>
-                </thead>
-                <tbody class="text-slate-300">
-                    <tr><td>Новичок</td><td class="font-bold text-white">70–100 т.р.</td><td>Junior PM</td></tr>
-                    <tr><td>Опытный</td><td class="font-bold text-white">150–300 т.р.</td><td>Senior PM, Руководитель</td></tr>
-                    <tr><td>Мастер</td><td class="font-bold text-white">400–800 т.р.+</td><td>ТОП-менеджер</td></tr>
-                </tbody>
-            </table>
-        </div>
+        ${incomeExample('pm')}
         <div class="text-center mt-16 mb-8">
             <div data-guide-action-wrapper="true" class="inline-block group relative w-full md:w-auto cursor-pointer">
                 <div class="absolute inset-0 bg-amber-500 blur-lg opacity-40 group-hover:opacity-60 transition-opacity rounded-full"></div>
@@ -523,25 +487,7 @@ const CONTENT_MAP: Record<string, string> = {
                 <p class="text-slate-400 text-sm">Навязываться людям и работать на голых эмоциях? Для твоей логики это ад.</p>
             </div>
         </div>
-        <h2 class="text-2xl md:text-3xl font-serif text-white mb-4 flex items-center border-b border-slate-700 pb-4">
-            <span class="text-3xl mr-4">&#128176;</span> Часть 3. Карта зарплат
-        </h2>
-        <div class="overflow-x-auto rounded-lg border border-slate-700 mb-12 shadow-lg">
-            <table class="w-full text-left bg-slate-900/50">
-                <thead>
-                    <tr class="bg-slate-800">
-                        <th>Уровень</th>
-                        <th>Доход (мес.)</th>
-                        <th>Пример роли</th>
-                    </tr>
-                </thead>
-                <tbody class="text-slate-300">
-                    <tr><td>Новичок</td><td class="font-bold text-white">80–120 т.р.</td><td>Junior Dev</td></tr>
-                    <tr><td>Опытный</td><td class="font-bold text-white">180–350 т.р.</td><td>Senior Dev, Финансист</td></tr>
-                    <tr><td>Мастер</td><td class="font-bold text-white">400–900 т.р.+</td><td>CTO, Архитектор</td></tr>
-                </tbody>
-            </table>
-        </div>
+        ${incomeExample('other')}
         <div class="text-center mt-16 mb-8">
             <div data-guide-action-wrapper="true" class="inline-block group relative w-full md:w-auto cursor-pointer">
                 <div class="absolute inset-0 bg-amber-500 blur-lg opacity-40 group-hover:opacity-60 transition-opacity rounded-full"></div>

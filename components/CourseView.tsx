@@ -1,9 +1,11 @@
+import './journey-theme.css';
+import './course-map.css';
 import React, { useState, useEffect } from 'react';
 import { lessonConfigured, currentLessonProgress } from './LessonMedia';
 import { playbackTime } from '../services/lessonProgress';
 import { 
   ArrowLeft, Lock, CheckCircle, Play, Star, 
-  Shield, Brain, Zap, Trophy, Heart, Briefcase 
+  Shield, Brain, Zap, Trophy, Heart, Briefcase, Compass, Fingerprint, Swords, Castle, Gem, Map, Laptop, Stethoscope, Palette, GraduationCap, Building2, FlaskConical, Plane, Lightbulb
 } from 'lucide-react';
 import { Button } from './Button';
 
@@ -11,6 +13,17 @@ import { DreamStage, AssessmentStage } from './FinalStages';
 import type { CourseState } from '../types';
 import { SPHERES_DATA, QUIZ_DATA, VALUES_LIST, SKILLS_QUESTIONS, CRISIS_QUESTIONS } from '../data/course';
 import { canFinishStage, validAge, validGift } from '../services/progress';
+
+const SPHERE_ICONS: Record<string, React.ComponentType<any>> = {it:Laptop,health:Stethoscope,art:Palette,edu:GraduationCap,build:Building2,science:FlaskConical,travel:Plane,security:Shield,energy:Zap,biz:Briefcase};
+const SphereIcon = ({id}:{id:string}) => {const Icon=SPHERE_ICONS[id] || Compass;return <Icon size={44} strokeWidth={1.6} aria-hidden="true" />;};
+const STAGE_CHAPTERS = [
+  {title:'Исследование земель',subtitle:'Интересы и профессии',icon:Compass,position:'85%'},
+  {title:'Зеркало души',subtitle:'Сильные стороны и ценности',icon:Fingerprint,position:'70%'},
+  {title:'Турнир мастеров',subtitle:'Твой подход к задачам',icon:Swords,position:'52%'},
+  {title:'Башня мечты',subtitle:'Образ будущей работы',icon:Castle,position:'38%'},
+  {title:'Хрустальный зал',subtitle:'Интересы и мотивация',icon:Gem,position:'22%'},
+  {title:'Твоя профкарта',subtitle:'Все открытия в одной истории',icon:Map,position:'8%'}
+];
 
 interface CourseViewProps {
   course: CourseState;
@@ -110,82 +123,54 @@ export const CourseView: React.FC<CourseViewProps> = ({
   // --- RENDERERS ---
 
   const renderHeader = () => (
-    <div className="bg-slate-900 border-b border-slate-800 p-4 sticky top-0 z-20 flex items-center justify-between shadow-xl">
-        <div className="flex items-center gap-3">
-            <button aria-label="Вернуться в хаб" onClick={onBack} className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors">
-                <ArrowLeft className="w-5 h-5" />
-            </button>
-            <div>
-                <h2 className="font-serif font-bold text-white text-lg leading-tight">Путь Мастера</h2>
-                <div className="text-sm text-slate-300">Пять этапов к Профкарте Героя</div>
-            </div>
-        </div>
-        <div className="flex flex-col items-end w-32">
-            <div className="flex justify-between w-full text-xs font-bold text-indigo-400 mb-1">
-                <span>Пройдено</span>
-                <span>{completedStages.length}/5</span>
-            </div>
-            <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                <div 
-                    className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-500" 
-                    style={{ width: `${(completedStages.length / 5) * 100}%` }}
-                ></div>
-            </div>
-        </div>
-    </div>
+    <header className="atlas-header">
+      <button type="button" aria-label="Вернуться в хаб" onClick={onBack} className="atlas-back"><ArrowLeft size={19} /> В лагерь</button>
+      <div className="atlas-heading"><h2>Путь Мастера</h2><p>Пять этапов к Профкарте Героя</p></div>
+      <div className="atlas-progress" aria-label={`Пройдено ${completedStages.length} из 5 этапов`}>
+        <span>Пройдено <strong>{completedStages.length}/5</strong></span>
+        <div className="atlas-progress-track"><div style={{width:`${completedStages.length * 20}%`}} /></div>
+      </div>
+    </header>
   );
 
   const renderMap = () => {
     const stages = [
-        { id: 0, title: "Этап 1: Интересы", icon: <Heart className="w-6 h-6" />, desc: "Исследование земель" },
-        { id: 1, title: "Этап 2: Личность", icon: <Brain className="w-6 h-6" />, desc: "Зеркало души" },
-        { id: 2, title: "Этап 3: Навыки", icon: <Shield className="w-6 h-6" />, desc: "Турнир мастеров" },
-        { id: 3, title: "Этап 4: Башня мечты", icon: <Briefcase className="w-6 h-6" />, desc: "Образ будущей работы" },
-        { id: 4, title: "Этап 5: Хрустальный зал", icon: <Brain className="w-6 h-6" />, desc: "Интересы и мотивация" },
-        { id: 5, title: "Финал: Профкарта Героя", icon: <Trophy className="w-6 h-6" />, desc: "Судьба героя" },
+      { title:'Этап 1: Интересы', name:'Интересы', desc:'Исследование земель', icon:Compass, x:30, y:82 },
+      { title:'Этап 2: Личность', name:'Личность', desc:'Зеркало души', icon:Fingerprint, x:76, y:72 },
+      { title:'Этап 3: Навыки', name:'Навыки', desc:'Турнир мастеров', icon:Swords, x:33, y:55 },
+      { title:'Этап 4: Башня мечты', name:'Башня мечты', desc:'Образ будущей работы', icon:Castle, x:77, y:40 },
+      { title:'Этап 5: Хрустальный зал', name:'Хрустальный зал', desc:'Интересы и мотивация', icon:Gem, x:31, y:25 },
+      { title:'Финал: Профкарта Героя', name:'Профкарта Героя', desc:'Твой маршрут после курса', icon:Map, x:62, y:13 },
     ];
-
-    return (
-        <div className="p-6 max-w-lg mx-auto space-y-8 relative">
-            {/* Connecting Line */}
-            <div className="absolute left-10 top-10 bottom-20 w-1 bg-slate-800 z-0"></div>
-
-            {stages.map((stage, idx) => {
-                const isLocked = idx > 0 && !completedStages.includes(idx - 1);
-                const isCompleted = completedStages.includes(idx);
-                const lesson = currentLessonProgress(idx + 1, course.lessons[idx + 1]);
-
-
-                return (
-                    <button
-                        type="button" disabled={isLocked} aria-label={stage.title + '. ' + (isLocked ? 'Сначала заверши предыдущий этап' : isCompleted ? 'Пройден, открыть итоги' : 'Открыть')}
-                        key={idx} 
-                        onClick={() => openStage(idx)}
-                        className={`relative z-10 w-full text-left flex items-center gap-4 p-4 rounded-xl border-2 transition-all duration-300 cursor-pointer ${
-                            isLocked 
-                                ? 'bg-slate-900 border-slate-800 opacity-60 grayscale' 
-                                : isCompleted
-                                    ? 'bg-slate-900 border-green-500/50 shadow-[0_0_15px_rgba(34,197,94,0.2)]'
-                                    : 'bg-slate-800 border-amber-500 shadow-[0_0_20px_rgba(245,158,11,0.3)] scale-105'
-                        }`}
-                    >
-                        <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 shrink-0 ${
-                            isCompleted ? 'bg-green-900/30 border-green-500 text-green-400' :
-                            isLocked ? 'bg-slate-800 border-slate-700 text-slate-500' :
-                            'bg-amber-900/30 border-amber-500 text-amber-400 animate-pulse'
-                        }`}>
-                            {isCompleted ? <CheckCircle className="w-6 h-6" /> : isLocked ? <Lock className="w-5 h-5" /> : stage.icon}
-                        </div>
-                        <div>
-                            <h3 className={`font-bold ${isLocked ? 'text-slate-500' : 'text-white'}`}>{stage.title}</h3>
-                            <p className="text-sm text-slate-400">{stage.desc}</p>
-                            {idx < 5 && lessonConfigured(idx + 1) && <p className="text-xs text-slate-300 mt-1">{lesson?.completed ? 'Видео завершено' : lesson?.position ? 'Видео: ' + playbackTime(lesson.position) : 'Видеоурок доступен'}</p>}
-                        </div>
-                    </button>
-                );
-            })}
-        </div>
-    );
+    const current = Math.min(completedStages.length, 5);
+    return <section className="atlas-shell" aria-label="Карта приключения">
+      <div className="atlas-map-intro"><p>Каждый шаг открывает новую часть твоей истории.</p><span>Выбери открытую точку на карте.</span></div>
+      <div className="atlas-map">
+        <div className="atlas-landscape" aria-hidden="true" />
+        <svg className="atlas-route" viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-hidden="true">
+          <path className="atlas-route-shadow" d="M300 820 C400 820 550 790 760 720 S400 650 330 550 S650 460 770 400 S420 330 310 250 S400 160 620 130" />
+          <path className="atlas-route-line" d="M300 820 C400 820 550 790 760 720 S400 650 330 550 S650 460 770 400 S420 330 310 250 S400 160 620 130" />
+        </svg>
+        {stages.map((stage,idx) => {
+          const isLocked = idx > 0 && !completedStages.includes(idx-1);
+          const isCompleted = completedStages.includes(idx);
+          const Icon = stage.icon;
+          const lesson = currentLessonProgress(idx+1, course.lessons[idx+1]);
+          return <button type="button" key={idx} disabled={isLocked} onClick={()=>openStage(idx)}
+            aria-label={stage.title+'. '+(isLocked?'Сначала заверши предыдущий этап':isCompleted?'Пройден, открыть итоги':'Открыть')}
+            aria-current={idx===current?'step':undefined}
+            className={`atlas-stop ${isLocked?'is-locked':isCompleted?'is-complete':'is-current'}`}
+            style={{left:stage.x+'%',top:stage.y+'%'}}>
+            <span className="atlas-pin"><Icon size={25} strokeWidth={1.8} aria-hidden="true" /><span className="atlas-pin-status">{isLocked?<Lock size={12}/>:isCompleted?<CheckCircle size={14}/>:idx+1}</span></span>
+            <span className="atlas-stop-label"><small>{idx===5?'Финал':`Этап ${idx+1}`}</small><strong>{stage.name}</strong><span className="atlas-stop-description">{stage.desc}</span>
+              <span className="atlas-state">{isLocked?'Пока закрыто':isCompleted?'Пройден':'Открыть →'}</span>
+              {idx<5 && lessonConfigured(idx+1) && <span className="atlas-lesson">{lesson?.completed?'Видео завершено':lesson?.position?'Видео: '+playbackTime(lesson.position):'Видеоурок доступен'}</span>}
+            </span>
+          </button>;
+        })}
+      </div>
+      <footer className="atlas-footer"><span><span className="atlas-legend-open"/> Открытый этап</span><span><CheckCircle size={16}/> Пройден</span><span><Lock size={15}/> Откроется по пути</span></footer>
+    </section>;
   };
 
   // --- STAGE 1 RENDER ---
@@ -194,11 +179,11 @@ export const CourseView: React.FC<CourseViewProps> = ({
         return (
             <div className="flex flex-col items-center justify-center h-full text-center p-6 animate-fade-in">
                 <p className="max-w-sm text-slate-300 mb-6">Выбери от одной до трёх сфер, по одной или две профессии в каждой и ответь на три загадки. Здесь можно пробовать и ошибаться.</p>
-                <h2 className="text-3xl font-serif font-bold text-white mb-4">Привет, Герой! 👋</h2>
+                <h2 className="text-3xl font-serif font-bold text-white mb-4">Привет, Герой!</h2>
                 <p className="text-slate-300 mb-8 max-w-sm">
                    Свайпай 10 сфер! Лайкай то, что интересно. Твой выбор определит путь.
                 </p>
-                <Button variant="fantasy" onClick={() => setS1Phase('tinder')}>Погнали! 🚀</Button>
+                <Button variant="fantasy" onClick={() => setS1Phase('tinder')}>Погнали!</Button>
             </div>
         );
     }
@@ -209,7 +194,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
             <div className="flex flex-col items-center justify-center h-full p-6 animate-fade-in">
                 <div className="text-slate-400 mb-4 text-sm">Карта {s1CardIndex + 1} из {SPHERES_DATA.length}</div>
                 <div className="w-full max-w-xs bg-white text-slate-900 rounded-2xl p-8 text-center shadow-2xl border-4 border-indigo-200 h-96 flex flex-col items-center justify-center relative">
-                    <div className="text-6xl mb-4">{card.icon}</div>
+                    <div className="sphere-seal mb-4"><SphereIcon id={card.id}/></div>
                     <h3 className="text-2xl font-bold mb-2">{card.title}</h3>
                     <p className="text-slate-600">{card.desc}</p>
                 </div>
@@ -246,7 +231,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
                         return (
                             <div key={id} className="bg-slate-800 p-4 rounded-xl flex justify-between items-center border border-slate-700">
                                 <span className="text-white font-medium flex items-center gap-2">
-                                    <span className="text-2xl">{item?.icon}</span> {item?.title}
+                                    <span className="sphere-mini">{item && <SphereIcon id={item.id}/>}</span> {item?.title}
                                 </span>
                                 <button 
                                     onClick={() => setS1SelectedSpheres(prev => prev.filter(s => s !== id))}
@@ -292,7 +277,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
         return (
             <div className="flex flex-col items-center justify-center h-full text-center p-6 animate-fade-in">
                 <Zap className="w-20 h-20 text-amber-400 mb-6 animate-pulse" />
-                <h2 className="text-3xl font-serif font-bold text-white mb-4">Проверка Знаний 🤔</h2>
+                <h2 className="text-3xl font-serif font-bold text-white mb-4">Проверка знаний</h2>
                 <p className="text-slate-300 mb-8 max-w-sm">
                     А ты знаешь, что они делают? Проверим!
                 </p>
@@ -359,7 +344,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
                 <div className="w-24 h-24 bg-green-500/20 rounded-full flex items-center justify-center mb-6">
                     <CheckCircle className="w-12 h-12 text-green-400" />
                 </div>
-                <h2 className="text-3xl font-serif font-bold text-white mb-2">Этап 1 Пройден! 🎉</h2>
+                <h2 className="text-3xl font-serif font-bold text-white mb-2">Этап 1 пройден!</h2>
                 <p className="text-slate-300 mb-8">Интересы и выбранные профессии сохранены.</p>
                 <Button variant="fantasy" onClick={() => finishStage(0, 40)}>На карту</Button>
             </div>
@@ -376,7 +361,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
         return (
             <div className="flex flex-col items-center justify-center h-full text-center p-6 animate-fade-in">
                 <p className="max-w-sm text-slate-300 mb-6">Запиши свои сильные стороны и трудности, выбери пять ценностей и представь подарки на три будущих дня рождения. Ответы войдут в профкарту.</p>
-                <h2 className="text-3xl font-serif font-bold text-white mb-4">Зеркало Души 🪞</h2>
+                <h2 className="text-3xl font-serif font-bold text-white mb-4">Зеркало души</h2>
                 <p className="text-slate-300 mb-8 max-w-sm">
                     Герой должен знать свою силу и слабость. Загляни в зеркальные пруды!
                 </p>
@@ -400,7 +385,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
     if (s2Phase === 'values') {
         return (
             <div className="p-6 h-full flex flex-col items-center">
-                <h3 className="text-2xl font-serif font-bold text-white mb-2">Твои Ценности ✨</h3>
+                <h3 className="text-2xl font-serif font-bold text-white mb-2">Твои ценности</h3>
                 <p className="text-slate-400 mb-6">Выбери 5 самых важных.</p>
                 <div className="flex flex-wrap gap-2 justify-center mb-8">
                     {VALUES_LIST.map(v => {
@@ -437,7 +422,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
     if (s2Phase === 'age') {
         return (
             <div className="p-6 h-full flex flex-col justify-center max-w-md mx-auto animate-fade-in text-center">
-                <h3 className="text-2xl font-serif font-bold text-white mb-6">Сколько тебе лет? 🎂</h3>
+                <h3 className="text-2xl font-serif font-bold text-white mb-6">Сколько тебе лет?</h3>
                 <input 
                     type="number" min={6} max={100} step={1} aria-label="Возраст в годах"
                     className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl p-4 text-white text-center text-2xl focus:border-purple-500 outline-none mb-6"
@@ -484,7 +469,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
         return (
             <div className="flex flex-col items-center justify-center h-full text-center p-6 animate-fade-in">
                 <p className="max-w-sm text-slate-300 mb-6">Выбери привычный подход к задачам, команде и учёбе. Затем попробуй четыре практические ситуации.</p>
-                <h2 className="text-3xl font-serif font-bold text-white mb-4">Турнир Мастеров 🤺</h2>
+                <h2 className="text-3xl font-serif font-bold text-white mb-4">Турнир мастеров</h2>
                 <p className="text-slate-300 mb-8 max-w-sm">
                     Здесь сражаются головой. Узнаем твой стиль мышления!
                 </p>
@@ -527,7 +512,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
                 <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mb-6 animate-pulse">
                     <Zap className="w-10 h-10 text-red-500" />
                 </div>
-                <h2 className="text-3xl font-serif font-bold text-red-400 mb-4">БЛИЦ-КРИЗИС! 🚨</h2>
+                <h2 className="text-3xl font-serif font-bold text-red-400 mb-4">Блиц-кризис</h2>
                 <p className="text-slate-300 mb-8 max-w-sm">
                     Тебя ждет 4 ситуации. На решение каждой — 20 секунд. Можно отключить ограничение времени.
                 </p>
@@ -594,11 +579,11 @@ export const CourseView: React.FC<CourseViewProps> = ({
 
         return (
             <div className="flex flex-col items-center justify-center h-full text-center p-6 animate-fade-in">
-                <div className="text-3xl font-serif font-bold text-white mb-2">Турнир Завершен! 🏆</div>
+                <div className="text-3xl font-serif font-bold text-white mb-2">Турнир завершён!</div>
                 <div className="text-slate-300 mb-6">Гильдия Мастеров присваивает тебе звание:</div>
                 
                 {/* MAGIC CARD */}
-                <div className="relative w-full max-w-sm bg-gradient-to-br from-indigo-900 via-purple-900 to-slate-900 p-6 rounded-xl border-2 border-indigo-400 shadow-[0_0_30px_rgba(129,140,248,0.4)] overflow-hidden mb-8 group">
+                <div className="journey-award relative w-full max-w-sm bg-gradient-to-br from-indigo-900 via-purple-900 to-slate-900 p-6 rounded-xl border-2 border-indigo-400 shadow-[0_0_30px_rgba(129,140,248,0.4)] overflow-hidden mb-8 group">
                     <div className="absolute top-[-50%] left-[-50%] w-[200%] h-[200%] bg-[radial-gradient(transparent,rgba(255,255,255,0.1),transparent)] animate-[spin_15s_linear_infinite] pointer-events-none"></div>
                     
                     <div className="relative z-10">
@@ -655,33 +640,30 @@ export const CourseView: React.FC<CourseViewProps> = ({
   // --- MAIN RENDER ---
 
   return (
-    <div className="w-full h-full min-h-screen bg-slate-950 flex flex-col relative overflow-hidden">
+    <div className={`w-full h-full min-h-screen flex flex-col relative overflow-hidden ${activeStage === null ? 'course-atlas' : 'stage-journey'}`}>
         {toastMsg && <Toast message={toastMsg} />}
         
         {/* Render Active Stage Overlay or Map */}
         {activeStage === null ? (
             <>
                 {renderHeader()}
-                <div className="flex-1 overflow-y-auto pb-20">
+                <div className="atlas-body">
                     {renderMap()}
                 </div>
             </>
         ) : (
-            <div className="min-h-screen bg-slate-900 z-50 relative pt-12 pb-10">
-                {/* Simple Back button for stages */}
-                <button 
-                    onClick={() => setActiveStage(null)} 
-                    aria-label="Вернуться к карте курса" className="absolute top-4 right-4 text-slate-300 hover:text-white z-50 p-2 bg-black/20 rounded-full"
-                >
-                    ✕
-                </button>
-                
+            <div className="stage-layout">
+                <header className="stage-chapter-header"><button type="button" onClick={()=>setActiveStage(null)} aria-label="Вернуться к карте курса"><ArrowLeft size={18} aria-hidden="true"/>На карту пути</button><span>{activeStage < 5 ? `Этап ${activeStage + 1} из 5` : 'Финал путешествия'}</span></header>
+                <div className="stage-chapter-art" aria-hidden="true" style={{backgroundPosition:`center ${STAGE_CHAPTERS[activeStage].position}`}} />
+                <div className="stage-chapter-title"><span className="stage-chapter-seal">{React.createElement(STAGE_CHAPTERS[activeStage].icon,{size:29,strokeWidth:1.6,'aria-hidden':true})}</span><div><p>{STAGE_CHAPTERS[activeStage].subtitle}</p><h1>{STAGE_CHAPTERS[activeStage].title}</h1></div></div>
+                <div className="stage-panel">
                 {activeStage === 0 && renderStage1()}
                 {activeStage === 1 && renderStage2()}
                 {activeStage === 2 && renderStage3()}
                 {activeStage === 3 && <DreamStage course={course} onChange={onChange} onFinish={() => finishStage(3, 0)} />}
                 {activeStage === 4 && <AssessmentStage course={course} onChange={onChange} onFinish={() => finishStage(4, 0)} />}
                 {activeStage === 5 && renderFinal()}
+                </div>
             </div>
         )}
     </div>
