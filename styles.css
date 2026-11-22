@@ -4,9 +4,13 @@
 
 .lesson-player { aspect-ratio: 16 / 9; width: 100%; }
 .lesson-native { aspect-ratio: 16 / 9; object-fit: contain; background: #020617; }
-.welcome-media { margin: 0 auto 1.25rem; width: 100%; }
-.welcome-media > summary { border: 1px solid rgba(251, 191, 36, .3); padding: .8rem 1rem; border-radius: .75rem; background: #172033; margin: 0; }
-.welcome-media[open] > summary { margin-bottom: .75rem; }
+.welcome-media { width:100%; max-width:900px; margin:1.25rem auto 1.125rem; }
+.welcome-media > h3 { margin:0 0 10px; color:#4b381f; font:700 clamp(1.25rem,3vw,1.75rem)/1.2 Georgia,serif; }
+.welcome-player { position:relative; width:100%; aspect-ratio:16/9; border-radius:clamp(12px,2vw,18px); overflow:hidden; background:#27382e url('/design/login-map-banner.webp') center 42%/cover no-repeat; box-shadow:0 8px 25px #27382e32; }
+.welcome-player > iframe,.welcome-player > video { display:block; position:absolute; inset:0; width:100%; height:100%; border:0; }
+.welcome-player > video { object-fit:contain; background:#020617; }
+.welcome-player:focus-within { outline:3px solid #345c43; outline-offset:3px; }
+@media (max-width:700px) { .welcome-player { background-image:url("/design/login-map-banner-mobile.webp"); } }
 .lesson-player iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 :root { color-scheme: dark; }
 html { scroll-behavior: smooth; }

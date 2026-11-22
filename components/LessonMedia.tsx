@@ -3,19 +3,37 @@ import type { LessonProgress } from '../types';
 import { lessonSource, playbackTime, updateLesson } from '../services/lessonProgress';
 import { loadKinescope, type KinescopePlayer, type KinescopeEvent } from '../services/kinescope';
 
-const welcome = () => window.__ORIENTA_LESSONS?.[5];
 const videos = Array.from({length:5},(_,index)=>window.__ORIENTA_LESSONS?.[index]?.video || '');
 const captions = Array.from({length:5},(_,index)=>window.__ORIENTA_LESSONS?.[index]?.captions || '');
 export const lessonConfigured = (stage: number) => !!videos[stage - 1];
 export const currentLessonProgress = (stage: number, progress?: LessonProgress) => progress?.source === lessonSource(videos[stage - 1], window.location.href)?.id ? progress : undefined;
 
-export const LessonMedia = ({ stage, progress, onProgress }: { stage?: number; progress?: LessonProgress; onProgress?: (progress: LessonProgress) => void }) => {
-  const isWelcome = stage === undefined;
-  const title = isWelcome ? 'Приветственное видео' : `Видеоурок ${stage}`;
-  const sourceValue = isWelcome ? welcome()?.video : videos[stage - 1];
+// Welcome appears directly on the map; the shareable video remains optional.
+// The official iframe renders its own thumbnail, Play, keyboard and fullscreen controls.
+export const WelcomeMedia = () => {
+  const welcome = window.__ORIENTA_LESSONS?.[5];
+  const source = lessonSource(welcome?.video, window.location.href);
+  const title = 'Знакомство';
+  if (!source) return null;
+  return <section className="welcome-media print-hidden" aria-label="Знакомство · приветственное видео">
+    <h3>{title}</h3>
+    <div className="welcome-player">
+      {source.kind === 'kinescope' ? <iframe title="Знакомство · приветственное видео"
+        src={source.url.replace('https://kinescope.io/', 'https://kinescope.io/embed/') + '?autoplay=0&playsinline=1&preload=false'}
+        loading="eager" allow="fullscreen; picture-in-picture; encrypted-media" allowFullScreen tabIndex={0} />
+        : <video controls playsInline preload="none" aria-label="Знакомство · приветственное видео" poster="/design/login-map-banner.webp">
+          <source src={source.url} />
+          {welcome?.captions && <track src={welcome.captions} kind="captions" srcLang="ru" label="Русские субтитры" default />}
+        </video>}
+    </div>
+  </section>;
+};
+
+export const LessonMedia = ({ stage, progress, onProgress }: { stage: number; progress?: LessonProgress; onProgress?: (progress: LessonProgress) => void }) => {
+  const title = `Видеоурок ${stage}`;
+  const sourceValue = videos[stage - 1];
   const source = lessonSource(sourceValue, window.location.href);
-  const caption = isWelcome ? welcome()?.captions : captions[stage - 1];
-  const [opened, setOpened] = useState(!isWelcome);
+  const caption = captions[stage - 1];
   const [failed, setFailed] = useState(false), [attempt, setAttempt] = useState(0);
   const container = useRef<HTMLDivElement>(null), id = useId().replace(/:/g, '');
   const value = useRef(progress), notify = useRef(onProgress);
@@ -38,7 +56,7 @@ export const LessonMedia = ({ stage, progress, onProgress }: { stage?: number; p
     return () => { flush(); window.removeEventListener('pagehide', flush); document.removeEventListener('visibilitychange', hidden); };
   }, []);
   useEffect(() => {
-    if (!opened || source?.kind !== 'kinescope' || !container.current) return;
+    if (source?.kind !== 'kinescope' || !container.current) return;
     let cancelled = false, player: KinescopePlayer | undefined, resumed = false;
     const host = document.createElement('div'); host.id = `lesson-${id}-${attempt}`;
     container.current.appendChild(host);
@@ -65,9 +83,8 @@ export const LessonMedia = ({ stage, progress, onProgress }: { stage?: number; p
     };
     loadKinescope().then(factory => {
       if (cancelled) return null;
-      // The two new domain-bound assets use the official embedding endpoint directly.
-      // Do not nest the Kinescope watch page inside the player on their restricted origin.
-      const playerUrl = stage === 1 || isWelcome ? source.url.replace('https://kinescope.io/', 'https://kinescope.io/embed/') : source.url;
+      // The domain-bound stage 1 and 2 assets use the official embed endpoint directly.
+      const playerUrl = stage <= 2 ? source.url.replace('https://kinescope.io/', 'https://kinescope.io/embed/') : source.url;
       return factory.create(host.id, { url: playerUrl, size: { width: '100%', height: '100%' }, behavior: { localStorage: false, autoPlay: false, playsInline: true } });
     }).then(created => {
       if (!created) return;
@@ -85,13 +102,13 @@ export const LessonMedia = ({ stage, progress, onProgress }: { stage?: number; p
       subscriptions.forEach(([type, callback]) => player?.off(type, callback));
       if (player) void player.destroy().catch(() => {}); else host.remove();
     };
-  }, [source?.id, attempt, id, opened, stage, isWelcome]);
+  }, [source?.id, attempt, id, stage]);
   if (!sourceValue) return null;
   const saved = progress?.source === source?.id ? progress : undefined;
-  return <details open={opened} onToggle={event => { if (isWelcome) setOpened(event.currentTarget.open); }} className={`max-w-2xl mx-auto px-6 mt-6 print-hidden${isWelcome ? ' welcome-media' : ''}`}>
+  return <details open className="max-w-2xl mx-auto px-6 mt-6 print-hidden">
     <summary className="cursor-pointer text-slate-200 mb-3">{title}{saved?.completed ? ' · видео завершено' : saved?.position ? ` · ${playbackTime(saved.position)}${saved.duration ? ' из ' + playbackTime(saved.duration) : ''}` : ''}</summary>
-    {(!isWelcome || opened) && (!source || failed ? <div role="status" className="rounded-xl border border-amber-700 bg-slate-900 p-4 text-amber-200">
-      <p>{isWelcome ? 'Видео не загрузилось. Можно сразу перейти к первому этапу на карте.' : 'Видео не загрузилось. Ответы сохраняются; можно выполнить задание по текстовой инструкции.'}</p>
+    {!source || failed ? <div role="status" className="rounded-xl border border-amber-700 bg-slate-900 p-4 text-amber-200">
+      <p>Видео не загрузилось. Ответы сохраняются; можно выполнить задание по текстовой инструкции.</p>
       {source && <button type="button" className="underline mt-2" onClick={() => { setFailed(false); setAttempt(n => n + 1); }}>Попробовать загрузить видео</button>}
     </div> : source.kind === 'kinescope' ? <div ref={container} className="lesson-player aspect-video relative rounded-xl overflow-hidden bg-slate-900" aria-label={title} /> : <video key={source.id + attempt} controls playsInline preload="metadata" aria-label={title} className="w-full rounded-xl lesson-native"
       onError={() => setFailed(true)} onLoadedMetadata={event => {
@@ -100,7 +117,7 @@ export const LessonMedia = ({ stage, progress, onProgress }: { stage?: number; p
       }} onTimeUpdate={event => { observation.current.position = event.currentTarget.currentTime; commitRef.current(); }}
       onPause={() => commitRef.current(true)} onEnded={event => { observation.current.position = event.currentTarget.duration; observation.current.ended = true; commitRef.current(true); }}>
       <source src={source.url} />{caption && <track src={caption} kind="captions" srcLang="ru" label="Русские субтитры" default />}
-    </video>)}
-    {!isWelcome && <p className="text-xs text-slate-400 mt-2">Место просмотра запоминается. Задания этапа выполняются отдельно.</p>}
+    </video>}
+    <p className="text-xs text-slate-400 mt-2">Место просмотра запоминается. Задания этапа выполняются отдельно.</p>
   </details>;
 };
