@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { telegramProof } from '../services/telegramBrowser';
 import { Button } from './Button';
 import type { ProgressSync, SyncState } from '../services/cloudProgress';
@@ -11,6 +11,21 @@ export const ProgressAccess = ({ client, state, onExport, hasLocalAnswers }: Pro
   const [code, setCode] = useState('');
   const [pilotRecovery, setPilotRecovery] = useState('');
   const [pilotConsent, setPilotConsent] = useState(false);
+  const [copyMessage, setCopyMessage] = useState('');
+  const recoveryText = useRef<HTMLElement>(null);
+  const copyRecovery = async () => {
+    try {
+      await navigator.clipboard.writeText(pilotRecovery);
+      setCopyMessage('Код скопирован.');
+    } catch {
+      const selection = window.getSelection();
+      if (selection && recoveryText.current) {
+        const range = document.createRange(); range.selectNodeContents(recoveryText.current);
+        selection.removeAllRanges(); selection.addRange(range);
+      }
+      setCopyMessage('Не удалось скопировать автоматически. Скопируй выделенный код вручную.');
+    }
+  };
   const pilot = isPilotCode(code);
   const [newCode, setNewCode] = useState('');
   const [registrationConsent, setRegistrationConsent] = useState(false);
@@ -26,14 +41,16 @@ export const ProgressAccess = ({ client, state, onExport, hasLocalAnswers }: Pro
       <input id="access-code" name="access-code" type="text" value={code} onChange={event => {
         const next = event.target.value;
         if (isPilotCode(next) && !pilotRecovery) setPilotRecovery(createPersonalCode());
-        if (!isPilotCode(next)) setPilotConsent(false);
+        if (!isPilotCode(next)) { setPilotConsent(false); setCopyMessage(''); }
         setCode(next);
       }} autoComplete="off" autoCapitalize="characters" spellCheck={false} maxLength={100}
         className="w-full rounded-xl p-4 bg-slate-800 border border-slate-500 text-white font-mono" placeholder="ORI-…" aria-describedby="code-help" disabled={state.status === 'checking'} />
       <p id="code-help" className="text-sm text-slate-400">Личный код открывает твои ответы. Его нельзя передавать другим.</p>
       {pilot && <section aria-label="Личный код восстановления" className="space-y-3">
         <p>Это твой личный код на случай смены устройства. Сейчас вводить его не нужно. Сохрани его и никому не показывай.</p>
-        <code className="block break-all select-all rounded-xl bg-slate-800 p-3">{pilotRecovery}</code>
+        <code ref={recoveryText} className="block break-all select-all rounded-xl bg-slate-800 p-3">{pilotRecovery}</code>
+        <Button type="button" variant="secondary" disabled={!pilotRecovery} onClick={() => { void copyRecovery(); }}>Скопировать личный код</Button>
+        {copyMessage && <p role="status">{copyMessage}</p>}
         <label className="flex items-start gap-3"><input type="checkbox" checked={pilotConsent} onChange={e => setPilotConsent(e.target.checked)} /><span>Я сохранил личный код и согласен, чтобы мой прогресс хранился на сервере Ориенты в России. Не буду вводить настоящие имена и личные сведения.</span></label>
       </section>}
       <Button type="submit" fullWidth variant="fantasy" disabled={!code.trim() || state.status === 'checking' || (pilot && (!pilotConsent || !pilotRecovery))}>{state.status === 'checking' ? 'Подключаемся…' : pilot ? 'Войти в поток' : 'Войти по коду'}</Button>

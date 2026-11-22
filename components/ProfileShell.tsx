@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ProfileSession } from '../services/profileSession';
 import { apiBase } from '../services/apiBase';
 import type { FreeProgress } from '../services/freeProgress';
-import type { CourseEntry, CourseSession } from '../services/courseEntry';
+import type { CourseEntry } from '../services/courseEntry';
 import { ProgressAccess, ProgressAccount } from './ProgressAccount';
 import { GuideView } from './GuideView';
 import { CampHome } from './CampHome';
@@ -10,14 +10,13 @@ import { Button } from './Button';
 import { ARCHETYPES, type TestResult } from '../types';
 
 type Props = {
- destination: 'hub' | 'profile' | 'course'; local: FreeProgress;
- onCamp: () => void; onCourse: () => void; onProfile: () => void; onInviteArrival: () => void;
- onOpenTest: () => void; onOpenGuide: () => void; onResetLocal: () => void;
+ destination: 'inactive' | 'hub' | 'profile' | 'course'; local: FreeProgress;
+ onCamp: () => void; onCourse: () => void; onProfile: () => void; onInviteArrival: (learnerId: string) => void;
+ onCloudSession: (learnerId?: string) => void; onOpenTest: () => void; onOpenGuide: () => void; onResetLocal: () => void;
 };
 type CoursePackage = { script: string; css: string; lessons: Window['__ORIENTA_LESSONS'] };
-type ClientHandoff = { getSessionForCourse?: () => CourseSession | null; consumeInviteArrival?: () => void };
 
-export const ProfileShell = ({ destination, local, onCamp, onCourse, onProfile, onInviteArrival, onOpenGuide, onOpenTest, onResetLocal }: Props) => {
+export const ProfileShell = ({ destination, local, onCamp, onCourse, onProfile, onInviteArrival, onCloudSession, onOpenGuide, onOpenTest, onResetLocal }: Props) => {
  const base = apiBase(import.meta.env.VITE_PROGRESS_API_URL);
  const client = useMemo(() => new ProfileSession(base), [base]);
  const [state, setState] = useState(client.state);
@@ -30,19 +29,22 @@ export const ProfileShell = ({ destination, local, onCamp, onCourse, onProfile, 
  const [transferDismissed, setTransferDismissed] = useState(false);
  const host = useRef<HTMLDivElement>(null);
  const courseHost = destination === 'course' && state.learnerId ? course : null;
- const inviteArrival = (state as { justJoinedWithInvite?: boolean }).justJoinedWithInvite === true;
+ const inviteArrival = state.justJoinedWithInvite === true;
 
  useEffect(() => {
    let alive = true;
    const stop = client.subscribe(result => setState({ ...result }));
-   void client.start().finally(() => { if (alive) setInitializing(false); });
+   void client.start({blockingHealth:false}).finally(() => { if (alive) setInitializing(false); });
    return () => { alive = false; stop(); client.dispose(); };
  }, [client]);
  useEffect(() => {
-   if (!inviteArrival) return;
-   (client as ProfileSession & ClientHandoff).consumeInviteArrival?.();
-   onInviteArrival();
- }, [client, inviteArrival, onInviteArrival]);
+   if (!initializing) onCloudSession(state.status === 'signed-out' ? undefined : state.learnerId);
+   if (state.learnerId && inviteArrival) {
+     onCloudSession(state.learnerId);
+     client.consumeInviteArrival();
+     onInviteArrival(state.learnerId);
+   }
+ }, [client, inviteArrival, onCloudSession, onInviteArrival, initializing, state.learnerId, state.status]);
  useEffect(() => {
    if (destination !== 'course' || !state.learnerId || !state.courseAvailable || state.status !== 'saved' || inviteArrival) {
      setCourse(null); setCourseError(''); return;
@@ -64,7 +66,7 @@ export const ProfileShell = ({ destination, local, onCamp, onCourse, onProfile, 
    const url = URL.createObjectURL(new Blob([courseHost.script], { type:'text/javascript' }));
    const style = document.createElement('style'); style.textContent = courseHost.css; document.head.appendChild(style);
    window.__ORIENTA_API = base; window.__ORIENTA_LESSONS = courseHost.lessons;
-   const entry: CourseEntry = { session: (client as ProfileSession & ClientHandoff).getSessionForCourse?.(), back: leaveCourse };
+   const entry: CourseEntry = { session: client.getSessionForCourse(), back: leaveCourse };
    void import(/* @vite-ignore */ url).then(mod => {
      if (!stopped && host.current) cleanup = mod.mount(host.current, entry);
    }).catch(() => { if (!stopped) setCourseError('Не удалось открыть модуль. Проверь подключение и повтори.'); });
@@ -76,6 +78,7 @@ export const ProfileShell = ({ destination, local, onCamp, onCourse, onProfile, 
    const url = URL.createObjectURL(blob); const a = document.createElement('a');
    a.href = url; a.download = 'Ориента-профиль.json'; a.click(); URL.revokeObjectURL(url);
  };
+ if (destination === 'inactive') return null;
  if (initializing || inviteArrival) return <p role="status" className="p-6">Проверяем вход…</p>;
  if (destination !== 'hub' && (!state.learnerId || state.status === 'signed-out')) return <>
    <nav className="profile-route-nav print-hidden" aria-label="Навигация Ориенты"><a href="#hub">Мой лагерь</a></nav>
@@ -90,8 +93,7 @@ export const ProfileShell = ({ destination, local, onCamp, onCourse, onProfile, 
  const savedResult = result && Object.prototype.hasOwnProperty.call(ARCHETYPES, result.scoreType) ? result : null;
  if (guide && savedResult) return <div className="adventure"><GuideView archetype={savedResult.scoreType} onBack={() => setGuide(false)} onStartCourse={() => setGuide(false)} actionLabel="Вернуться в лагерь" /></div>;
  const canTransfer = state.learnerId && local.result && !result && !transferDismissed
-  && (!client.snapshot?.payload?.testDraft?.step || client.snapshot.payload.testDraft.step === 'start')
-  && !client.snapshot?.payload?.state?.course?.completedStages?.length;
+  && (!client.snapshot?.payload?.testDraft?.step || client.snapshot.payload.testDraft.step === 'start');
  return <main className="adventure profile-camp-view">
    {state.learnerId && <ProgressAccount client={client} state={state} onExport={onExport} />}
    <CampHome local={local} savedResult={savedResult} signedIn={!!state.learnerId} courseAvailable={state.courseAvailable}

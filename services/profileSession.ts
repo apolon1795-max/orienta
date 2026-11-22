@@ -43,7 +43,7 @@ export class ProfileSession {
   async saveIntro(candidate:FreeProgress){
     if(this.state.status!=='saved'||!this.session)throw Error('Дождись подключения к профилю.');
     const saved=this.snapshot?.payload;
-    if(saved?.state?.testResult || (saved?.testDraft?.step && saved.testDraft.step!=='start') || saved?.state?.course?.completedStages?.length)throw Error('В профиле уже есть результат или начатый тест. Он не заменён.');
+    if(saved?.state?.testResult || (saved?.testDraft?.step && saved.testDraft.step!=='start'))throw Error('В профиле уже есть результат или начатый тест. Он не заменён.');
     const free=readFreeProgress({getItem:()=>JSON.stringify(candidate)});if(!free.result||free.draft.step!=='result')throw Error('Сначала заверши вводную.');
     const payload={state:{...(saved?.state||{}),hasOnboarded:true,testResult:{...free.result,scores:free.draft.scores,timestamp:new Date().toISOString()},course:saved?.state?.course||{},lastUpdated:Date.now()},testDraft:free.draft};
     const generation=this.generation;this.publish({status:'pending'});

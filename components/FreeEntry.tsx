@@ -6,26 +6,40 @@ import { GuideView } from './GuideView';
 import { CampHome } from './CampHome';
 import type { TestDraft } from '../services/testProgress';
 import type { TestResult } from '../types';
-import { freshFreeProgress, readFreeProgress, saveFreeProgress } from '../services/freeProgress';
+import { FREE_INTRO_KEY, freshFreeProgress, readFreeProgress, saveFreeProgress } from '../services/freeProgress';
 import { apiBase } from '../services/apiBase';
 
 const ProfileShell = lazy(() => import('./ProfileShell').then(module => ({ default: module.ProfileShell })));
-const read = () => {
-  try { if (localStorage.getItem('orienta_free_intro_v1')) return readFreeProgress(localStorage); } catch {}
-  try { return readFreeProgress(sessionStorage); } catch { return freshFreeProgress(); }
+const keyFor = (owner: string | null) => owner ? `${FREE_INTRO_KEY}:${owner}` : FREE_INTRO_KEY;
+const draftExists = (owner: string) => {
+ for (const name of ['localStorage','sessionStorage'] as const) {
+   try { if (window[name].getItem(keyFor(owner))) return true; } catch {}
+ }
+ return false;
+};
+const read = (owner: string | null = null) => {
+ const key = keyFor(owner);
+ try { if (localStorage.getItem(key)) return readFreeProgress({getItem:()=>localStorage.getItem(key)}); } catch {}
+ try { return readFreeProgress({getItem:()=>sessionStorage.getItem(key)}); } catch { return freshFreeProgress(); }
 };
 type View = 'intro' | 'test' | 'guide' | 'course' | 'hub' | 'profile';
 const routeByHash: Partial<Record<string, View>> = { '#free':'intro','#test':'test','#guide':'guide','#course':'course','#hub':'hub','#profile':'profile' };
 const hashByRoute: Record<View,string> = { intro:'#free', test:'#test', guide:'#guide', course:'#course', hub:'#hub', profile:'#profile' };
-const currentView = (result: boolean) => {
- let rememberedSession = false;
- try { const value = JSON.parse(sessionStorage.getItem('orienta_session_v1') || 'null'); rememberedSession = Number.isFinite(value?.expiresAt) && value.expiresAt > Date.now(); } catch {}
- return routeByHash[location.hash] || (result || rememberedSession ? 'hub' : 'intro');
+const hasRememberedSession = () => {
+ try { const value = JSON.parse(sessionStorage.getItem('orienta_session_v1') || 'null'); return /^[A-Za-z0-9_-]{43}$/.test(value?.token) && /^[a-f0-9-]{36}$/.test(value?.learnerId) && Number.isFinite(value?.expiresAt) && value.expiresAt > Date.now(); } catch { return false; }
 };
+const currentView = (result: boolean) => routeByHash[location.hash] || (result || hasRememberedSession() ? 'hub' : 'intro');
 
 export const FreeEntry = () => {
-  const [saved, setSaved] = useState(read);
+  const [saved, setSaved] = useState(() => read());
+  const [draftOwner, setDraftOwner] = useState<string | null>(null);
+  const ownerRef = useRef<string | null>(null);
+  const chooseDraftOwner = useCallback((owner: string | null) => {
+    if (ownerRef.current === owner) return;
+    ownerRef.current = owner; setDraftOwner(owner); setSaved(read(owner));
+  }, []);
   const [view, setView] = useState<View>(() => currentView(!!saved.result));
+  const [hasCloudSession, setHasCloudSession] = useState(hasRememberedSession);
   const [storageFailed, setStorageFailed] = useState(false);
   const [reset, setReset] = useState(false);
   const resetDialog = useRef<HTMLDialogElement>(null);
@@ -39,10 +53,11 @@ export const FreeEntry = () => {
   useEffect(() => { if (typeof window !== 'undefined') window.scrollTo(0, 0); }, [view]);
   useEffect(() => {
     let persistent = false;
-    try { persistent = saveFreeProgress(localStorage, saved); } catch {}
-    try { saveFreeProgress(sessionStorage, saved); } catch {}
+    const key = keyFor(draftOwner);
+    try { persistent = saveFreeProgress({setItem:(_,data)=>localStorage.setItem(key,data)}, saved); } catch {}
+    try { saveFreeProgress({setItem:(_,data)=>sessionStorage.setItem(key,data)}, saved); } catch {}
     setStorageFailed(!persistent);
-  }, [saved]);
+  }, [saved, draftOwner]);
   const draftChanged = useCallback((draft: TestDraft) => setSaved(s => ({ ...s, draft })), []);
   const calculated = useCallback((result: TestResult) => setSaved(s => ({ ...s, result })), []);
   const go = useCallback((next: View, replace = false) => {
@@ -54,7 +69,13 @@ export const FreeEntry = () => {
     }
   }, []);
   const openHub = useCallback(() => go('hub'), [go]);
-  const openIntro = useCallback(() => go('intro', true), [go]);
+  const cloudSession = useCallback((learnerId?: string) => {
+    setHasCloudSession(!!learnerId);
+    chooseDraftOwner(learnerId && (ownerRef.current === learnerId || draftExists(learnerId)) ? learnerId : null);
+  }, [chooseDraftOwner]);
+  const inviteArrival = useCallback((learnerId: string) => {
+    chooseDraftOwner(learnerId); go('intro', true);
+  }, [chooseDraftOwner, go]);
   const openCourse = useCallback(() => go('course'), [go]);
   const openProfile = useCallback(() => go('profile'), [go]);
   const openTest = useCallback(() => go('test'), [go]);
@@ -62,15 +83,15 @@ export const FreeEntry = () => {
   const finished = useCallback((result: TestResult) => { setSaved(s => ({ ...s, result })); openGuide(); }, [openGuide]);
   const clear = () => { setSaved(freshFreeProgress()); setEpoch(e => e + 1); setReset(false); go('intro', true); };
   const configured = !!apiBase(import.meta.env.VITE_PROGRESS_API_URL);
-  const profileRoute = view === 'hub' || view === 'profile' || view === 'course';
-  const camp = <CampHome local={saved} onCourse={openCourse} onGuide={openGuide} onTest={openTest} onReset={() => setReset(true)} />;
+  const profileRoute = configured && (view === 'profile' || view === 'course' || (view === 'hub' && hasCloudSession));
+  const mountProfile = configured && (profileRoute || hasCloudSession);
+  const camp = <CampHome local={saved} onCourse={configured ? openProfile : openCourse} onGuide={openGuide} onTest={openTest} onReset={() => setReset(true)} />;
 
   return <>
-    {profileRoute && configured ? <>
-      <Suspense fallback={view === 'hub' ? <main className="adventure profile-camp-view">{camp}</main> : <p role="status" className="p-6">Открываем Ориенту…</p>}>
-        <ProfileShell destination={view} local={saved} onCamp={openHub} onCourse={openCourse} onProfile={openProfile} onInviteArrival={openIntro} onOpenTest={openTest} onOpenGuide={openGuide} onResetLocal={() => setReset(true)} />
-      </Suspense>
-    </> : <main className="adventure min-h-screen bg-slate-950 text-slate-100">
+    {mountProfile && <Suspense fallback={profileRoute && <p role="status" className="p-6">Открываем Ориенту…</p>}>
+      <ProfileShell destination={profileRoute ? view as 'hub' | 'profile' | 'course' : 'inactive'} local={saved} onCamp={openHub} onCourse={openCourse} onProfile={openProfile} onInviteArrival={inviteArrival} onCloudSession={cloudSession} onOpenTest={openTest} onOpenGuide={openGuide} onResetLocal={() => setReset(true)} />
+    </Suspense>}
+    {!profileRoute && <main className="adventure min-h-screen bg-slate-950 text-slate-100">
       <nav aria-label="Навигация Ориенты" className="adventure-nav max-w-4xl mx-auto flex flex-wrap gap-4 items-center justify-between p-5">
         <button className="font-serif text-amber-200 text-xl" onClick={() => go('intro')}>Ориента</button>
         {view !== 'hub' && <button className="text-sm underline text-amber-200" onClick={openHub}>Мой лагерь</button>}

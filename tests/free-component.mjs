@@ -9,13 +9,13 @@ globalThis.location = { hash: '' };
 try {
  const { FreeEntry } = await vite.ssrLoadModule('/components/FreeEntry.tsx');
  const html = renderToString(React.createElement(FreeEntry));
- assert.match(html, /Бесплатная вводная/); assert.match(html, /Пройти бесплатный тест/);
+ assert.doesNotMatch(html, /Бесплатная вводная/); assert.match(html, /Пройти тест/);
  assert.match(html, /не отправляются на наш сервер или в ИИ/);
  assert.doesNotMatch(html, /Личный код<\/label>/);
  assert.doesNotMatch(html, /PRIVATE_COURSE_SENTINEL/);
  globalThis.location = { hash: '#hub' };
  const hub = renderToString(React.createElement(FreeEntry));
- assert.match(hub, /Мой лагерь/); assert.match(hub, /Открыть курс/); assert.match(hub, /Открыть сообщество/); assert.match(hub, /без регистрации, пароля и синхронизации/);
+ assert.match(hub, /Мой лагерь/); assert.match(hub, /Курс «Ориента»/); assert.match(hub, /Открыть сообщество/); assert.match(hub, /только в этом браузере/);
  const { freshFreeProgress } = await vite.ssrLoadModule('/services/freeProgress.ts');
  const completed = freshFreeProgress(); completed.draft.step = 'result'; completed.draft.scores.Commander = 5; completed.draft.heroData.name = 'Пробный герой'; completed.result = { scoreType: 'Commander' };
  globalThis.localStorage = { getItem: () => JSON.stringify(completed) };

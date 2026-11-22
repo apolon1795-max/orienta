@@ -331,7 +331,7 @@ const App: React.FC<{ entry?: CourseEntry }> = ({ entry }) => {
   return (
     <div data-view={view} className={`min-h-screen text-slate-200 font-sans selection:bg-indigo-500/30 ${[AppView.LANDING, AppView.ONBOARDING, AppView.DASHBOARD].includes(view) ? "journey-lobby" : ""}`}>
       <ProgressAccount client={entry ? {
-        signIn: code => sync.signIn(code), signInTelegram: init => sync.signInTelegram(init), registerFree: code => sync.registerFree(code),
+        signIn: code => sync.signIn(code), joinPilot: (invite, code) => sync.joinPilot(invite, code), signInTelegram: init => sync.signInTelegram(init), registerFree: code => sync.registerFree(code),
         signOut: async () => { await sync.signOut(); entry.back(); }, linkTelegram: init => sync.linkTelegram(init), retry: () => sync.retry(), useCloudCopy: () => sync.useCloudCopy()
       } : sync} state={syncState} onExport={handleExport} />
       {!entry && CLOUD_API && syncState.learnerId && freeCandidate && !userState.testResult && testDraft.current.step === 'start' && !userState.course.completedStages.length && <section aria-label="Перенос вводной в профиль" className="max-w-5xl mx-auto m-4 p-6 border border-amber-400/40 rounded-xl bg-slate-900 space-y-4 print-hidden">

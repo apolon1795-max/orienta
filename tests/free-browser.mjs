@@ -24,12 +24,12 @@ try {
  assert.equal(await page.getByLabel('Код входа',{exact:true}).count(),0);
  await page.screenshot({path:'output/free-browser/01-intro-mobile.png',fullPage:true});
  const click=async name=>page.getByRole('button',{name,exact:false}).click();
- await click('Пройти бесплатный тест');await click('Начать игру');await click('Создать персонажа');await click('Человек');
+ await click('Пройти тест');await click('Начать игру');await click('Создать персонажа');await click('Человек');
  await page.getByRole('textbox',{name:'Имя героя'}).fill('Синтетический герой');await click('Подтвердить имя');await click('Отправиться в путь');
  for(let i=0;i<5;i++){
   if(i===4)await click('Сжать артефакт');
   await page.locator('button[aria-pressed]').first().click();await click('Продолжить приключение');
-  if(i===0){await page.reload();await click('Продолжить бесплатный тест');await page.getByText('Испытание 2 из 5',{exact:false}).waitFor();}
+  if(i===0){await page.reload();await page.getByText('Испытание 2 из 5',{exact:false}).waitFor();}
  }
  await page.getByRole('button',{name:/Сорвать|Развернуть|Открыть.*свиток|Снять.*печать/}).click();
  await click('Подробнее о моём архетипе');await page.locator('#guide-action-btn').waitFor();
@@ -37,19 +37,18 @@ try {
  await page.locator('#guide-action-btn').click();await page.getByRole('heading',{name:'Мой лагерь',exact:true}).waitFor();
  await page.reload();await page.getByRole('heading',{name:'Мой лагерь',exact:true}).waitFor();
  const second=await context.newPage();await second.goto(base);await second.getByRole('heading',{name:'Мой лагерь',exact:true}).waitFor();await second.close();
- await click('Открыть сообщество');await page.getByRole('heading',{name:'Сообщество Ориенты'}).waitFor();assert.equal(await page.getByRole('link',{name:'Перейти в Telegram'}).getAttribute('href'),'https://t.me/sense_house');await click('Вернуться в лагерь');
- await click('Открыть курс');await page.getByRole('heading',{name:'Продолжить в полном курсе'}).waitFor();
- await page.getByText('Онлайн-оплата пока не подключена.',{exact:false}).waitFor();
+ await click('Открыть сообщество');await page.getByText('Сообщество скоро откроется',{exact:true}).waitFor();assert.equal(await page.locator('a[href*="t.me"]').count(),0);
+ assert.equal(await page.getByRole('heading',{name:'Мой лагерь',exact:true}).count(),1);
  assert.equal(apiRequests.length,0,'free flow must not call backend/AI');
  assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('appState_ru')).private),'PRIVATE_COURSE_SENTINEL');
- await page.getByRole('button',{name:'Ориента',exact:true}).click();await click('Удалить результат вводной');await click('Отмена');await click('Мой архетип');
- await page.getByRole('button',{name:'Ориента',exact:true}).click();await click('Удалить результат вводной');await click('Удалить вводную');
- await page.reload();await page.getByRole('button',{name:'Пройти бесплатный тест',exact:true}).waitFor();
+ await click('Удалить результат теста');await click('Отмена');await click('Открыть мой гайд');
+ await page.locator('#guide-action-btn').click();await click('Удалить результат теста');await page.getByRole('dialog').getByRole('button',{name:'Удалить результат',exact:true}).click();
+ await page.reload();await page.getByRole('button',{name:'Пройти тест',exact:true}).waitFor();
  assert.equal(await page.getByRole('button',{name:'Мой архетип',exact:true}).count(),0);
  assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('appState_ru')).private),'PRIVATE_COURSE_SENTINEL');
- await click('Уже есть доступ к курсу');await page.getByRole('link',{name:'Войти по личному коду'}).click();
+ await click('У меня есть код');
  await page.getByLabel('Код входа',{exact:true}).waitFor();
- await page.getByRole('link',{name:'← Бесплатная вводная'}).click();await page.getByRole('heading',{name:'Какой ты герой?'}).waitFor();
+ await page.getByRole('link',{name:'Мой лагерь'}).click();await page.getByRole('heading',{name:'Мой лагерь',exact:true}).waitFor();
  assert.equal(errors.length,0,errors.join('\n'));
  console.log('PASS free: 5 situations, reload/resume, archetype, course boundary, zero API/AI calls, cancel/reset, private course isolation, pilot sign-in and return; mobile screenshots saved.');
 }finally{await browser?.close();vite.kill();}
