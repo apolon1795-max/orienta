@@ -4,10 +4,10 @@ import { createApi } from './api.mjs';
 import { openSqliteStore } from './sqlite.mjs';
 import { createProxyAi, createAiService } from './ai.mjs';
 
-export const startServer = ({ coursePackage = null, lessonConfig = [], freeRegistrationEnabled = process.env.ORIENTA_FREE_REGISTRATION_ENABLED === 'true', aiProvider = createProxyAi(), filename = process.env.ORIENTA_DB_PATH, port = Number(process.env.PORT || 8787), host = process.env.HOST || '127.0.0.1', allowedOrigins = (process.env.ORIENTA_ALLOWED_ORIGINS || 'http://127.0.0.1:5173').split(',') } = {}) => {
+export const startServer = ({ coursePackage = null, lessonConfig = [], pilotInviteHash = process.env.ORIENTA_PILOT_INVITE_SHA256, freeRegistrationEnabled = process.env.ORIENTA_FREE_REGISTRATION_ENABLED === 'true', aiProvider = createProxyAi(), filename = process.env.ORIENTA_DB_PATH, port = Number(process.env.PORT || 8787), host = process.env.HOST || '127.0.0.1', allowedOrigins = (process.env.ORIENTA_ALLOWED_ORIGINS || 'http://127.0.0.1:5173').split(',') } = {}) => {
   if (!filename) throw new Error('Set ORIENTA_DB_PATH to a persistent path outside the public web directory');
   const store = openSqliteStore(filename), ai = aiProvider ? createAiService({ store, provider: aiProvider }) : null;
-  const api = createApi({ store, allowedOrigins, ai, freeRegistrationEnabled, coursePackage, lessonConfig });
+  const api = createApi({ store, allowedOrigins, ai, freeRegistrationEnabled, coursePackage, lessonConfig, pilotInviteHash });
   const server = createServer(async (req, res) => {
     const chunks = []; let bytes = 0;
     for await (const chunk of req) { bytes += chunk.length; if (bytes > 100000) { res.writeHead(413); res.end(); req.destroy(); return; } chunks.push(chunk); }

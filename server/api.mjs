@@ -1,7 +1,7 @@
 import { takeRequestSlot } from './request-limit.mjs';
 import { registerFreeLearner, FreeRegistrationError } from './free-registration.mjs';
 import { hasCourseAccess } from './course-access.mjs';
-import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import { normalizeUserState } from '../services/progress.ts';
 import { normalizeTestDraft } from '../services/testProgress.ts';
 import { verifyTelegramInitData, consumeTelegramProof, TelegramAuthError } from './telegram-auth.mjs';
@@ -29,8 +29,9 @@ export const provisionLearner = async (store, label = '') => {
   return { learnerId, code, label: account.label };
 };
 
-export const createApi = ({ store, allowedOrigins = [], now = Date.now, sessionDays = 7, loginLimits = new Map(), ai = null, telegramBotToken = null, freeRegistrationEnabled = false, coursePackage = null, lessonConfig = [] }) => {
+export const createApi = ({ store, allowedOrigins = [], now = Date.now, sessionDays = 7, loginLimits = new Map(), ai = null, telegramBotToken = null, freeRegistrationEnabled = false, coursePackage = null, lessonConfig = [], pilotInviteHash = '' }) => {
   const limits = loginLimits;
+  const pilotHash = typeof pilotInviteHash === 'string' && /^[0-9a-f]{64}$/i.test(pilotInviteHash) ? Buffer.from(pilotInviteHash, 'hex') : null;
   const courseAllowed = async learnerId => { const account = await store.get('learner:' + learnerId); return account?.value.active === true && (account.value.kind !== 'free' || await hasCourseAccess(store, learnerId)); };
   return async ({ method, path, headers = {}, body = '', ip = '' }) => {
     headers = Object.fromEntries(Object.entries(headers).map(([key, value]) => [key.toLowerCase(), value]));
@@ -64,6 +65,19 @@ export const createApi = ({ store, allowedOrigins = [], now = Date.now, sessionD
       if (method === 'POST' && path === '/session') {
         const normalized = normalizeCode(input.code);
         if (!/^ORI[A-F0-9]{32}$/.test(normalized)) return reply(401, { error: 'invalid_code' });
+        // A shared pilot invitation is never a login credential or a lookup key
+        // for an existing account. Pair it with a distinct strong private code.
+        if (Object.hasOwn(input, 'inviteCode')) {
+          const invite = normalizeCode(input.inviteCode);
+          if (!pilotHash || !/^PILOT[A-F0-9]{16}$/.test(invite)) return reply(401, { error: 'invalid_invite' });
+          // Durable, separate capacity accommodates a whole class behind one IP.
+          if (!await takeRequestSlot(store, { ip, scope: 'pilot-enrolment', now: now(), limit: 60, contentionAttempts: 40 })) return reply(429, { error: 'try_later' });
+          if (!timingSafeEqual(pilotHash, Buffer.from(digest(invite), 'hex'))) return reply(401, { error: 'invalid_invite' });
+          const result = await registerFreeLearner(store, { code: normalized, consent: input.consent, ip, now: now(), kind: 'pilot', dailyLimit: 60 });
+          const token = randomBytes(32).toString('base64url'), expiresAt = now() + sessionDays * 86400000;
+          if (!await store.compareAndSet(sessionKey(token), 0, { learnerId: result.learnerId, expiresAt })) throw new Error('session_not_created');
+          return reply(200, { token, learnerId: result.learnerId, expiresAt, progress: snapshot(await store.get('progress:' + result.learnerId)), aiAvailable: !!ai, courseAvailable: true, telegramAvailable: !!telegramBotToken });
+        }
         const minute = Math.floor(now() / 60000), rateKey = ip || 'unknown';
         const rate = limits.get(rateKey);
         if (rate?.minute === minute && rate.count >= 20) return reply(429, { error: 'try_later' });

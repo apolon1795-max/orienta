@@ -20,7 +20,7 @@ export const createFunctionHandler = ({ env = process.env, transport = fetch, co
         ...Array.from({length:5}, (_,i) => ({video: env['ORIENTA_LESSON_'+(i+1)+'_VIDEO'] || '', captions: env['ORIENTA_LESSON_'+(i+1)+'_CAPTIONS'] || ''})),
         // Sixth delivery slot is the optional welcome, not a numbered lesson.
         {video: env.ORIENTA_WELCOME_VIDEO || '', captions: env.ORIENTA_WELCOME_CAPTIONS || ''},
-      ], freeRegistrationEnabled: env.ORIENTA_FREE_REGISTRATION_ENABLED === 'true', telegramBotToken: env.ORIENTA_TELEGRAM_ENABLED === 'true' ? env.ORIENTA_TELEGRAM_BOT_TOKEN : null, allowedOrigins: (env.ORIENTA_ALLOWED_ORIGINS || '').split(',').filter(Boolean) });
+      ], pilotInviteHash: env.ORIENTA_PILOT_INVITE_SHA256, freeRegistrationEnabled: env.ORIENTA_FREE_REGISTRATION_ENABLED === 'true', telegramBotToken: env.ORIENTA_TELEGRAM_ENABLED === 'true' ? env.ORIENTA_TELEGRAM_BOT_TOKEN : null, allowedOrigins: (env.ORIENTA_ALLOWED_ORIGINS || '').split(',').filter(Boolean) });
       const response = await api({ method: event.httpMethod, path: String(event.path || '').replace(/^\/api(?=\/)/, ''), headers: event.headers,
         body: event.isBase64Encoded ? Buffer.from(event.body || '', 'base64').toString('utf8') : event.body || '', ip: event.requestContext?.identity?.sourceIp || '' });
       return { statusCode: response.status, headers: response.headers, body: response.body, isBase64Encoded: false };

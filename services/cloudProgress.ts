@@ -8,7 +8,7 @@ interface Session { token: string; learnerId: string; expiresAt: number }
 interface Mutation { baseRevision: number; mutationId: string; payload: ProgressPayload }
 interface Cache { revision: number; saved: string; pending: Mutation | null; queued: ProgressPayload | null }
 export type SyncStatus = 'local' | 'signed-out' | 'checking' | 'saved' | 'pending' | 'offline' | 'conflict' | 'error';
-export interface SyncState { status: SyncStatus; learnerId?: string; message?: string; dirty: boolean; cacheAvailable: boolean; aiAvailable?: boolean; telegramAvailable?: boolean; courseAvailable?: boolean; registrationAvailable?: boolean }
+export interface SyncState { status: SyncStatus; learnerId?: string; message?: string; dirty: boolean; cacheAvailable: boolean; aiAvailable?: boolean; telegramAvailable?: boolean; courseAvailable?: boolean; registrationAvailable?: boolean; justJoinedWithInvite?: boolean }
 const SESSION_KEY = 'orienta_session_v1';
 const cacheKey = (id: string) => 'orienta_sync_v1:' + id;
 const clean = (value: ProgressPayload): ProgressPayload => {
@@ -91,11 +91,13 @@ export class ProgressSync {
     if (generation !== this.generation) return;
     await this.signIn(code);
   }
-  async signIn(code: string) {
+  signIn(code: string) { return this.signInCode({ code }); }
+  joinPilot(inviteCode: string, code: string) { return this.signInCode({inviteCode, code, consent:true}); }
+  private async signInCode(input: {code:string; inviteCode?:string; consent?:boolean}) {
     const generation = ++this.generation;
     this.publish('checking');
     try {
-      const data = await this.request('/session', 'POST', { code }, '');
+      const data = await this.request('/session', 'POST', input, '');
       if (generation !== this.generation) return;
       if (!/^[A-Za-z0-9_-]{43}$/.test(data.token) || !/^[a-f0-9-]{36}$/.test(data.learnerId) || !Number.isFinite(data.expiresAt)) throw new Error('invalid_response');
       this.session = { token: data.token, learnerId: data.learnerId, expiresAt: data.expiresAt };
@@ -103,7 +105,7 @@ export class ProgressSync {
       try { this.options.sessionStorage.setItem(SESSION_KEY, JSON.stringify(this.session)); } catch { /* This tab can still work until it is closed. */ }
       this.courseAvailable = data.courseAvailable === true; this.aiAvailable = data.aiAvailable === true; this.telegramAvailable = data.telegramAvailable === true;
       this.readCache(); this.receive(normalizeSnapshot(data.progress));
-    } catch (error: any) { if (generation !== this.generation) return; this.publish('signed-out', error.status === 401 ? 'Код не подошёл. Проверь символы или обратись к наставнику.' : error.status === 429 ? 'Слишком много попыток. Подожди минуту.' : 'Сейчас не удалось войти. Проверь интернет и попробуй ещё раз.'); }
+    } catch (error: any) { if (generation !== this.generation) return; this.publish('signed-out', error.status === 401 && input.inviteCode ? 'Приглашение не подошло или запись на поток закрыта. Проверь код у наставника.' : error.status === 401 ? 'Код не подошёл. Проверь символы или обратись к наставнику.' : error.status === 429 ? 'Слишком много попыток. Подожди минуту.' : 'Сейчас не удалось войти. Проверь интернет и попробуй ещё раз.'); }
   }
   async signInTelegram(initData: string) {
     const generation = ++this.generation;

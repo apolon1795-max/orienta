@@ -21,7 +21,7 @@ try {
  const page=await context.newPage();page.on('pageerror',e=>errors.push(String(e)));
  await page.addInitScript(()=>localStorage.setItem('appState_ru',JSON.stringify({private:'PRIVATE_COURSE_SENTINEL'})));
  await page.goto(base);await page.getByRole('heading',{name:'Какой ты герой?'}).waitFor();
- assert.equal(await page.getByLabel('Личный код',{exact:true}).count(),0);
+ assert.equal(await page.getByLabel('Код входа',{exact:true}).count(),0);
  await page.screenshot({path:'output/free-browser/01-intro-mobile.png',fullPage:true});
  const click=async name=>page.getByRole('button',{name,exact:false}).click();
  await click('Пройти бесплатный тест');await click('Начать игру');await click('Создать персонажа');await click('Человек');
@@ -48,7 +48,7 @@ try {
  assert.equal(await page.getByRole('button',{name:'Мой архетип',exact:true}).count(),0);
  assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('appState_ru')).private),'PRIVATE_COURSE_SENTINEL');
  await click('Уже есть доступ к курсу');await page.getByRole('link',{name:'Войти по личному коду'}).click();
- await page.getByLabel('Личный код',{exact:true}).waitFor();
+ await page.getByLabel('Код входа',{exact:true}).waitFor();
  await page.getByRole('link',{name:'← Бесплатная вводная'}).click();await page.getByRole('heading',{name:'Какой ты герой?'}).waitFor();
  assert.equal(errors.length,0,errors.join('\n'));
  console.log('PASS free: 5 situations, reload/resume, archetype, course boundary, zero API/AI calls, cancel/reset, private course isolation, pilot sign-in and return; mobile screenshots saved.');

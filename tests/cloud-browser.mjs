@@ -57,10 +57,10 @@ try {
   await firstContext.addInitScript(() => { localStorage.setItem('appState_ru', JSON.stringify({ hasOnboarded: true, course: { s4Dream: 'Прежний локальный ответ' } })); });
   const a = await firstContext.newPage(), b = await secondContext.newPage();
   for (const page of [a, b]) page.on('pageerror', error => errors.push(String(error)));
-  const login = async (page, code) => { await page.goto(base + '/#course'); await page.getByLabel('Личный код', { exact: true }).fill(code); await page.getByRole('button', { name: 'Войти по коду', exact: true }).click(); await page.getByRole('button', {name:'Открыть полный курс',exact:true}).click(); };
+  const login = async (page, code) => { await page.goto(base + '/#course'); await page.getByLabel('Код входа', { exact: true }).fill(code); await page.getByRole('button', { name: 'Войти по коду', exact: true }).click(); await page.getByRole('button', {name:'Открыть полный курс',exact:true}).click(); };
   await a.goto(base + '/#course'); await a.screenshot({ path: output + '/01-access-mobile.png', fullPage: true });
   assert.equal(await a.getByRole('button', { name: 'Скачать ответы с устройства', exact: true }).count(), 0);
-  await a.getByLabel('Личный код', { exact: true }).fill('неправильный код'); await a.getByRole('button', { name: 'Войти по коду', exact: true }).click();
+  await a.getByLabel('Код входа', { exact: true }).fill('неправильный код'); await a.getByRole('button', { name: 'Войти по коду', exact: true }).click();
   await a.getByRole('alert').filter({ hasText: 'Не удалось войти' }).waitFor(); record('invalid code rejected without exposing another pupil');
   await login(a, learner.code); await a.getByRole('button', { name: 'Курс', exact: false }).click();
   const dream = a.getByRole('textbox', { name: 'Твоя работа мечты' });
@@ -94,7 +94,7 @@ try {
   assert.deepEqual((await progress()).state.course.completedStages, [0, 1, 2]); record('video completion does not complete the assignment');
   for (const width of [320, 390, 768, 1280]) { await b.setViewportSize({ width, height: 844 }); assert.ok(await b.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'overflow at ' + width); }
   await b.getByRole('button', { name: 'Выйти из профиля', exact: true }).click(); await b.getByRole('heading', { name: 'Продолжи свой путь' }).waitFor();
-  await b.getByLabel('Личный код', { exact: true }).fill(other.code); await b.getByRole('button', { name: 'Войти по коду', exact: true }).click(); await b.getByRole('button', { name: 'Поехали', exact: true }).waitFor();
+  await b.getByLabel('Код входа', { exact: true }).fill(other.code); await b.getByRole('button', { name: 'Войти по коду', exact: true }).click(); await b.getByRole('button', { name: 'Поехали', exact: true }).waitFor();
   await until(async () => !!(await store.get('progress:' + other.learnerId)));
   assert.equal((await store.get('progress:' + other.learnerId)).value.payload.state.course.s4Dream, '');
   record('logout and another pupil do not inherit previous answers');

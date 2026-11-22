@@ -3,9 +3,15 @@ import { telegramProof } from '../services/telegramBrowser';
 import { Button } from './Button';
 import type { ProgressSync, SyncState } from '../services/cloudProgress';
 
-type Props = { client: Pick<ProgressSync, 'signIn' | 'signInTelegram' | 'registerFree' | 'signOut' | 'linkTelegram' | 'retry' | 'useCloudCopy'>; state: SyncState; onExport: () => void; hasLocalAnswers: boolean };
+type Props = { client: Pick<ProgressSync, 'signIn' | 'joinPilot' | 'signInTelegram' | 'registerFree' | 'signOut' | 'linkTelegram' | 'retry' | 'useCloudCopy'>; state: SyncState; onExport: () => void; hasLocalAnswers: boolean };
+const createPersonalCode = () => 'ORI-' + Array.from(crypto.getRandomValues(new Uint8Array(16)), byte => byte.toString(16).padStart(2, '0')).join('').toUpperCase().match(/.{4}/g)!.join('-');
+const isPilotCode = (code: string) => /^PILOT/i.test(code.trim());
+
 export const ProgressAccess = ({ client, state, onExport, hasLocalAnswers }: Props) => {
   const [code, setCode] = useState('');
+  const [pilotRecovery, setPilotRecovery] = useState('');
+  const [pilotConsent, setPilotConsent] = useState(false);
+  const pilot = isPilotCode(code);
   const [newCode, setNewCode] = useState('');
   const [registrationConsent, setRegistrationConsent] = useState(false);
   const [registrationBusy, setRegistrationBusy] = useState(false);
@@ -14,15 +20,25 @@ export const ProgressAccess = ({ client, state, onExport, hasLocalAnswers }: Pro
   return <main className="min-h-screen max-w-lg mx-auto px-6 py-16 flex flex-col justify-center gap-6">
     <p className="text-sm tracking-widest text-amber-200">ORIENTA · ПУТЬ ГЕРОЯ</p>
     <h1 className="text-3xl font-serif text-white">Продолжи свой путь</h1>
-    <p className="text-slate-300">Введи личный код от наставника. Ответы и место просмотра уроков будут доступны с другого телефона или компьютера по тому же коду.</p>
-    <form onSubmit={event => { event.preventDefault(); void client.signIn(code); }} className="space-y-4">
-      <label className="block text-slate-100" htmlFor="access-code">Личный код</label>
-      <input id="access-code" name="access-code" type="text" value={code} onChange={event => setCode(event.target.value)} autoComplete="off" autoCapitalize="characters" spellCheck={false} maxLength={100}
+    <p className="text-slate-300">Введи приглашение от наставника или код своего профиля. Личный код поможет продолжить с другого устройства.</p>
+    <form onSubmit={event => { event.preventDefault(); if (pilot) { if (pilotConsent && pilotRecovery) void client.joinPilot(code, pilotRecovery); } else void client.signIn(code); }} className="space-y-4">
+      <label className="block text-slate-100" htmlFor="access-code">Код входа</label>
+      <input id="access-code" name="access-code" type="text" value={code} onChange={event => {
+        const next = event.target.value;
+        if (isPilotCode(next) && !pilotRecovery) setPilotRecovery(createPersonalCode());
+        if (!isPilotCode(next)) setPilotConsent(false);
+        setCode(next);
+      }} autoComplete="off" autoCapitalize="characters" spellCheck={false} maxLength={100}
         className="w-full rounded-xl p-4 bg-slate-800 border border-slate-500 text-white font-mono" placeholder="ORI-…" aria-describedby="code-help" disabled={state.status === 'checking'} />
-      <p id="code-help" className="text-sm text-slate-400">Код открывает твои ответы. Сохрани его и не передавай другим.</p>
-      <Button type="submit" fullWidth variant="fantasy" disabled={!code.trim() || state.status === 'checking'}>{state.status === 'checking' ? 'Подключаемся…' : 'Войти по коду'}</Button>
+      <p id="code-help" className="text-sm text-slate-400">Личный код открывает твои ответы. Его нельзя передавать другим.</p>
+      {pilot && <section aria-label="Личный код восстановления" className="space-y-3">
+        <p>Это твой личный код на случай смены устройства. Сейчас вводить его не нужно. Сохрани его и никому не показывай.</p>
+        <code className="block break-all select-all rounded-xl bg-slate-800 p-3">{pilotRecovery}</code>
+        <label className="flex items-start gap-3"><input type="checkbox" checked={pilotConsent} onChange={e => setPilotConsent(e.target.checked)} /><span>Я сохранил личный код и согласен, чтобы мой прогресс хранился на сервере Ориенты в России. Не буду вводить настоящие имена и личные сведения.</span></label>
+      </section>}
+      <Button type="submit" fullWidth variant="fantasy" disabled={!code.trim() || state.status === 'checking' || (pilot && (!pilotConsent || !pilotRecovery))}>{state.status === 'checking' ? 'Подключаемся…' : pilot ? 'Войти в поток' : 'Войти по коду'}</Button>
     </form>
-    {state.registrationAvailable && <section aria-label="Бесплатная регистрация" className="border-t border-slate-700 pt-5 space-y-4"><h2 className="text-xl">Новый бесплатный профиль</h2><p>Имя, телефон и почта не нужны. Профиль сохранит вводную и архетип. Полный курс подключается отдельно, оплата сейчас не работает.</p>{!newCode ? <Button variant="secondary" onClick={() => { const bytes = crypto.getRandomValues(new Uint8Array(16)); setNewCode('ORI-' + [...bytes].map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase().match(/.{4}/g)!.join('-')); }}>Подготовить мой код</Button> : <><p>Сохрани код в надёжном месте. Он открывает твой профиль с другого устройства. Не публикуй и не отправляй его другим. Без кода и связанного Telegram восстановить доступ не получится.</p><code className="block break-all select-all rounded-xl bg-slate-800 p-3">{newCode}</code><label className="flex gap-3"><input type="checkbox" checked={registrationConsent} onChange={e => setRegistrationConsent(e.target.checked)} /><span>Я сохранил код и хочу создать профиль на сервере Ориенты в России. Подтверждённые мной ответы и псевдоним будут сохраняться там; вводную перенесу отдельно. Не буду вводить настоящие имена и личные сведения.</span></label><Button disabled={!registrationConsent || registrationBusy} onClick={async () => { setRegistrationBusy(true); setRegistrationError(''); try { await client.registerFree(newCode); } catch(error) { setRegistrationError((error as Error).message); } finally { setRegistrationBusy(false); } }}>{registrationBusy ? 'Создаём профиль…' : 'Создать бесплатный профиль'}</Button></>}{registrationError && <p role="alert">{registrationError}</p>}</section>}
+    {state.registrationAvailable && <section aria-label="Бесплатная регистрация" className="border-t border-slate-700 pt-5 space-y-4"><h2 className="text-xl">Новый бесплатный профиль</h2><p>Имя, телефон и почта не нужны. Профиль сохранит вводную и архетип. Полный курс подключается отдельно, оплата сейчас не работает.</p>{!newCode ? <Button variant="secondary" onClick={() => { setNewCode(createPersonalCode()); }}>Подготовить мой код</Button> : <><p>Сохрани код в надёжном месте. Он открывает твой профиль с другого устройства. Не публикуй и не отправляй его другим. Без кода и связанного Telegram восстановить доступ не получится.</p><code className="block break-all select-all rounded-xl bg-slate-800 p-3">{newCode}</code><label className="flex gap-3"><input type="checkbox" checked={registrationConsent} onChange={e => setRegistrationConsent(e.target.checked)} /><span>Я сохранил код и хочу создать профиль на сервере Ориенты в России. Подтверждённые мной ответы и псевдоним будут сохраняться там; вводную перенесу отдельно. Не буду вводить настоящие имена и личные сведения.</span></label><Button disabled={!registrationConsent || registrationBusy} onClick={async () => { setRegistrationBusy(true); setRegistrationError(''); try { await client.registerFree(newCode); } catch(error) { setRegistrationError((error as Error).message); } finally { setRegistrationBusy(false); } }}>{registrationBusy ? 'Создаём профиль…' : 'Создать бесплатный профиль'}</Button></>}{registrationError && <p role="alert">{registrationError}</p>}</section>}
     {state.telegramAvailable && <section className="space-y-3"><p className="text-sm text-slate-300">Уже связал Telegram с профилем? В мини-приложении можно войти без повторного ввода кода. Подписанные данные аккаунта Telegram будут проверены сервером Ориенты.</p><Button variant="secondary" disabled={state.status === 'checking'} onClick={async () => { try { setTelegramError(''); await client.signInTelegram(await telegramProof()); } catch (error) { setTelegramError((error as Error).message); } }}>Войти через Telegram</Button></section>}
     {telegramError && <p role="alert">{telegramError}</p>}
     {state.message && <p role="alert" className="text-amber-200">{state.message}</p>}
