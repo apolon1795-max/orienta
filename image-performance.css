@@ -1,0 +1,16 @@
+/* The protected course delivers its CSS at run time. These higher-specificity
+   rules keep the legacy raster URLs available, but prefer optimized variants. */
+.course-atlas .atlas-map .atlas-landscape,
+.stage-layout .stage-chapter-art {
+  background-image: url('/design/course-map-v1.webp');
+}
+@media (max-width: 700px) {
+  .course-atlas .atlas-map .atlas-landscape,
+  .stage-layout .stage-chapter-art {
+    background-image: url('/design/course-map-v1-mobile.webp');
+  }
+}
+.course-atlas[class],
+.atlas-cover .atlas-cover-copy {
+  background-image: url('/design/paper-text.webp');
+}

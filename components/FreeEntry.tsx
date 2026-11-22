@@ -78,7 +78,7 @@ export const FreeEntry = () => {
       {storageFailed && <p role="status" className="px-6 text-amber-200">Не удалось сохранить результат в браузере. Пока не закрывай вкладку.</p>}
       {(view === 'intro' || (view === 'guide' && !saved.result)) && <section className="adventure-intro max-w-2xl mx-auto px-6 py-12 space-y-7">
         <h1 className="text-4xl sm:text-6xl font-serif">Какой ты герой?</h1>
-        <img className="adventure-party" src={partyArt} alt="Четыре героя Ориенты: эльфийка, рыцарь, орк и тролль" />
+        <img className="adventure-party" src={partyArt} width={1152} height={768} fetchPriority="high" alt="Четыре героя Ориенты: эльфийка, рыцарь, орк и тролль" />
         <p className="text-xl">Пять игровых ситуаций помогут заметить свои сильные стороны. Выбери персонажа, пройди приключение и узнай свой архетип.</p>
         <p>Тест и описание архетипа доступны бесплатно, без регистрации и оплаты. Это повод подумать о себе, а не диагноз или окончательный выбор профессии.</p>
         <Button variant="fantasy" fullWidth onClick={openTest}>{saved.draft.step === 'start' || saved.result ? 'Пройти тест' : 'Продолжить тест'}</Button>

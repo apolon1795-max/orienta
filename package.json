@@ -15,8 +15,6 @@
     "server:dev": "node --experimental-transform-types server/local.mjs",
     "admin": "node --experimental-transform-types server/admin.mjs",
     "assets": "node scripts/cache-assets.mjs",
-    "prebuild": "npm run assets",
-    "predev": "npm run assets",
     "test:component": "node tests/free-component.mjs",
     "test:protected-build": "node --experimental-transform-types tests/protected-build.mjs"
   },
