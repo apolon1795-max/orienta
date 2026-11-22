@@ -1,6 +1,7 @@
 /* Approved adventure v5. Scoped to the free journey: never recolours the paid app. */
 .adventure {
-  --ink:#443923; --muted:#706044; --paper:#f5e8c5; --line:#b9a16e; --green:#3c5b3e;
+  --ink:#443923; --muted:#594b36; --paper:#f5e8c5; --line:#b9a16e; --green:#3c5b3e;
+  --danger-ink:#782b25; --success-ink:#2f5035; --warning-ink:#67481e; --secondary-ink:#544531;
   color-scheme:light; color:var(--ink); background:#343f2e;
   font-family:Arial,sans-serif; font-size:16px; line-height:1.6;
   padding:24px 20px 56px; min-height:100svh;
@@ -32,7 +33,7 @@
 .adventure [data-button-variant='ghost'] {background:transparent;color:var(--muted);}
 .adventure button:focus-visible,.adventure a:focus-visible,.adventure input:focus-visible {outline:3px solid #37664d;outline-offset:4px;}
 .adventure input {background:#fff8e4!important;color:var(--ink)!important;border-color:#b7a171!important;caret-color:var(--green);font-size:18px;}
-.adventure input::placeholder {color:#8b7959;}
+.adventure input::placeholder {color:#645333;}
 .adventure dialog {background:#f5e8c5;color:var(--ink);border:1px solid #b9a16e;box-shadow:0 20px 70px #0006;}
 .adventure-intro {max-width:760px!important;padding:40px;}
 .adventure-party {width:100%;max-height:390px;object-fit:contain;border-radius:18px;margin:24px auto;background:#e7dab1;}
@@ -41,7 +42,7 @@
 .adventure-question {padding-bottom:0;}
 .adventure-progress {margin:0 0 20px;}
 .adventure-progress [role='progressbar'] {height:9px;background:#d7ccaa;border-radius:8px;overflow:hidden;}
-.adventure-progress [role='progressbar'] span {display:block;height:100%;background:#b4944d;border-radius:8px;}
+.adventure-progress [role='progressbar'] span {display:block;height:100%;background:#795a21;border-radius:8px;}
 .adventure-progress p {font-size:12px;text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin:12px 0 0;color:#6a542d;}
 .adventure .adventure-scene {max-width:500px;height:auto;aspect-ratio:1.3;border:1px solid #a78a4e;border-radius:18px;}
 .adventure-scene img {object-fit:contain;}
@@ -79,7 +80,12 @@
 .adventure .hero-guide-root {font-family:Arial,sans-serif!important;color:var(--ink)!important;background:transparent!important;}
 .adventure .hero-guide-root > .absolute {display:none;}
 .adventure .glass-panel,.adventure .prof-item,.adventure .shadow-side-box {background:#f1e2bc!important;border-color:#b9a16e!important;box-shadow:none!important;backdrop-filter:none!important;}
-.adventure .blacklist-item {background:#f3ded0!important;}
+.adventure .blacklist-item {background:#f3ded0!important;border-left-color:var(--danger-ink);}
+.adventure .blacklist-item strong,.adventure [class*='text-red-'],.adventure [class*='text-rose-'],.adventure [class*='text-pink-'] {color:var(--danger-ink);}
+.adventure [class*='text-green-'],.adventure [class*='text-emerald-'] {color:var(--success-ink);}
+.adventure .hero-guide-root [class*='text-amber-'] {color:var(--warning-ink);}
+.adventure .hero-guide-root :is(.text-slate-400,.text-slate-500) {color:var(--secondary-ink);}
+.test-atlas [class*='text-red-'] {color:#782b25;}
 .adventure .category-header,.adventure th {color:#66502b!important;border-color:#b9a16e!important;}
 .adventure .hero-guide-root td {border-color:#cbb98d;}
 .adventure #guide-action-btn {background:#3c5b3e!important;color:#f7e9c1!important;border:1px solid #b99450!important;min-height:52px;}
@@ -126,3 +132,73 @@ body:has(.adventure){min-width:0}
 /* Profile integration: keep links readable beside the camp navigation. */
 .adventure .adventure-nav a {color:#f2e3b9;min-height:44px;display:inline-flex;align-items:center;line-height:1.3;font-size:14px;padding:6px 10px;border:1px solid #9b8f67;border-radius:10px;text-decoration:none;}
 .adventure-camp aside > a,.adventure-camp aside > button {display:block;width:fit-content;margin-top:12px;}
+
+
+/* The personal-code routes share fixed, leaf-free reading surfaces. */
+#root {
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px)
+    env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+}
+/* Safari can still scroll content under the cutout after the initial inset.
+   Keep that strip opaque and free of controls without making the menu sticky. */
+#root::before {
+  content:""; display:block; position:fixed; inset:0 0 auto;
+  height:env(safe-area-inset-top, 0px); z-index:100; pointer-events:none; background:#15251d;
+}
+.adventure .sticky.top-0 {top:env(safe-area-inset-top, 0px);}
+.profile-route-nav {
+  display:flex; flex-wrap:wrap; align-items:center; column-gap:24px; row-gap:4px;
+  padding:6px clamp(16px,4vw,36px); background:#15251d; color:#fae9b9;
+}
+.profile-route-nav a {
+  display:inline-flex; align-items:center; min-height:44px; color:inherit;
+  font-size:.875rem; text-decoration:underline; text-underline-offset:3px;
+}
+.profile-route-nav a:focus-visible {outline:3px solid #fae9b9; outline-offset:2px;}
+.profile-access,.profile-camp-view {
+  min-height:calc(100svh - 56px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  background:radial-gradient(ellipse at 50% 0%,#435943 0%,#29382d 72%);
+  padding:clamp(14px,4vw,32px) clamp(10px,3vw,24px) 32px;
+}
+.profile-access > main,.profile-camp-view > section {
+  --profile-paper:#f8e9c2;
+  color:#382916; background-color:var(--profile-paper);
+  background-image:linear-gradient(135deg,#fff3d6,var(--profile-paper) 46%,#f2dfb0);
+  border:1px solid #bb9e65; border-radius:22px; box-shadow:0 7px 26px #101d1554;
+  margin:0 auto;
+}
+.profile-access > main {
+  padding:0 clamp(18px,5vw,36px) clamp(23px,5vw,36px);
+  min-height:0; max-width:540px; gap:clamp(12px,3vw,18px); overflow:hidden;
+}
+.profile-access > main::before {
+  content:""; display:block; flex:none;
+  height:clamp(90px,29vw,150px);
+  margin-inline:calc(-1 * clamp(18px,5vw,36px));
+  background:#547254 url('/design/login-map-banner.webp') center / cover no-repeat;
+  border-bottom:2px solid #b39555;
+}
+.profile-access > main h1 {color:#49341b; font-size:clamp(32px,8vw,46px); line-height:1.08;}
+.profile-access > main p,.profile-access > main label {color:#463720;}
+.profile-access > main > p:first-of-type {color:#315039; font-weight:700; letter-spacing:.10em;}
+.profile-access > main #code-help {color:#59492e;}
+.profile-access > main :is(input[type='text'],[data-button-variant]) {min-height:48px;}
+.profile-access > main input::placeholder {color:#645333; opacity:1;}
+.profile-access > main [data-button-variant='fantasy'] {background:#31583c; color:#fff5d8;}
+.profile-access > main [data-button-variant='fantasy']:disabled {
+  opacity:1; background:#e3e4ce; color:#3c4b36; border-color:#8b9475; border-bottom-color:#89906f;
+}
+.profile-access > main [role='alert'] {color:#742b1a;}
+.profile-camp-view > section + section {margin-top:12px;}
+.profile-camp-view > section:first-child {padding:6px clamp(14px,4vw,24px);}
+.profile-camp-view > section:first-child > div:first-child {gap:2px 14px;}
+.profile-camp-view > section:first-child button {min-height:40px; text-underline-offset:3px;}
+.profile-camp-view > section:not(:first-child) {padding:clamp(20px,5vw,44px);}
+.profile-camp-view > section h1 {color:#49341b; font-size:clamp(32px,8vw,46px);}
+.profile-camp-view > section a {color:#375333;}
+@media(max-width:360px) {
+  .profile-route-nav {column-gap:12px; padding-inline:12px;}
+  .profile-camp-view > section:first-child > div:first-child {flex-wrap:wrap;}
+}
+
+@media(max-width:540px) {.profile-access > main::before {background-image:url('/design/login-map-banner-mobile.webp');}}

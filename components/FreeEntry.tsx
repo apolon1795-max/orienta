@@ -40,7 +40,7 @@ export const FreeEntry = () => {
   const configured = !!apiBase(import.meta.env.VITE_PROGRESS_API_URL);
   const existingCourse = import.meta.env.VITE_EXISTING_COURSE_URL === 'https://apolon1795-max-orienta-c425.twc1.net/' ? import.meta.env.VITE_EXISTING_COURSE_URL : ''; 
   if (course && configured) return <>
-    <nav className="p-3 bg-slate-950 print-hidden"><a href="#free" className="text-amber-200 underline">← Бесплатная вводная</a><a href="#hub" className="ml-6 text-amber-200 underline">Мой лагерь</a></nav>
+    <nav className="profile-route-nav print-hidden" aria-label="Навигация профиля"><a href="#free">← Бесплатная вводная</a><a href="#hub">Мой лагерь</a></nav>
     <Suspense fallback={<p role="status" className="p-6">Открываем курс…</p>}><PilotCourse /></Suspense>
   </>;
   return <main className="adventure min-h-screen bg-slate-950 text-slate-100">
