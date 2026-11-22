@@ -184,7 +184,7 @@ body:has(.adventure){min-width:0}
 .profile-access > main #code-help {color:#59492e;}
 .profile-access > main :is(input[type='text'],[data-button-variant]) {min-height:48px;}
 .profile-access > main input::placeholder {color:#645333; opacity:1;}
-.profile-access > main [data-button-variant='fantasy'] {background:#31583c; color:#fff5d8;}
+.profile-access > main [data-button-variant='fantasy'] {background:#31583c; color:#fff5d8; transition:none;}
 .profile-access > main [data-button-variant='fantasy']:disabled {
   opacity:1; background:#e3e4ce; color:#3c4b36; border-color:#8b9475; border-bottom-color:#89906f;
 }
