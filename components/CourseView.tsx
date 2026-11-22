@@ -1,7 +1,7 @@
 import './journey-theme.css';
 import './course-map.css';
 import React, { useState, useEffect } from 'react';
-import { lessonConfigured, currentLessonProgress } from './LessonMedia';
+import { LessonMedia, lessonConfigured, currentLessonProgress } from './LessonMedia';
 import { playbackTime } from '../services/lessonProgress';
 import { 
   ArrowLeft, Lock, CheckCircle, Play, Star, 
@@ -648,6 +648,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
             <>
                 {renderHeader()}
                 <div className="atlas-body">
+                    <LessonMedia />
                     {renderMap()}
                 </div>
             </>
