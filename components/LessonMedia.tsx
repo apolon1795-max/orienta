@@ -65,7 +65,10 @@ export const LessonMedia = ({ stage, progress, onProgress }: { stage?: number; p
     };
     loadKinescope().then(factory => {
       if (cancelled) return null;
-      return factory.create(host.id, { url: source.url, size: { width: '100%', height: '100%' }, behavior: { localStorage: false, autoPlay: false, playsInline: true } });
+      // The two new domain-bound assets use the official embedding endpoint directly.
+      // Do not nest the Kinescope watch page inside the player on their restricted origin.
+      const playerUrl = stage === 1 || isWelcome ? source.url.replace('https://kinescope.io/', 'https://kinescope.io/embed/') : source.url;
+      return factory.create(host.id, { url: playerUrl, size: { width: '100%', height: '100%' }, behavior: { localStorage: false, autoPlay: false, playsInline: true } });
     }).then(created => {
       if (!created) return;
       if (cancelled) { void created.destroy().catch(() => {}); return; }
@@ -82,7 +85,7 @@ export const LessonMedia = ({ stage, progress, onProgress }: { stage?: number; p
       subscriptions.forEach(([type, callback]) => player?.off(type, callback));
       if (player) void player.destroy().catch(() => {}); else host.remove();
     };
-  }, [source?.id, attempt, id, opened]);
+  }, [source?.id, attempt, id, opened, stage, isWelcome]);
   if (!sourceValue) return null;
   const saved = progress?.source === source?.id ? progress : undefined;
   return <details open={opened} onToggle={event => { if (isWelcome) setOpened(event.currentTarget.open); }} className={`max-w-2xl mx-auto px-6 mt-6 print-hidden${isWelcome ? ' welcome-media' : ''}`}>

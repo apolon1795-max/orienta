@@ -31,7 +31,7 @@ const progress = async () => (await store.get('progress:' + learner.learnerId)).
 const checks = [], errors = [];
 const record = name => { checks.push(name); console.log('PASS: ' + name); };
 const sdk = `window.onKinescopeIframeAPIReady({create:async(id,options)=>{
-  const frame=document.createElement('iframe');frame.id=id;frame.title='Kinescope test player';frame.src=options.url.replace('kinescope.io/','kinescope.io/embed/');document.getElementById(id).replaceWith(frame);
+  const frame=document.createElement('iframe');frame.id=id;frame.title='Kinescope test player';frame.src=options.url.includes('/embed/')?options.url:options.url.replace('kinescope.io/','kinescope.io/embed/');document.getElementById(id).replaceWith(frame);
   let position=0;const listeners={};const events=Object.fromEntries(['Loaded','TimeUpdate','DurationChange','Pause','Ended','Error'].map(x=>[x,x]));
   const emit=(name,data)=>{for(const callback of listeners[name]||[])callback({data,target:player});};
   const message=event=>{if(event.source!==frame.contentWindow||event.data?.position===undefined)return;position=event.data.position;emit('TimeUpdate',{currentTime:position});emit(event.data.ended?'Ended':'Pause');};window.addEventListener('message',message);
