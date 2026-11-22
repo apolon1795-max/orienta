@@ -31,7 +31,7 @@ try {
     await context.route('**/*',route=>route.request().url().startsWith(origin)||route.request().url().startsWith(api)?route.continue():route.abort());
     if (index === 0) {
       const old = freshFreeProgress();
-      old.draft.step='result'; old.draft.heroData.name='Другой ученик'; old.result={scoreType:'Commander'};
+      old.draft.step='result'; old.draft.scores.Commander=5; old.draft.heroData.name='Другой ученик'; old.result={scoreType:'Commander'};
       await context.addInitScript(value => { if (!localStorage.getItem('orienta_free_intro_v1')) localStorage.setItem('orienta_free_intro_v1',value); },JSON.stringify(old));
     }
     const page=await context.newPage();

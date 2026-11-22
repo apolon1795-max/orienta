@@ -22,7 +22,7 @@ test('explicit Camp archetype transfer preserves an entitled user’s existing c
  };
  const storage=new Map();
  const client=new ProfileSession('https://local.test',transport,{getItem:k=>storage.get(k),setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)});
- const candidate=freshFreeProgress();candidate.draft.step='result';candidate.draft.heroData.name='Герой';candidate.result={scoreType:'Commander'};
+ const candidate=freshFreeProgress();candidate.draft.step='result';candidate.draft.scores.Commander=5;candidate.draft.heroData.name='Герой';candidate.result={scoreType:'Commander'};
  await client.signIn('code');
  assert.equal(puts,0,'sign-in does not silently transfer draft');
  await client.saveIntro(candidate);
