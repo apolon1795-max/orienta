@@ -67,11 +67,11 @@ export const ProgressAccess = ({ client, state, onExport, hasLocalAnswers }: Pro
   </main>;
 };
 
-export const ProgressAccount = ({ client, state, onExport }: Omit<Props, 'hasLocalAnswers'>) => {
+export const ProgressAccount = ({ client, state, onExport, recoveryOnly = false }: Omit<Props, 'hasLocalAnswers'> & { recoveryOnly?: boolean }) => {
   const [linkConfirm, setLinkConfirm] = useState(false);
   const [linkMessage, setLinkMessage] = useState('');
   const [linkBusy, setLinkBusy] = useState(false);
-  if (state.status === 'local') return null;
+  if (state.status === 'local' || (recoveryOnly && state.cacheAvailable && !['offline','conflict'].includes(state.status))) return null;
   const messages: Partial<Record<SyncState['status'], string>> = {
     saved: 'Прогресс сохранён в облаке', pending: 'Сохраняем прогресс…', offline: 'Нет связи с облаком. Ответы пока на этом устройстве.',
     conflict: 'На другом устройстве появилось новое сохранение. Твои текущие ответы не отправлены.',
@@ -79,9 +79,9 @@ export const ProgressAccount = ({ client, state, onExport }: Omit<Props, 'hasLoc
   return <section aria-label="Личный прогресс" className="max-w-5xl mx-auto px-6 py-3 text-sm print-hidden border-b border-slate-800">
     <div className="flex flex-wrap items-center justify-between gap-3">
       <p role="status" className={['offline', 'conflict'].includes(state.status) ? 'text-amber-200' : 'text-slate-300'}>{messages[state.status] || state.message}</p>
-      <button className="underline text-slate-300" onClick={() => { if (state.dirty) onExport(); void client.signOut(); }}>Выйти из профиля</button>
+      {!recoveryOnly && <button className="underline text-slate-300" onClick={() => { if (state.dirty) onExport(); void client.signOut(); }}>Выйти из профиля</button>}
     </div>
-    {state.telegramAvailable && <div className="mt-4 space-y-3"><button className="underline" onClick={() => setLinkConfirm(true)}>Связать профиль с Telegram</button>{linkConfirm && <div className="rounded-xl border border-slate-600 p-4 space-y-3"><p>Делай это в мини-приложении Telegram после входа по своему личному коду. Подписанные данные Telegram будут отправлены на сервер Ориенты для проверки и связи с этим профилем. Затем этот Telegram сможет открывать твои сохранённые ответы. Старую связь с другим профилем заменить нельзя.</p><Button disabled={linkBusy || state.status !== 'saved' || state.dirty} onClick={async () => { setLinkBusy(true); try { const result = await client.linkTelegram(await telegramProof()); setLinkMessage(result.linked ? 'Telegram связан. На другом устройстве открой то же мини-приложение и нажми «Войти через Telegram».' : 'Связь не подтверждена.'); setLinkConfirm(false); } catch (error) { setLinkMessage((error as Error).message); } finally { setLinkBusy(false); } }}>Это мой Telegram, связать</Button><button className="underline ml-4" onClick={() => setLinkConfirm(false)}>Отмена</button></div>}{linkMessage && <p role="status">{linkMessage}</p>}</div>}
+    {!recoveryOnly && state.telegramAvailable && <div className="mt-4 space-y-3"><button className="underline" onClick={() => setLinkConfirm(true)}>Связать профиль с Telegram</button>{linkConfirm && <div className="rounded-xl border border-slate-600 p-4 space-y-3"><p>Делай это в мини-приложении Telegram после входа по своему личному коду. Подписанные данные Telegram будут отправлены на сервер Ориенты для проверки и связи с этим профилем. Затем этот Telegram сможет открывать твои сохранённые ответы. Старую связь с другим профилем заменить нельзя.</p><Button disabled={linkBusy || state.status !== 'saved' || state.dirty} onClick={async () => { setLinkBusy(true); try { const result = await client.linkTelegram(await telegramProof()); setLinkMessage(result.linked ? 'Telegram связан. На другом устройстве открой то же мини-приложение и нажми «Войти через Telegram».' : 'Связь не подтверждена.'); setLinkConfirm(false); } catch (error) { setLinkMessage((error as Error).message); } finally { setLinkBusy(false); } }}>Это мой Telegram, связать</Button><button className="underline ml-4" onClick={() => setLinkConfirm(false)}>Отмена</button></div>}{linkMessage && <p role="status">{linkMessage}</p>}</div>}
     {!state.cacheAvailable && <p role="alert" className="text-amber-200 mt-2">На устройстве не удалось сохранить запасную копию. Скачай ответы перед закрытием страницы.</p>}
     {state.status === 'offline' && <div className="flex flex-wrap gap-4 mt-3"><button className="underline" onClick={() => { void client.retry(); }}>Повторить сохранение</button><button className="underline" onClick={onExport}>Скачать ответы</button><p className="text-slate-400">При выходе несохранённые ответы скачаются файлом.</p></div>}
     {state.status === 'conflict' && <div className="space-y-3 mt-3">

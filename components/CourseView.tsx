@@ -13,6 +13,7 @@ import { DreamStage, AssessmentStage } from './FinalStages';
 import type { CourseState } from '../types';
 import { SPHERES_DATA, QUIZ_DATA, VALUES_LIST, SKILLS_QUESTIONS, CRISIS_QUESTIONS } from '../data/course';
 import { canFinishStage, validAge, validGift } from '../services/progress';
+import { nextCourseStage } from '../services/courseNavigation';
 
 const SPHERE_ICONS: Record<string, React.ComponentType<any>> = {it:Laptop,health:Stethoscope,art:Palette,edu:GraduationCap,build:Building2,science:FlaskConical,travel:Plane,security:Shield,energy:Zap,biz:Briefcase};
 const SphereIcon = ({id}:{id:string}) => {const Icon=SPHERE_ICONS[id] || Compass;return <Icon size={44} strokeWidth={1.6} aria-hidden="true" />;};
@@ -31,6 +32,8 @@ interface CourseViewProps {
   onCompleteCourse: () => void;
   onBack: () => void;
   isGeneratingAi: boolean;
+  linear?: boolean;
+  stageMedia?: React.ReactNode;
 }
 const InputStep = ({ title, desc, placeholder, value, onChange, onNext }: {
   title: string; desc: string; placeholder: string; value: string;
@@ -42,7 +45,7 @@ const InputStep = ({ title, desc, placeholder, value, onChange, onNext }: {
     <textarea id="reflection" aria-describedby="reflection-help" maxLength={1200}
       className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl p-4 text-white focus:border-purple-500 outline-none h-32 mb-6"
       placeholder={placeholder} value={value} onChange={e => onChange(e.target.value)} />
-    <Button fullWidth disabled={value.trim().length < 2} onClick={onNext}>Далее</Button>
+    <Button fullWidth disabled={value.trim().length < 2} onClick={onNext}>Дальше</Button>
   </div>
 );
 
@@ -56,7 +59,7 @@ const Toast: React.FC<{ message: string | null }> = ({ message }) => {
 };
 
 export const CourseView: React.FC<CourseViewProps> = ({ 
-  course, onChange, onCompleteCourse, onBack, isGeneratingAi
+  course, onChange, onCompleteCourse, onBack, isGeneratingAi, linear = false, stageMedia
 }) => {
   function field<K extends keyof CourseState>(key: K): [CourseState[K], React.Dispatch<React.SetStateAction<CourseState[K]>>] {
     return [course[key], value => onChange(prev => ({ ...prev, [key]: typeof value === 'function' ? (value as (old: CourseState[K]) => CourseState[K])(prev[key]) : value }))];
@@ -104,7 +107,8 @@ export const CourseView: React.FC<CourseViewProps> = ({
   };
   const finishStage = (idx: number, _reward: number) => onChange(prev => {
     if (!canFinishStage(prev, idx)) return prev;
-    return { ...prev, completedStages: [...new Set([...prev.completedStages, idx])], activeStage: null };
+    const completedStages = [...new Set([...prev.completedStages, idx])];
+    return { ...prev, completedStages, activeStage: linear ? nextCourseStage({ completedStages }) : null };
   });
   const showToast = (message: string) => setToastMsg(message);
   const setS1Phase = (next: CourseState['s1Phase']) => onChange(prev => ({ ...prev, s1Phase: next }));
@@ -124,7 +128,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
 
   const renderHeader = () => (
     <header className="atlas-header">
-      <button type="button" aria-label="Вернуться в хаб" onClick={onBack} className="atlas-back"><ArrowLeft size={19} /> В лагерь</button>
+      <button type="button" aria-label={linear ? 'В лагерь' : 'Вернуться в хаб'} onClick={onBack} className="atlas-back"><ArrowLeft size={19} /> В лагерь</button>
       <div className="atlas-heading"><h2>Путь Мастера</h2><p>Пять этапов к Профкарте Героя</p></div>
       <div className="atlas-progress" aria-label={`Пройдено ${completedStages.length} из 5 этапов`}>
         <span>Пройдено <strong>{completedStages.length}/5</strong></span>
@@ -183,7 +187,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
                 <p className="text-slate-300 mb-8 max-w-sm">
                    Свайпай 10 сфер! Лайкай то, что интересно. Твой выбор определит путь.
                 </p>
-                <Button variant="fantasy" onClick={() => setS1Phase('tinder')}>Погнали!</Button>
+                <Button variant="fantasy" onClick={() => setS1Phase('tinder')}>{linear ? 'Дальше' : 'Погнали!'}</Button>
             </div>
         );
     }
@@ -250,7 +254,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
                         disabled={s1SelectedSpheres.length > 3 || s1SelectedSpheres.length === 0}
                         onClick={() => setS1Phase('jobs')}
                     >
-                        Готово
+                        {linear ? 'Дальше' : 'Готово'}
                     </Button>
                 </div>
             </div>
@@ -260,7 +264,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
     if (s1Phase === 'jobs') {
       const idx = Math.min(course.s1ProfessionIndex, Math.max(0, s1SelectedSpheres.length - 1));
       const sphere = SPHERES_DATA.find(s => s.id === s1SelectedSpheres[idx]);
-      if (!sphere) return <Button onClick={() => setS1Phase('tinder')}>Вернуться к сферам</Button>;
+      if (!sphere) return <Button onClick={() => setS1Phase('tinder')}>{linear ? 'Дальше' : 'Вернуться к сферам'}</Button>;
       const selected = course.s1SelectedProfessions[sphere.id] || [];
       return <div className="max-w-md mx-auto p-6 space-y-5">
         <h2 className="text-2xl font-serif text-white">Профессии: {sphere.title}</h2>
@@ -269,7 +273,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
           const old = prev.s1SelectedProfessions[sphere.id] || [];
           return { ...prev, s1SelectedProfessions: { ...prev.s1SelectedProfessions, [sphere.id]: old.includes(job) ? old.filter(v => v !== job) : old.length < 2 ? [...old, job] : old } };
         })}>{job}</Button>)}
-        <Button fullWidth disabled={selected.length < 1} onClick={() => onChange(prev => ({ ...prev, s1ProfessionIndex: idx + 1 < s1SelectedSpheres.length ? idx + 1 : idx, s1Phase: idx + 1 < s1SelectedSpheres.length ? 'jobs' : prev.s1QuizAnswers.length === 3 ? 'done' : 'quiz_intro' }))}>Продолжить</Button>
+        <Button fullWidth disabled={selected.length < 1} onClick={() => onChange(prev => ({ ...prev, s1ProfessionIndex: idx + 1 < s1SelectedSpheres.length ? idx + 1 : idx, s1Phase: idx + 1 < s1SelectedSpheres.length ? 'jobs' : prev.s1QuizAnswers.length === 3 ? 'done' : 'quiz_intro' }))}>{linear ? 'Дальше' : 'Продолжить'}</Button>
       </div>;
     }
 
@@ -281,7 +285,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
                 <p className="text-slate-300 mb-8 max-w-sm">
                     А ты знаешь, что они делают? Проверим!
                 </p>
-                <Button variant="fantasy" onClick={() => setS1Phase('quiz')}>К загадкам</Button>
+                <Button variant="fantasy" onClick={() => setS1Phase('quiz')}>{linear ? 'Дальше' : 'К загадкам'}</Button>
             </div>
         );
     }
@@ -330,7 +334,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
                               return { ...prev, s1QuizFeedback: null, s1QuizIndex: Math.min(s1QuizIndex + 1, 2), s1Phase: s1QuizIndex === 2 ? 'done' : 'quiz' };
                             });
                         }}>
-                            Далее
+                            Дальше
                         </Button>
                     </div>
                 )}
@@ -346,7 +350,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
                 </div>
                 <h2 className="text-3xl font-serif font-bold text-white mb-2">Этап 1 пройден!</h2>
                 <p className="text-slate-300 mb-8">Интересы и выбранные профессии сохранены.</p>
-                <Button variant="fantasy" onClick={() => finishStage(0, 40)}>На карту</Button>
+                <Button variant="fantasy" onClick={() => finishStage(0, 40)}>{linear ? 'Дальше' : 'На карту'}</Button>
             </div>
         );
     }
@@ -365,7 +369,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
                 <p className="text-slate-300 mb-8 max-w-sm">
                     Герой должен знать свою силу и слабость. Загляни в зеркальные пруды!
                 </p>
-                <Button variant="fantasy" onClick={() => setS2Phase('swot1')}>Смотреть в воду</Button>
+                <Button variant="fantasy" onClick={() => setS2Phase('swot1')}>{linear ? 'Дальше' : 'Смотреть в воду'}</Button>
             </div>
         );
     }
@@ -413,7 +417,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
                     disabled={s2Values.length !== 5}
                     onClick={() => setS2Phase('age')}
                 >
-                    Готово ({s2Values.length}/5)
+                    {linear ? 'Дальше' : `Готово (${s2Values.length}/5)`}
                 </Button>
             </div>
         );
@@ -431,7 +435,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
                     onChange={(e) => saveInput('age', e.target.value)}
                 />
                 <p className="text-sm text-slate-300 mb-4">Целое число от 6 до 100.</p>
-                <Button fullWidth disabled={!validAge(s2Inputs.age)} onClick={() => setS2Phase('gifts')}>Далее</Button>
+                <Button fullWidth disabled={!validAge(s2Inputs.age)} onClick={() => setS2Phase('gifts')}>Дальше</Button>
             </div>
         );
     }
@@ -444,7 +448,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
         <p className="text-slate-200">Подарок {idx + 1} из 3: что бы ты хотел получить? Здесь можно мечтать. Ответ не определяет твою профессию.</p>
         <label htmlFor="future-gift" className="block text-slate-200">Желаемый подарок</label>
         <textarea id="future-gift" maxLength={1200} className="w-full h-32 bg-slate-800 border border-slate-600 rounded-xl p-4 text-white" value={s2Inputs[key]} onChange={e => saveInput(key, e.target.value)} />
-        <Button fullWidth disabled={!validGift(s2Inputs[key])} onClick={() => onChange(prev => ({ ...prev, s2GiftIndex: Math.min(idx + 1, 2), s2Phase: idx === 2 ? 'done' : 'gifts' }))}>{idx === 2 ? 'Сохранить подарки' : 'Следующий день рождения'}</Button>
+        <Button fullWidth disabled={!validGift(s2Inputs[key])} onClick={() => onChange(prev => ({ ...prev, s2GiftIndex: Math.min(idx + 1, 2), s2Phase: idx === 2 ? 'done' : 'gifts' }))}>{linear ? 'Дальше' : idx === 2 ? 'Сохранить подарки' : 'Следующий день рождения'}</Button>
       </div>;
     }
 
@@ -456,7 +460,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
                 </div>
                 <h2 className="text-3xl font-serif font-bold text-white mb-2">Этап 2 Пройден!</h2>
                 <p className="text-slate-300 mb-8">Ты проанализировал себя.</p>
-                <Button variant="fantasy" onClick={() => finishStage(1, 40)}>На карту</Button>
+                <Button variant="fantasy" onClick={() => finishStage(1, 40)}>{linear ? 'Дальше' : 'На карту'}</Button>
             </div>
         );
     }
@@ -473,7 +477,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
                 <p className="text-slate-300 mb-8 max-w-sm">
                     Здесь сражаются головой. Узнаем твой стиль мышления!
                 </p>
-                <Button variant="fantasy" onClick={() => setS3Phase('q1')}>На Арену</Button>
+                <Button variant="fantasy" onClick={() => setS3Phase('q1')}>{linear ? 'Дальше' : 'На Арену'}</Button>
             </div>
         );
     }
@@ -518,7 +522,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
                 </p>
                 <label className="flex gap-3 items-center text-slate-200 mb-6"><input type="checkbox" checked={course.untimed}
                   onChange={e => onChange(prev => ({ ...prev, untimed: e.target.checked }))} />Без ограничения времени</label>
-                <Button variant="primary" onClick={() => onChange(prev => ({ ...prev, s3CrisisIdx: 0, s3CrisisAnswers: [], s3Phase: 'crisis' }))}>Начать Блиц</Button>
+                <Button variant="primary" onClick={() => onChange(prev => ({ ...prev, s3CrisisIdx: 0, s3CrisisAnswers: [], s3Phase: 'crisis' }))}>{linear ? 'Дальше' : 'Начать Блиц'}</Button>
             </div>
         );
     }
@@ -608,7 +612,7 @@ export const CourseView: React.FC<CourseViewProps> = ({
                         </div>
                     </div>
                 </div>
-                <Button variant="fantasy" onClick={() => finishStage(2, 20)}>На карту</Button>
+                <Button variant="fantasy" onClick={() => finishStage(2, 20)}>{linear ? 'Дальше' : 'На карту'}</Button>
             </div>
         );
     }
@@ -654,15 +658,16 @@ export const CourseView: React.FC<CourseViewProps> = ({
             </>
         ) : (
             <div className="stage-layout">
-                <header className="stage-chapter-header"><button type="button" onClick={()=>setActiveStage(null)} aria-label="Вернуться к карте курса"><ArrowLeft size={18} aria-hidden="true"/>На карту пути</button><span>{activeStage < 5 ? `Этап ${activeStage + 1} из 5` : 'Финал путешествия'}</span></header>
+                <header className="stage-chapter-header"><button type="button" className={linear ? 'stage-camp-exit' : undefined} onClick={linear ? onBack : () => setActiveStage(null)} aria-label={linear ? 'В лагерь' : 'Вернуться к карте курса'}><ArrowLeft size={18} aria-hidden="true"/>{linear ? 'В лагерь' : 'На карту пути'}</button><span>{activeStage < 5 ? `Этап ${activeStage + 1} из 5` : 'Финал путешествия'}</span></header>
                 <div className="stage-chapter-art" aria-hidden="true" style={{backgroundPosition:`center ${STAGE_CHAPTERS[activeStage].position}`}} />
                 <div className="stage-chapter-title"><span className="stage-chapter-seal">{React.createElement(STAGE_CHAPTERS[activeStage].icon,{size:29,strokeWidth:1.6,'aria-hidden':true})}</span><div><p>{STAGE_CHAPTERS[activeStage].subtitle}</p><h1>{STAGE_CHAPTERS[activeStage].title}</h1></div></div>
                 <div className="stage-panel">
+                {stageMedia}
                 {activeStage === 0 && renderStage1()}
                 {activeStage === 1 && renderStage2()}
                 {activeStage === 2 && renderStage3()}
-                {activeStage === 3 && <DreamStage course={course} onChange={onChange} onFinish={() => finishStage(3, 0)} />}
-                {activeStage === 4 && <AssessmentStage course={course} onChange={onChange} onFinish={() => finishStage(4, 0)} />}
+                {activeStage === 3 && <DreamStage course={course} onChange={onChange} linear={linear} onFinish={() => finishStage(3, 0)} />}
+                {activeStage === 4 && <AssessmentStage course={course} onChange={onChange} linear={linear} onFinish={() => finishStage(4, 0)} />}
                 {activeStage === 5 && renderFinal()}
                 </div>
             </div>

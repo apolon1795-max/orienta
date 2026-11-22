@@ -22,9 +22,10 @@ const read = (owner: string | null = null) => {
  try { if (localStorage.getItem(key)) return readFreeProgress({getItem:()=>localStorage.getItem(key)}); } catch {}
  try { return readFreeProgress({getItem:()=>sessionStorage.getItem(key)}); } catch { return freshFreeProgress(); }
 };
-type View = 'intro' | 'test' | 'guide' | 'course' | 'hub' | 'profile';
-const routeByHash: Partial<Record<string, View>> = { '#free':'intro','#test':'test','#guide':'guide','#course':'course','#hub':'hub','#profile':'profile' };
-const hashByRoute: Record<View,string> = { intro:'#free', test:'#test', guide:'#guide', course:'#course', hub:'#hub', profile:'#profile' };
+type MemberView = 'course' | 'resume' | 'profile-card' | 'hub' | 'profile';
+type View = 'intro' | 'test' | 'guide' | MemberView;
+const routeByHash: Partial<Record<string, View>> = { '#free':'intro','#test':'test','#guide':'guide','#course':'course','#resume':'resume','#profile-card':'profile-card','#hub':'hub','#profile':'profile' };
+const hashByRoute: Record<View,string> = { intro:'#free', test:'#test', guide:'#guide', course:'#course', resume:'#resume', 'profile-card':'#profile-card', hub:'#hub', profile:'#profile' };
 const hasRememberedSession = () => {
  try { const value = JSON.parse(sessionStorage.getItem('orienta_session_v1') || 'null'); return /^[A-Za-z0-9_-]{43}$/.test(value?.token) && /^[a-f0-9-]{36}$/.test(value?.learnerId) && Number.isFinite(value?.expiresAt) && value.expiresAt > Date.now(); } catch { return false; }
 };
@@ -76,20 +77,22 @@ export const FreeEntry = () => {
   const inviteArrival = useCallback((learnerId: string) => {
     chooseDraftOwner(learnerId); go('intro', true);
   }, [chooseDraftOwner, go]);
-  const openCourse = useCallback(() => go('course'), [go]);
+  const openCourse = useCallback(() => go('resume'), [go]);
+  const openMap = useCallback(() => go('course'), [go]);
+  const openProfileCard = useCallback(() => go('profile-card'), [go]);
   const openProfile = useCallback(() => go('profile'), [go]);
   const openTest = useCallback(() => go('test'), [go]);
   const openGuide = useCallback(() => go('guide'), [go]);
   const finished = useCallback((result: TestResult) => { setSaved(s => ({ ...s, result })); openGuide(); }, [openGuide]);
   const clear = () => { setSaved(freshFreeProgress()); setEpoch(e => e + 1); setReset(false); go('intro', true); };
   const configured = !!apiBase(import.meta.env.VITE_PROGRESS_API_URL);
-  const profileRoute = configured && (view === 'profile' || view === 'course' || (view === 'hub' && hasCloudSession));
+  const profileRoute = configured && (['profile','course','resume','profile-card'].includes(view) || (view === 'hub' && hasCloudSession));
   const mountProfile = configured && (profileRoute || hasCloudSession);
   const camp = <CampHome local={saved} onCourse={configured ? openProfile : openCourse} onGuide={openGuide} onTest={openTest} onReset={() => setReset(true)} />;
 
   return <>
     {mountProfile && <Suspense fallback={profileRoute && <p role="status" className="p-6">Открываем Ориенту…</p>}>
-      <ProfileShell destination={profileRoute ? view as 'hub' | 'profile' | 'course' : 'inactive'} local={saved} onCamp={openHub} onCourse={openCourse} onProfile={openProfile} onInviteArrival={inviteArrival} onCloudSession={cloudSession} onOpenTest={openTest} onOpenGuide={openGuide} onResetLocal={() => setReset(true)} />
+      <ProfileShell destination={profileRoute ? view as MemberView : 'inactive'} local={saved} onCamp={openHub} onCourse={openCourse} onMap={openMap} onProfileCard={openProfileCard} onProfile={openProfile} onInviteArrival={inviteArrival} onCloudSession={cloudSession} onOpenTest={openTest} onOpenGuide={openGuide} onResetLocal={() => setReset(true)} />
     </Suspense>}
     {!profileRoute && <main className="adventure min-h-screen bg-slate-950 text-slate-100">
       <nav aria-label="Навигация Ориенты" className="adventure-nav max-w-4xl mx-auto flex flex-wrap gap-4 items-center justify-between p-5">
@@ -111,9 +114,9 @@ export const FreeEntry = () => {
         </details>
       </section>}
       {view === 'test' && <TestView key={epoch} initialDraft={saved.draft} onDraftChange={draftChanged} onResultCalculated={calculated} onComplete={finished} onOpenCamp={openHub} onCancel={openHub} onRequestRestart={() => setReset(true)} />}
-      {view === 'guide' && saved.result && <GuideView archetype={saved.result.scoreType} onBack={openHub} onStartCourse={openHub} actionLabel="Вернуться в лагерь" />}
+      {view === 'guide' && saved.result && <GuideView archetype={saved.result.scoreType} onBack={openHub} onStartCourse={openHub} actionLabel="В лагерь" />}
       {view === 'hub' && camp}
-      {(view === 'course' || view === 'profile') && !configured && <section className="max-w-xl mx-auto p-6 py-12 space-y-6">
+      {(['course','resume','profile-card','profile'].includes(view)) && !configured && <section className="max-w-xl mx-auto p-6 py-12 space-y-6">
         <h1>Курс «Ориента»</h1><p role="status">Вход в курс пока настраивается. Тест уже доступен.</p>
         <Button variant="secondary" onClick={openHub}>Вернуться в лагерь</Button>
       </section>}

@@ -7,15 +7,15 @@ import { adventureArt } from '../services/adventureArt';
 import './profile-design.css';
 
 const sectionIcons = [Compass, Feather, Shield, Mountain, Gem, Sparkles, Map, Flag];
-export const ProfileView = ({ state, onBack, onConsultation, onAi, aiConfigured, generating, error }: {
-  state: UserState; onBack: () => void; onConsultation: () => void; onAi: () => void;
+export const ProfileView = ({ state, onBack, backLabel, onConsultation, onAi, aiConfigured, generating, error }: {
+  state: UserState; onBack: () => void; backLabel?: string; onConsultation: () => void; onAi: () => void;
   aiConfigured: boolean; generating: boolean; error: string | null;
 }) => {
   const sections = profileSections(state);
   const archetype = state.testResult?.scoreType || 'Creator';
   const art = ['Commander', 'Creator', 'Researcher', 'Communicator'].includes(archetype) ? adventureArt('Человек', archetype) : undefined;
   return <article className="profile-page hero-atlas" data-archetype={archetype}>
-    <nav className="print-hidden atlas-nav" aria-label="Навигация профкарты"><Button variant="ghost" onClick={onBack}>← Хаб</Button><span>Ориента / Твой путь</span></nav>
+    <nav className="print-hidden atlas-nav" aria-label="Навигация профкарты"><Button variant="ghost" onClick={onBack}>{backLabel || '← Хаб'}</Button><span>Ориента / Твой путь</span></nav>
     <div className="atlas-sheet">
       <header className="atlas-cover">
         <div className="atlas-cover-copy">

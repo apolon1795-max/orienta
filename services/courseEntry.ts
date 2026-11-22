@@ -5,5 +5,6 @@ export interface CourseSession {
 }
 export interface CourseEntry {
  session?: CourseSession | null;
+ mode?: 'continue' | 'map' | 'profile-card';
  back: () => void;
 }

@@ -533,7 +533,7 @@ export const GuideView: React.FC<GuideViewProps> = ({ archetype, onBack, onStart
           className="bg-slate-900/80 backdrop-blur-md border border-slate-700 text-slate-300 hover:text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 transition-all hover:bg-slate-800"
         >
           <ArrowLeft className="w-4 h-4" />
-          {actionLabel ? 'Вернуться в лагерь' : 'Назад'}
+          {actionLabel || 'Назад'}
         </button>
       </div>
 

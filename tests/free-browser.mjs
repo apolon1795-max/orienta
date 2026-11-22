@@ -37,11 +37,11 @@ try {
  await page.locator('#guide-action-btn').click();await page.getByRole('heading',{name:'Мой лагерь',exact:true}).waitFor();
  await page.reload();await page.getByRole('heading',{name:'Мой лагерь',exact:true}).waitFor();
  const second=await context.newPage();await second.goto(base);await second.getByRole('heading',{name:'Мой лагерь',exact:true}).waitFor();await second.close();
- await click('Открыть сообщество');await page.getByText('Сообщество скоро откроется',{exact:true}).waitFor();assert.equal(await page.locator('a[href*="t.me"]').count(),0);
+ await click('Сообщество · скоро');await page.getByText('Сообщество скоро откроется',{exact:true}).waitFor();assert.equal(await page.locator('a[href*="t.me"]').count(),0);
  assert.equal(await page.getByRole('heading',{name:'Мой лагерь',exact:true}).count(),1);
  assert.equal(apiRequests.length,0,'free flow must not call backend/AI');
  assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('appState_ru')).private),'PRIVATE_COURSE_SENTINEL');
- await click('Удалить результат теста');await click('Отмена');await click('Открыть мой гайд');
+ await click('Удалить результат теста');await click('Отмена');await click('Архетип');
  await page.locator('#guide-action-btn').click();await click('Удалить результат теста');await page.getByRole('dialog').getByRole('button',{name:'Удалить результат',exact:true}).click();
  await page.reload();await page.getByRole('button',{name:'Пройти тест',exact:true}).waitFor();
  assert.equal(await page.getByRole('button',{name:'Мой архетип',exact:true}).count(),0);

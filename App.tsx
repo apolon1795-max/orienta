@@ -16,6 +16,7 @@ import { readFreeProgress, type FreeProgress } from './services/freeProgress';
 import { importFreeIntro } from './services/profileIntro';
 import { apiBase, ProgressSync, type ProgressPayload, type SyncState } from './services/cloudProgress';
 import type { CourseEntry } from './services/courseEntry';
+import { allCourseStagesCompleted, resumeCourseStage } from './services/courseNavigation';
 
 const CLOUD_API = apiBase(import.meta.env.VITE_PROGRESS_API_URL || window.__ORIENTA_API);
 const browserStorage = (name: 'localStorage' | 'sessionStorage'): Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> => {
@@ -28,8 +29,8 @@ const StorageIndicator = ({ available }: { available: boolean }) => (
   </span>
 );
 const App: React.FC<{ entry?: CourseEntry }> = ({ entry }) => {
-  const [view, setView] = useState<AppView>(entry ? AppView.COURSE : AppView.LANDING);
-  const [mapOnEntry, setMapOnEntry] = useState(!!entry);
+  const [view, setView] = useState<AppView>(entry?.mode === 'profile-card' ? AppView.AI_SUMMARY : entry ? AppView.COURSE : AppView.LANDING);
+  const [mapOnEntry, setMapOnEntry] = useState(!!entry && entry.mode !== 'continue');
   const [courseRestored, setCourseRestored] = useState(!entry || !CLOUD_API);
   const [userState, setUserState] = useState<UserState>(() => {
     if (CLOUD_API) return createUserState();
@@ -86,7 +87,7 @@ const App: React.FC<{ entry?: CourseEntry }> = ({ entry }) => {
     window.addEventListener('online', retry); window.addEventListener('pagehide', flush); document.addEventListener('visibilitychange', hidden);
     return () => { window.removeEventListener('online', retry); window.removeEventListener('pagehide', flush); document.removeEventListener('visibilitychange', hidden); };
   }, [sync]);
-  const profileReady = userState.course.completedStages.length === 5 && !!userState.testResult;
+  const profileReady = allCourseStagesCompleted(userState.course) && !!userState.testResult;
   const updateUserState = useCallback((updates: Partial<UserState>) => {
     setUserState(prev => ({ ...prev, ...updates, lastUpdated: Date.now() }));
   }, []);
@@ -119,8 +120,21 @@ const App: React.FC<{ entry?: CourseEntry }> = ({ entry }) => {
     void sync.flush();
     entry.back();
   };
-  const changeCourse = useCallback<React.Dispatch<React.SetStateAction<CourseState>>>(update => { setMapOnEntry(false); updateCourse(update); }, [updateCourse]);
-  const renderCourse = mapOnEntry ? { ...userState.course, activeStage: null } : userState.course;
+  const directResume = entry?.mode === 'continue';
+  const changeCourse = useCallback<React.Dispatch<React.SetStateAction<CourseState>>>(update => {
+    setMapOnEntry(false);
+    updateCourse(previous => {
+      const base = directResume && previous.activeStage === null ? { ...previous, activeStage: resumeCourseStage(previous) } : previous;
+      return typeof update === 'function' ? update(base) : update;
+    });
+  }, [updateCourse, directResume]);
+  const renderCourse = mapOnEntry ? { ...userState.course, activeStage: null } : directResume && userState.course.activeStage === null
+    ? { ...userState.course, activeStage: resumeCourseStage(userState.course) } : userState.course;
+  const viewedStage = renderCourse.activeStage;
+  const stageMedia = viewedStage !== null && viewedStage < 5 ? <LessonMedia key={viewedStage} stage={viewedStage + 1}
+    progress={userState.course.lessons[String(viewedStage + 1)]}
+    onProgress={progress => { const stage = viewedStage + 1; updateCourse(prev => mediaEpoch.current === renderedMediaEpoch
+      ? ({ ...prev, activeStage: directResume && prev.activeStage === null ? viewedStage : prev.activeStage, lessons: { ...prev.lessons, [stage]: progress } }) : prev); }} /> : null;
   const handleRetakeTest = () => setConfirmation('test');
   const handleGenerateSummary = () => {
     if (profileReady) setView(AppView.AI_SUMMARY);
@@ -322,15 +336,15 @@ const App: React.FC<{ entry?: CourseEntry }> = ({ entry }) => {
 
   if (CLOUD_API && entry && (!courseRestored || !syncState.courseAvailable || ['signed-out','error','checking'].includes(syncState.status))) {
     return <section className="max-w-xl mx-auto p-6 space-y-4">
-      <p role="status">{syncState.status === 'error' ? 'Не удалось загрузить прогресс курса.' : syncState.status === 'signed-out' && syncState.message ? 'Вход больше не активен. Вернись в лагерь.' : 'Загружаем карту курса…'}</p>
+      <p role="status">{syncState.status === 'error' ? 'Не удалось загрузить прогресс курса.' : syncState.status === 'signed-out' && syncState.message ? 'Вход больше не активен. Вернись в лагерь.' : 'Загружаем курс…'}</p>
       {syncState.status === 'error' && <Button onClick={() => { void sync.retry(); }}>Повторить</Button>}
-      <Button variant="secondary" onClick={leaveCourse}>Вернуться в лагерь</Button>
+      <Button variant="secondary" onClick={leaveCourse}>В лагерь</Button>
     </section>;
   }
   if (CLOUD_API && ['signed-out', 'checking', 'error'].includes(syncState.status)) return <ProgressAccess client={sync} state={syncState} onExport={handleExport} hasLocalAnswers={userState.hasOnboarded || testDraft.current.step !== 'start'} />;
   return (
     <div data-view={view} className={`min-h-screen text-slate-200 font-sans selection:bg-indigo-500/30 ${[AppView.LANDING, AppView.ONBOARDING, AppView.DASHBOARD].includes(view) ? "journey-lobby" : ""}`}>
-      <ProgressAccount client={entry ? {
+      <ProgressAccount recoveryOnly={!!entry?.mode} client={entry ? {
         signIn: code => sync.signIn(code), joinPilot: (invite, code) => sync.joinPilot(invite, code), signInTelegram: init => sync.signInTelegram(init), registerFree: code => sync.registerFree(code),
         signOut: async () => { await sync.signOut(); entry.back(); }, linkTelegram: init => sync.linkTelegram(init), retry: () => sync.retry(), useCloudCopy: () => sync.useCloudCopy()
       } : sync} state={syncState} onExport={handleExport} />
@@ -365,20 +379,21 @@ const App: React.FC<{ entry?: CourseEntry }> = ({ entry }) => {
       )}
       {view === AppView.COURSE && (!CLOUD_API || syncState.courseAvailable) && (
         <>
-        {!mapOnEntry && userState.course.activeStage !== null && userState.course.activeStage < 5 && <LessonMedia key={userState.course.activeStage} stage={userState.course.activeStage + 1}
-          progress={userState.course.lessons[String(userState.course.activeStage + 1)]}
-          onProgress={progress => { const stage = userState.course.activeStage! + 1; updateCourse(prev => mediaEpoch.current === renderedMediaEpoch ? ({ ...prev, lessons: { ...prev.lessons, [stage]: progress } }) : prev); }} />}
+        {!entry?.mode && stageMedia}
         <CourseView 
           course={renderCourse}
           onChange={changeCourse}
           onCompleteCourse={handleGenerateSummary}
           onBack={leaveCourse}
           isGeneratingAi={isGeneratingAi}
+          linear={!!entry?.mode}
+          stageMedia={entry?.mode ? stageMedia : null}
         />
         </>
       )}
+      {view === AppView.AI_SUMMARY && entry?.mode && !profileReady && <section className="max-w-xl mx-auto p-6 space-y-4"><h1>Профкарта пока не готова</h1><p>Пройди пять этапов и узнай свой архетип. Твои ответы сохранены.</p><Button variant="secondary" onClick={leaveCourse}>В лагерь</Button></section>}
       {view === AppView.AI_SUMMARY && profileReady && (!CLOUD_API || syncState.courseAvailable) && <ProfileView state={userState}
-        onBack={() => setView(entry ? AppView.COURSE : AppView.DASHBOARD)} onConsultation={() => setView(AppView.CONSULTATION)}
+        onBack={entry?.mode ? leaveCourse : () => setView(entry ? AppView.COURSE : AppView.DASHBOARD)} backLabel={entry?.mode ? 'В лагерь' : undefined} onConsultation={() => setView(AppView.CONSULTATION)}
         onAi={handleGenerateAi} aiConfigured={syncState.aiAvailable === true} generating={isGeneratingAi} error={aiError} />}
       {view === AppView.CONSULTATION && renderConsultation()}
       {view === AppView.COMMUNITY && renderCommunity()}

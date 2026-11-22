@@ -62,14 +62,14 @@ try {
     }
     await page.getByRole('heading',{name:'Мой лагерь',exact:true}).waitFor();
     assert.equal(await page.getByRole('heading',{name:'Мой лагерь',exact:true}).count(),1);
-    const courseButton=page.getByRole('button',{name:'Открыть карту курса',exact:true});
+    const courseButton=page.getByRole('button',{name:'Начать курс',exact:true});
     await courseButton.waitFor();
     assert.equal(await courseButton.isEnabled(),true);
     assert.equal(await page.getByLabel('Код входа',{exact:true}).count(),0);
     const content=page.waitForResponse(r=>r.url()===api+'/course-content'&&r.request().method()==='GET');
     await courseButton.click();
     assert.equal((await content).status(),200);
-    await page.getByRole('heading',{name:'Путь Мастера',exact:true}).waitFor();
+    await page.getByRole('heading',{name:'Исследование земель',exact:true}).first().waitFor();
     assert.equal(await page.getByLabel('Код входа',{exact:true}).count(),0);
     assert.deepEqual(sessionPosts,[{inviteCode:invite,code:privateCode,consent:true}]);
     const session=await page.evaluate(()=>JSON.parse(sessionStorage.getItem('orienta_session_v1')));
@@ -94,9 +94,10 @@ try {
   await personal.getByLabel('Код входа',{exact:true}).fill(existing.code);
   await personal.getByRole('button',{name:'Войти по коду',exact:true}).click();
   await personal.getByRole('heading',{name:'Мой лагерь',exact:true}).waitFor();
-  await personal.getByRole('button',{name:'Открыть мой гайд',exact:true}).waitFor();
-  await personal.getByRole('button',{name:'Открыть карту курса',exact:true}).click();
-  await personal.getByRole('heading',{name:'Путь Мастера',exact:true}).waitFor();
+  await personal.getByRole('button',{name:'Архетип',exact:true}).waitFor();
+  await personal.getByText('Все пять этапов пройдены',{exact:true}).waitFor();
+  await personal.getByRole('button',{name:'Профкарта',exact:true}).click();
+  await personal.getByRole('heading',{name:/Профкарта Героя/}).waitFor();
   assert.equal(await personal.getByLabel('Код входа',{exact:true}).count(),0);
   assert.equal(codePosts,1,'in-memory handoff does not repeat code even when browser storage is blocked');
   console.log('PASS: two isolated mobile invitees, one code submission each, original browser-only draft preserved, no silent transfer, returning profile goes to Camp and no second code request even with session-storage failure');

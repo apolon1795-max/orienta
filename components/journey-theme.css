@@ -22,3 +22,14 @@
 .stage-journey .stage-panel [data-button-variant="fantasy"],.stage-journey .stage-panel [data-button-variant="primary"]{background:#496446;color:#fff8e6}
 
 .stage-panel .journey-award{background:#e6dfc1;background-image:none;border-color:#af9567;box-shadow:none}.stage-panel .journey-award>.absolute{display:none}.stage-panel .journey-award .text-transparent{background:none;color:#493720;letter-spacing:.04em;filter:none}.stage-panel .journey-award .border-t{border-color:#bbaa7d}.stage-panel .journey-award .text-xs{font-size:11px;overflow-wrap:anywhere}
+
+
+.stage-chapter-header > .stage-camp-exit {
+  min-height:44px; padding:8px 14px; border:1px solid #a1814d; border-radius:10px;
+  background:#f5e7c6; color:#394b33; font-size:14px; font-weight:700;
+  line-height:1.25; white-space:nowrap;
+}
+.stage-chapter-header > .stage-camp-exit:hover {background:#eddbb0;color:#304429;}
+.stage-chapter-header > .stage-camp-exit:focus-visible {
+  outline:3px solid #345c43; outline-offset:3px;
+}

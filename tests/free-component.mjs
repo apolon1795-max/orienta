@@ -15,7 +15,7 @@ try {
  assert.doesNotMatch(html, /PRIVATE_COURSE_SENTINEL/);
  globalThis.location = { hash: '#hub' };
  const hub = renderToString(React.createElement(FreeEntry));
- assert.match(hub, /Мой лагерь/); assert.match(hub, /Курс «Ориента»/); assert.match(hub, /Открыть сообщество/); assert.match(hub, /только в этом браузере/);
+ assert.match(hub, /Мой лагерь/); assert.match(hub, /Курс «Ориента»/); assert.match(hub, /Сообщество · скоро/); assert.match(hub, /только в этом браузере/);
  const { freshFreeProgress } = await vite.ssrLoadModule('/services/freeProgress.ts');
  const completed = freshFreeProgress(); completed.draft.step = 'result'; completed.draft.scores.Commander = 5; completed.draft.heroData.name = 'Пробный герой'; completed.result = { scoreType: 'Commander' };
  globalThis.localStorage = { getItem: () => JSON.stringify(completed) };
