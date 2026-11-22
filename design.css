@@ -6,7 +6,7 @@
   padding:24px 20px 56px; min-height:100svh;
 }
 .adventure > section,.adventure > .adventure-test,.adventure > div:not(.adventure-glows) {
-  background-color:var(--paper); background-image:url('./public/design/paper.png'); background-size:cover;background-repeat:no-repeat;
+  background-color:var(--paper); background-image:url('/design/paper.webp'); background-size:cover;background-repeat:no-repeat;
   border:1px solid #b8a06c; border-radius:26px; box-shadow:0 12px 28px #1c27141c;
   margin-left:auto; margin-right:auto; max-width:1000px;
 }

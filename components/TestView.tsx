@@ -62,17 +62,11 @@ const IMAGES = {
 
 // --- NEW COMPONENT: Image with Skeleton Loader ---
 const ImageWithSkeleton: React.FC<{ src: string; alt: string; className?: string }> = ({ src, alt, className }) => {
-    const [loaded, setLoaded] = useState(false);
-    const [error, setError] = useState(false);
-
-    useEffect(() => {
-        setLoaded(false); setError(false);
-        const img = new Image();
-        img.onload = () => setLoaded(true);
-        img.onerror = () => setError(true);
-        img.src = src;
-        if (img.complete && img.naturalWidth) setLoaded(true);
-        return () => { img.onload = null; img.onerror = null; };
+    const [imageState, setImageState] = useState<{ src: string; status: 'loaded' | 'error' } | null>(null);
+    const loaded = imageState?.src === src && imageState.status === 'loaded';
+    const error = imageState?.src === src && imageState.status === 'error';
+    const syncCachedImage = React.useCallback((image: HTMLImageElement | null) => {
+        if (image?.complete && image.naturalWidth > 0) setImageState({ src, status: 'loaded' });
     }, [src]);
 
     return (
@@ -84,10 +78,15 @@ const ImageWithSkeleton: React.FC<{ src: string; alt: string; className?: string
                 </div>
             )}
             <img
+                key={src}
+                ref={syncCachedImage}
                 src={src}
                 alt={alt}
                 className="w-full h-full object-contain"
                 loading="eager"
+                fetchPriority="high"
+                onLoad={() => setImageState({ src, status: 'loaded' })}
+                onError={() => setImageState({ src, status: 'error' })}
             />
             {error && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900 text-slate-500 text-xs p-2 text-center">
