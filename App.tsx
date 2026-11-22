@@ -15,6 +15,7 @@ import { ProgressAccount, ProgressAccess } from './components/ProgressAccount';
 import { readFreeProgress, type FreeProgress } from './services/freeProgress';
 import { importFreeIntro } from './services/profileIntro';
 import { apiBase, ProgressSync, type ProgressPayload, type SyncState } from './services/cloudProgress';
+import type { CourseEntry } from './services/courseEntry';
 
 const CLOUD_API = apiBase(import.meta.env.VITE_PROGRESS_API_URL || window.__ORIENTA_API);
 const browserStorage = (name: 'localStorage' | 'sessionStorage'): Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> => {
@@ -26,8 +27,10 @@ const StorageIndicator = ({ available }: { available: boolean }) => (
     {available ? <CheckCircle className="w-5 h-5" aria-label="Сохранено в браузере" /> : <AlertTriangle className="w-5 h-5 text-amber-300" aria-label="Не удалось сохранить" />}
   </span>
 );
-const App: React.FC = () => {
-  const [view, setView] = useState<AppView>(AppView.LANDING);
+const App: React.FC<{ entry?: CourseEntry }> = ({ entry }) => {
+  const [view, setView] = useState<AppView>(entry ? AppView.COURSE : AppView.LANDING);
+  const [mapOnEntry, setMapOnEntry] = useState(!!entry);
+  const [courseRestored, setCourseRestored] = useState(!entry || !CLOUD_API);
   const [userState, setUserState] = useState<UserState>(() => {
     if (CLOUD_API) return createUserState();
     try { return readUserState(window.localStorage); } catch { return createUserState(); }
@@ -61,10 +64,18 @@ const App: React.FC = () => {
     mediaEpoch.current++;
     setUserState(payload.state); testDraft.current = payload.testDraft;
     setTestResetKey(n => n + 1); setDraftRevision(n => n + 1);
-    setView(payload.state.hasOnboarded ? AppView.DASHBOARD : AppView.ONBOARDING);
-  }, []);
-  const [sync] = useState(() => new ProgressSync({ base: CLOUD_API, sessionStorage: browserStorage('sessionStorage'), storage: browserStorage('localStorage'), restore: restoreCloud,
-    reset: () => restoreCloud({ state: createUserState(), testDraft: createTestDraft() }) }));
+    if (entry) setCourseRestored(true);
+    else setView(payload.state.hasOnboarded ? AppView.DASHBOARD : AppView.ONBOARDING);
+  }, [entry]);
+  const [sync] = useState(() => {
+    const persisted = browserStorage('sessionStorage');
+    let inherited = entry?.session || null;
+    const sessionStorage = { getItem: (key: string) => key === 'orienta_session_v1' && inherited ? JSON.stringify(inherited) : persisted.getItem(key),
+      setItem: (key: string, value: string) => { if (key === 'orienta_session_v1') inherited = null; persisted.setItem(key, value); },
+      removeItem: (key: string) => { if (key === 'orienta_session_v1') inherited = null; persisted.removeItem(key); } };
+    return new ProgressSync({ base: CLOUD_API, sessionStorage, storage: browserStorage('localStorage'), restore: restoreCloud,
+    reset: () => restoreCloud({ state: createUserState(), testDraft: createTestDraft() }) });
+  });
   const [syncState, setSyncState] = useState<SyncState>(sync.state);
   useEffect(() => { const unsubscribe = sync.subscribe(setSyncState); void sync.start(); return unsubscribe; }, [sync]);
   useEffect(() => { sync.offer({ state: userState, testDraft: testDraft.current }); }, [sync, userState, draftRevision, syncState.status]);
@@ -102,9 +113,19 @@ const App: React.FC = () => {
   const handleTestCalculated = (result: TestResult) => updateUserState({ testResult: result, aiSummary: null });
   const handleTestComplete = (result: TestResult) => { handleTestCalculated(result); setView(AppView.GUIDE); };
   const handleOpenResult = () => setView(userState.testResult ? AppView.GUIDE : AppView.TEST);
-  const handleOpenCourse = () => { if (CLOUD_API && !syncState.courseAvailable) { setNotice('Твой бесплатный профиль сохраняет вводную и архетип. Доступ к полному курсу подключается отдельно. Оплата пока не настроена.'); return; } setView(userState.testResult ? AppView.COURSE : AppView.TEST); };
+  const handleOpenCourse = () => { if (CLOUD_API && !syncState.courseAvailable) { setNotice('Доступ к полному курсу подключает наставник.'); return; } setView(AppView.COURSE); };
+  const leaveCourse = () => {
+    if (!entry) { setView(AppView.DASHBOARD); return; }
+    void sync.flush();
+    entry.back();
+  };
+  const changeCourse = useCallback<React.Dispatch<React.SetStateAction<CourseState>>>(update => { setMapOnEntry(false); updateCourse(update); }, [updateCourse]);
+  const renderCourse = mapOnEntry ? { ...userState.course, activeStage: null } : userState.course;
   const handleRetakeTest = () => setConfirmation('test');
-  const handleGenerateSummary = () => { if (profileReady) setView(AppView.AI_SUMMARY); };
+  const handleGenerateSummary = () => {
+    if (profileReady) setView(AppView.AI_SUMMARY);
+    else if (userState.course.completedStages.length === 5 && !userState.testResult) setNotice('Для итоговой профкарты нужен архетип. Его можно открыть или получить в лагере. Твой прогресс в курсе сохранён.');
+  };
   const handleGenerateAi = async () => {
     if (!profileReady || aiInFlight.current) return;
     aiInFlight.current = true;
@@ -292,38 +313,28 @@ const App: React.FC = () => {
   };
 
   const renderCommunity = () => (
-    <div className="min-h-screen p-6 flex flex-col">
-       <Button variant="ghost" onClick={() => setView(AppView.DASHBOARD)} className="self-start pl-0 mb-8">
-          ← Назад
-        </Button>
-
-        <h2 className="text-2xl font-serif font-bold text-white mb-6">Вступай в Племя</h2>
-        
-        <div className="space-y-4">
-          <button onClick={() => handleOpenTelegramLink("https://t.me/sense_house")} className="block w-full text-left group cursor-pointer">
-             <div className="bg-slate-900 p-6 rounded-xl border border-slate-800 flex items-center justify-between hover:border-indigo-500 transition-all">
-                <div className="flex items-center gap-4">
-                  <div className="bg-blue-500/20 p-3 rounded-lg">
-                    <Users className="w-6 h-6 text-blue-400" />
-                  </div>
-                  <div>
-                    <h3 className="text-white font-medium">Общее Сообщество</h3>
-                    <p className="text-sm text-slate-400">Связь со всеми участниками</p>
-                  </div>
-                </div>
-                <ExternalLink className="w-5 h-5 text-slate-600 group-hover:text-white" />
-             </div>
-          </button>
-
-        </div>
-    </div>
+    <section className="max-w-2xl mx-auto p-6 space-y-4">
+      <Button variant="ghost" onClick={() => setView(AppView.DASHBOARD)}>Назад</Button>
+      <h1 className="text-3xl">Сообщество</h1>
+      <p role="status">Сообщество скоро откроется</p>
+    </section>
   );
 
+  if (CLOUD_API && entry && (!courseRestored || !syncState.courseAvailable || ['signed-out','error','checking'].includes(syncState.status))) {
+    return <section className="max-w-xl mx-auto p-6 space-y-4">
+      <p role="status">{syncState.status === 'error' ? 'Не удалось загрузить прогресс курса.' : syncState.status === 'signed-out' && syncState.message ? 'Вход больше не активен. Вернись в лагерь.' : 'Загружаем карту курса…'}</p>
+      {syncState.status === 'error' && <Button onClick={() => { void sync.retry(); }}>Повторить</Button>}
+      <Button variant="secondary" onClick={leaveCourse}>Вернуться в лагерь</Button>
+    </section>;
+  }
   if (CLOUD_API && ['signed-out', 'checking', 'error'].includes(syncState.status)) return <ProgressAccess client={sync} state={syncState} onExport={handleExport} hasLocalAnswers={userState.hasOnboarded || testDraft.current.step !== 'start'} />;
   return (
     <div data-view={view} className={`min-h-screen text-slate-200 font-sans selection:bg-indigo-500/30 ${[AppView.LANDING, AppView.ONBOARDING, AppView.DASHBOARD].includes(view) ? "journey-lobby" : ""}`}>
-      <ProgressAccount client={sync} state={syncState} onExport={handleExport} />
-      {CLOUD_API && syncState.learnerId && freeCandidate && !userState.testResult && testDraft.current.step === 'start' && !userState.course.completedStages.length && <section aria-label="Перенос вводной в профиль" className="max-w-5xl mx-auto m-4 p-6 border border-amber-400/40 rounded-xl bg-slate-900 space-y-4 print-hidden">
+      <ProgressAccount client={entry ? {
+        signIn: code => sync.signIn(code), signInTelegram: init => sync.signInTelegram(init), registerFree: code => sync.registerFree(code),
+        signOut: async () => { await sync.signOut(); entry.back(); }, linkTelegram: init => sync.linkTelegram(init), retry: () => sync.retry(), useCloudCopy: () => sync.useCloudCopy()
+      } : sync} state={syncState} onExport={handleExport} />
+      {!entry && CLOUD_API && syncState.learnerId && freeCandidate && !userState.testResult && testDraft.current.step === 'start' && !userState.course.completedStages.length && <section aria-label="Перенос вводной в профиль" className="max-w-5xl mx-auto m-4 p-6 border border-amber-400/40 rounded-xl bg-slate-900 space-y-4 print-hidden">
         <h2 className="text-xl font-serif">Сохранить архетип в этом профиле?</h2>
         <p className="text-slate-300">В этом браузере есть результат: {freeCandidate.result?.title}. Подтверди, что это твоя вводная. Псевдоним, результат и ход теста будут сохранены в твоём профиле Ориенты на сервере Яндекса в России и доступны по твоему коду с других устройств. В Telegram или ИИ они не отправляются.</p>
         <div className="flex flex-wrap gap-3"><Button variant="fantasy" disabled={syncState.status !== 'saved' || syncState.dirty} onClick={() => {
@@ -354,20 +365,20 @@ const App: React.FC = () => {
       )}
       {view === AppView.COURSE && (!CLOUD_API || syncState.courseAvailable) && (
         <>
-        {userState.course.activeStage !== null && userState.course.activeStage < 5 && <LessonMedia key={userState.course.activeStage} stage={userState.course.activeStage + 1}
+        {!mapOnEntry && userState.course.activeStage !== null && userState.course.activeStage < 5 && <LessonMedia key={userState.course.activeStage} stage={userState.course.activeStage + 1}
           progress={userState.course.lessons[String(userState.course.activeStage + 1)]}
           onProgress={progress => { const stage = userState.course.activeStage! + 1; updateCourse(prev => mediaEpoch.current === renderedMediaEpoch ? ({ ...prev, lessons: { ...prev.lessons, [stage]: progress } }) : prev); }} />}
         <CourseView 
-          course={userState.course}
-          onChange={updateCourse}
+          course={renderCourse}
+          onChange={changeCourse}
           onCompleteCourse={handleGenerateSummary}
-          onBack={() => setView(AppView.DASHBOARD)}
+          onBack={leaveCourse}
           isGeneratingAi={isGeneratingAi}
         />
         </>
       )}
       {view === AppView.AI_SUMMARY && profileReady && (!CLOUD_API || syncState.courseAvailable) && <ProfileView state={userState}
-        onBack={() => setView(AppView.DASHBOARD)} onConsultation={() => setView(AppView.CONSULTATION)}
+        onBack={() => setView(entry ? AppView.COURSE : AppView.DASHBOARD)} onConsultation={() => setView(AppView.CONSULTATION)}
         onAi={handleGenerateAi} aiConfigured={syncState.aiAvailable === true} generating={isGeneratingAi} error={aiError} />}
       {view === AppView.CONSULTATION && renderConsultation()}
       {view === AppView.COMMUNITY && renderCommunity()}

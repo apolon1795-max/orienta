@@ -1,31 +1,42 @@
 import React, { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from './Button';
-import { adventureArt, partyArt } from '../services/adventureArt';
+import { partyArt } from '../services/adventureArt';
 import { TestView } from './TestView';
 import { GuideView } from './GuideView';
+import { CampHome } from './CampHome';
 import type { TestDraft } from '../services/testProgress';
-import { ARCHETYPES, type TestResult } from '../types';
+import type { TestResult } from '../types';
 import { freshFreeProgress, readFreeProgress, saveFreeProgress } from '../services/freeProgress';
 import { apiBase } from '../services/apiBase';
 
-const PilotCourse = lazy(() => import('./ProfileShell').then(module => ({ default: module.ProfileShell })));
+const ProfileShell = lazy(() => import('./ProfileShell').then(module => ({ default: module.ProfileShell })));
 const read = () => {
   try { if (localStorage.getItem('orienta_free_intro_v1')) return readFreeProgress(localStorage); } catch {}
   try { return readFreeProgress(sessionStorage); } catch { return freshFreeProgress(); }
 };
+type View = 'intro' | 'test' | 'guide' | 'course' | 'hub' | 'profile';
+const routeByHash: Partial<Record<string, View>> = { '#free':'intro','#test':'test','#guide':'guide','#course':'course','#hub':'hub','#profile':'profile' };
+const hashByRoute: Record<View,string> = { intro:'#free', test:'#test', guide:'#guide', course:'#course', hub:'#hub', profile:'#profile' };
+const currentView = (result: boolean) => {
+ let rememberedSession = false;
+ try { const value = JSON.parse(sessionStorage.getItem('orienta_session_v1') || 'null'); rememberedSession = Number.isFinite(value?.expiresAt) && value.expiresAt > Date.now(); } catch {}
+ return routeByHash[location.hash] || (result || rememberedSession ? 'hub' : 'intro');
+};
+
 export const FreeEntry = () => {
   const [saved, setSaved] = useState(read);
-  const [view, setView] = useState<'intro' | 'test' | 'guide' | 'course' | 'hub' | 'community'>(() => ['#course', '#profile'].includes(location.hash) ? 'course' : saved.result || location.hash === '#hub' ? 'hub' : 'intro');
-  const [course, setCourse] = useState(() => ['#course', '#profile'].includes(location.hash));
+  const [view, setView] = useState<View>(() => currentView(!!saved.result));
   const [storageFailed, setStorageFailed] = useState(false);
   const [reset, setReset] = useState(false);
   const resetDialog = useRef<HTMLDialogElement>(null);
   useEffect(() => { if (reset) resetDialog.current?.showModal(); else resetDialog.current?.close(); }, [reset]);
   const [epoch, setEpoch] = useState(0);
+  const hasResult = useRef(!!saved.result); hasResult.current = !!saved.result;
   useEffect(() => {
-    const changed = () => { setCourse(['#course', '#profile'].includes(location.hash)); setView(['#course', '#profile'].includes(location.hash) ? 'course' : location.hash === '#hub' ? 'hub' : 'intro'); };
+    const changed = () => setView(currentView(hasResult.current));
     addEventListener('hashchange', changed); return () => removeEventListener('hashchange', changed);
   }, []);
+  useEffect(() => { if (typeof window !== 'undefined') window.scrollTo(0, 0); }, [view]);
   useEffect(() => {
     let persistent = false;
     try { persistent = saveFreeProgress(localStorage, saved); } catch {}
@@ -34,67 +45,61 @@ export const FreeEntry = () => {
   }, [saved]);
   const draftChanged = useCallback((draft: TestDraft) => setSaved(s => ({ ...s, draft })), []);
   const calculated = useCallback((result: TestResult) => setSaved(s => ({ ...s, result })), []);
-  const finished = useCallback((result: TestResult) => { setSaved(s => ({ ...s, result })); setView('guide'); }, []);
-  const openHub = () => { setView('hub'); if (location.hash !== '#hub') location.hash = 'hub'; };
-  const clear = () => { setSaved(freshFreeProgress()); setEpoch(e => e + 1); setReset(false); setView('intro'); if (location.hash) location.hash = 'free'; };
+  const go = useCallback((next: View, replace = false) => {
+    setView(next);
+    const hash = hashByRoute[next];
+    if (location.hash !== hash) {
+      if (replace) history.replaceState(null, '', hash);
+      else location.hash = hash;
+    }
+  }, []);
+  const openHub = useCallback(() => go('hub'), [go]);
+  const openIntro = useCallback(() => go('intro', true), [go]);
+  const openCourse = useCallback(() => go('course'), [go]);
+  const openProfile = useCallback(() => go('profile'), [go]);
+  const openTest = useCallback(() => go('test'), [go]);
+  const openGuide = useCallback(() => go('guide'), [go]);
+  const finished = useCallback((result: TestResult) => { setSaved(s => ({ ...s, result })); openGuide(); }, [openGuide]);
+  const clear = () => { setSaved(freshFreeProgress()); setEpoch(e => e + 1); setReset(false); go('intro', true); };
   const configured = !!apiBase(import.meta.env.VITE_PROGRESS_API_URL);
-  const existingCourse = import.meta.env.VITE_EXISTING_COURSE_URL === 'https://apolon1795-max-orienta-c425.twc1.net/' ? import.meta.env.VITE_EXISTING_COURSE_URL : ''; 
-  if (course && configured) return <>
-    <nav className="p-3 bg-slate-950 print-hidden"><a href="#free" className="text-amber-200 underline">← Бесплатная вводная</a><a href="#hub" className="ml-6 text-amber-200 underline">Мой лагерь</a></nav>
-    <Suspense fallback={<p role="status" className="p-6">Открываем курс…</p>}><PilotCourse /></Suspense>
-  </>;
-  return <main className="adventure min-h-screen bg-slate-950 text-slate-100">
-    <nav aria-label="Вводная" className="adventure-nav max-w-4xl mx-auto flex flex-wrap gap-4 items-center justify-between p-5">
-      <button className="font-serif text-amber-200 text-xl" onClick={() => setView('intro')}>Ориента</button>
-      <button className="text-sm underline text-amber-200" onClick={openHub}>Мой лагерь</button>
-      {configured && <a href="#profile" className="text-sm underline text-amber-200">Войти в сохраняемый профиль</a>}
-      <button className="text-sm underline text-slate-300" onClick={() => setView('course')}>Уже есть доступ к курсу</button>
-    </nav>
-    {storageFailed && <p role="status" className="px-6 text-amber-200">Не удалось сохранить кабинет в браузере. Пока не закрывай вкладку: после закрытия результат может потеряться.</p>}
-    {view === 'intro' && <section className="adventure-intro max-w-2xl mx-auto px-6 py-12 space-y-7">
-      <p className="text-amber-300 uppercase tracking-widest text-sm">Бесплатная вводная</p>
-      <h1 className="text-4xl sm:text-6xl font-serif">Какой ты герой?</h1>
-      <img className="adventure-party" src={partyArt} alt="Четыре героя Ориенты: эльфийка, рыцарь, орк и тролль" />
-      <p className="text-xl text-slate-300">Пять игровых ситуаций помогут заметить свои сильные стороны. Выбери персонажа, пройди приключение и узнай свой архетип.</p>
-      <p className="text-slate-300">Тест и описание архетипа доступны бесплатно, без регистрации и оплаты. Это повод подумать о себе, а не диагноз или окончательный выбор профессии.</p>
-      <details className="rounded-2xl border border-slate-700 bg-slate-900 p-5 space-y-2 text-sm text-slate-300">
-        <summary className="font-semibold cursor-pointer">Перед началом: имя и сохранение</summary>
-        <p>Придумай герою псевдоним. Не вводи настоящее имя, школу, телефон и другие личные данные.</p>
-        <p>Ответы бесплатного теста не отправляются на наш сервер или в ИИ. Они сохраняются в этом браузере, в том числе после закрытия вкладки. Это не облачный аккаунт: на другом устройстве результата не будет. На общем компьютере удали результат после прохождения.</p>
-      </details>
-      <Button variant="fantasy" fullWidth onClick={() => setView('test')}>{saved.draft.step === 'start' ? 'Пройти бесплатный тест' : 'Продолжить бесплатный тест'}</Button>
-      {saved.result && <Button fullWidth variant="secondary" onClick={() => setView('guide')}>Мой архетип</Button>}
-      <button className="text-sm underline text-slate-400" onClick={() => setReset(true)}>Удалить результат вводной</button>
-    </section>}
-    {view === 'test' && <TestView key={epoch} initialDraft={saved.draft} onDraftChange={draftChanged} onResultCalculated={calculated} onComplete={finished} onOpenCamp={openHub} onCancel={() => setView('intro')} onRequestRestart={() => setReset(true)} />}
-    {view === 'guide' && saved.result && <GuideView archetype={saved.result.scoreType} onBack={openHub} onStartCourse={openHub} actionLabel="Вернуться в лагерь" />}
-    {view === 'hub' && <section className="adventure-camp max-w-4xl mx-auto px-6 py-10 space-y-8">
-      <header>{saved.result && adventureArt(saved.draft.heroData.race,saved.result.scoreType) && <img className="camp-avatar" src={adventureArt(saved.draft.heroData.race,saved.result.scoreType)} alt="Твой герой" />}<p className="text-amber-300 text-sm uppercase tracking-widest">Твоя Ориента</p><h1 className="text-4xl sm:text-5xl font-semibold mt-3">Мой лагерь</h1><p className="text-slate-300 mt-3">{saved.draft.heroData.name ? `С возвращением, ${saved.draft.heroData.name}.` : 'Здесь начинается твой маршрут.'}</p></header>
-      <article className="camp-next rounded-3xl border border-indigo-400/30 bg-gradient-to-br from-indigo-950 to-slate-900 p-7 sm:p-10 space-y-5">
-        <p className="text-indigo-200 text-sm">{saved.result ? 'Твой архетип' : 'Первый шаг · бесплатно'}</p>
-        <h2 className="text-3xl font-semibold text-amber-100">{saved.result ? ARCHETYPES[saved.result.scoreType]?.title : 'Узнай свои сильные стороны'}</h2>
-        <p className="text-slate-300 max-w-xl">{saved.result ? 'Результат сохранён в этом браузере. Вернись к гайду, посмотри идеи для профессиональных проб и выбери следующий шаг.' : 'Пройди пять игровых ситуаций. Здесь появятся твой архетип и персональный гайд.'}</p>
-        <Button variant="fantasy" onClick={() => setView(saved.result ? 'guide' : 'test')}>{saved.result ? 'Открыть мой гайд' : saved.draft.step === 'start' ? 'Пройти бесплатный тест' : 'Продолжить бесплатный тест'}</Button>
-      </article>
-      <div className="camp-destinations">
-        <article className="camp-destination"><img src={import.meta.env.BASE_URL + 'design/archetype.png'} alt="" /><div><h2>Мой архетип</h2><p>История твоего героя и сильные стороны</p><Button variant="secondary" onClick={() => setView(saved.result ? 'guide' : 'test')}>{saved.result ? 'Открыть мой архетип' : 'Узнать свой архетип'}</Button></div></article>
-        <article className="camp-destination"><img src={import.meta.env.BASE_URL + 'design/course.png'} alt="" /><div><p className="text-sm text-amber-200">Следующий шаг</p><h2 className="text-2xl font-semibold">Курс «Ориента»</h2><p className="text-slate-300">Пять этапов: интересы, ценности, навыки и твоя профкарта. Для пилота нужен личный код наставника.</p><Button variant="secondary" onClick={() => setView('course')}>Открыть курс</Button><p className="text-sm text-slate-400">Онлайн-оплата ещё не подключена.</p></div></article>
-        <article className="camp-destination"><img src={import.meta.env.BASE_URL + 'design/community.png'} alt="" /><div><p className="text-sm text-indigo-200">Не в одиночку</p><h2 className="text-2xl font-semibold">Сообщество</h2><p className="text-slate-300">Общее пространство участников. Переход в Telegram не отправляет твой результат теста.</p><Button variant="secondary" onClick={() => setView('community')}>Открыть сообщество</Button></div></article>
-      </div>
-      <aside className="border-t border-slate-800 pt-6 space-y-3 text-sm text-slate-400"><h2 className="text-base font-semibold text-slate-200">Сохранение на этом устройстве</h2><p>Это браузерный кабинет без регистрации, пароля и синхронизации между устройствами. После очистки данных браузера результат исчезнет. На общем компьютере удали вводную перед уходом.</p><p>Чтобы продолжить с другого устройства, войди в свой профиль по личному коду. После входа можно отдельно подтвердить перенос результата вводной; существующий результат профиля не заменится.</p>{configured && <a href="#profile" className="inline-block underline text-amber-200">Сохранить в моём профиле</a>}<button className="underline text-slate-300" onClick={() => setReset(true)}>Удалить результат вводной</button></aside>
-    </section>}
-    {view === 'community' && <section className="max-w-xl mx-auto p-6 py-12 space-y-6"><h1 className="text-3xl font-semibold">Сообщество Ориенты</h1><p className="text-slate-300">Общее сообщество участников находится в Telegram. Откроется отдельная вкладка; результаты и ответы не передаются.</p><a className="inline-block rounded-xl bg-indigo-600 px-6 py-4 font-semibold" href="https://t.me/sense_house" target="_blank" rel="noopener noreferrer">Перейти в Telegram</a><div><Button variant="secondary" onClick={openHub}>Вернуться в лагерь</Button></div></section>}
-    {view === 'course' && <section className="max-w-xl mx-auto p-6 py-12 space-y-6">
-      <h1 className="text-3xl font-serif">Продолжить в полном курсе</h1>
-      <p className="text-slate-300">Вводная и твой архетип остаются бесплатными. Дальше: пять этапов, задания и личная профкарта.</p>
-      <p className="text-slate-300">Онлайн-оплата пока не подключена. Личный код наставника открывает твой сохраняемый профиль пилота. Сам тест не подтверждает оплату курса.</p>
-      {configured || existingCourse ? <a href={configured ? "#course" : existingCourse} className="inline-block rounded-xl bg-amber-600 px-6 py-4 font-bold">Войти по личному коду</a> : <p role="status" className="text-amber-200">Вход в курс пока настраивается. Бесплатный тест уже доступен.</p>}
-      <p className="text-sm text-slate-400">После входа можно перенести результат вводной в свой профиль отдельным подтверждением. Уже сохранённые ответы не заменятся.</p>
-      <Button variant="secondary" onClick={openHub}>Вернуться в лагерь</Button>
-    </section>}
+  const profileRoute = view === 'hub' || view === 'profile' || view === 'course';
+  const camp = <CampHome local={saved} onCourse={openCourse} onGuide={openGuide} onTest={openTest} onReset={() => setReset(true)} />;
+
+  return <>
+    {profileRoute && configured ? <>
+      <Suspense fallback={view === 'hub' ? <main className="adventure profile-camp-view">{camp}</main> : <p role="status" className="p-6">Открываем Ориенту…</p>}>
+        <ProfileShell destination={view} local={saved} onCamp={openHub} onCourse={openCourse} onProfile={openProfile} onInviteArrival={openIntro} onOpenTest={openTest} onOpenGuide={openGuide} onResetLocal={() => setReset(true)} />
+      </Suspense>
+    </> : <main className="adventure min-h-screen bg-slate-950 text-slate-100">
+      <nav aria-label="Навигация Ориенты" className="adventure-nav max-w-4xl mx-auto flex flex-wrap gap-4 items-center justify-between p-5">
+        <button className="font-serif text-amber-200 text-xl" onClick={() => go('intro')}>Ориента</button>
+        {view !== 'hub' && <button className="text-sm underline text-amber-200" onClick={openHub}>Мой лагерь</button>}
+      </nav>
+      {storageFailed && <p role="status" className="px-6 text-amber-200">Не удалось сохранить результат в браузере. Пока не закрывай вкладку.</p>}
+      {(view === 'intro' || (view === 'guide' && !saved.result)) && <section className="adventure-intro max-w-2xl mx-auto px-6 py-12 space-y-7">
+        <h1 className="text-4xl sm:text-6xl font-serif">Какой ты герой?</h1>
+        <img className="adventure-party" src={partyArt} alt="Четыре героя Ориенты: эльфийка, рыцарь, орк и тролль" />
+        <p className="text-xl">Пять игровых ситуаций помогут заметить свои сильные стороны. Выбери персонажа, пройди приключение и узнай свой архетип.</p>
+        <p>Тест и описание архетипа доступны бесплатно, без регистрации и оплаты. Это повод подумать о себе, а не диагноз или окончательный выбор профессии.</p>
+        <Button variant="fantasy" fullWidth onClick={openTest}>{saved.draft.step === 'start' || saved.result ? 'Пройти тест' : 'Продолжить тест'}</Button>
+        {configured && <Button variant="secondary" fullWidth onClick={openProfile}>У меня есть код</Button>}
+        <details className="rounded-2xl border border-slate-700 bg-slate-900 p-5 space-y-2 text-sm">
+          <summary className="font-semibold cursor-pointer">Перед началом: имя и сохранение</summary>
+          <p>Придумай герою псевдоним. Не вводи настоящее имя, школу, телефон и другие личные данные.</p>
+          <p>Ответы теста не отправляются на наш сервер или в ИИ. Они сохраняются в этом браузере, в том числе после закрытия вкладки. На общем компьютере удали результат после прохождения.</p>
+        </details>
+      </section>}
+      {view === 'test' && <TestView key={epoch} initialDraft={saved.draft} onDraftChange={draftChanged} onResultCalculated={calculated} onComplete={finished} onOpenCamp={openHub} onCancel={openHub} onRequestRestart={() => setReset(true)} />}
+      {view === 'guide' && saved.result && <GuideView archetype={saved.result.scoreType} onBack={openHub} onStartCourse={openHub} actionLabel="Вернуться в лагерь" />}
+      {view === 'hub' && camp}
+      {(view === 'course' || view === 'profile') && !configured && <section className="max-w-xl mx-auto p-6 py-12 space-y-6">
+        <h1>Курс «Ориента»</h1><p role="status">Вход в курс пока настраивается. Тест уже доступен.</p>
+        <Button variant="secondary" onClick={openHub}>Вернуться в лагерь</Button>
+      </section>}
+    </main>}
     <dialog ref={resetDialog} onCancel={() => setReset(false)} onClose={() => setReset(false)} aria-labelledby="free-reset-title" className="max-w-md rounded-xl bg-slate-900 text-slate-100 p-6 space-y-4 backdrop:bg-black/80">
-      <h2 id="free-reset-title" className="text-xl">Удалить результат бесплатной вводной?</h2><p>Ответы полного курса не изменятся.</p>
-      <Button autoFocus variant="secondary" onClick={() => setReset(false)}>Отмена</Button><Button onClick={clear}>Удалить вводную</Button>
+      <h2 id="free-reset-title" className="text-xl">Удалить сохранённый здесь результат теста?</h2><p>Ответы полного курса не изменятся.</p>
+      <Button autoFocus variant="secondary" onClick={() => setReset(false)}>Отмена</Button><Button onClick={clear}>Удалить результат</Button>
     </dialog>
-  </main>;
+  </>;
 };
