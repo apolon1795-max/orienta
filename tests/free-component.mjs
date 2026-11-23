@@ -22,6 +22,16 @@ try {
  globalThis.location = { hash: '' };
  const restored = renderToString(React.createElement(FreeEntry));
  assert.match(restored, /Мой лагерь/); assert.match(restored, /Командир/); assert.match(restored, /Пробный герой/);
+ const { CampHome } = await vite.ssrLoadModule('/components/CampHome.tsx');
+ const camp = (props = {}) => renderToString(React.createElement(CampHome, { local: freshFreeProgress(), ...props }));
+ const assertOneCourseMap = html => {
+   assert.equal((html.match(/Открыть карту курса/g) ?? []).length, 1);
+   assert.doesNotMatch(html, /Карта этапов|Начать курс|Продолжить курс/);
+ };
+ assertOneCourseMap(camp({ signedIn: true, courseAvailable: true }));
+ assertOneCourseMap(camp({ signedIn: true, courseAvailable: true, courseComplete: true }));
+ assert.doesNotMatch(camp({ signedIn: true }), /Открыть карту курса|Войти по коду/);
+ assert.match(camp(), /Войти по коду/);
  const { ProgressAccess } = await vite.ssrLoadModule('/components/ProgressAccount.tsx');
  const access = enabled => renderToString(React.createElement(ProgressAccess, { client: {}, state: { status: 'signed-out', registrationAvailable: enabled, telegramAvailable: enabled }, onExport() {}, hasLocalAnswers: false }));
  assert.match(access(true), /Новый бесплатный профиль/); assert.match(access(true), /Войти через Telegram/); assert.doesNotMatch(access(false), /Новый бесплатный профиль|Войти через Telegram/);

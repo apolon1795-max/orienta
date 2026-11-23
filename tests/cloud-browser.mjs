@@ -67,23 +67,33 @@ try {
   const dream = a.getByRole('textbox', { name: 'Твоя работа мечты' });
   await dream.waitFor();
   assert.equal(await a.locator('.stage-chapter-header button').count(),1);
-  const stageExit=a.getByRole('button',{name:'В лагерь',exact:true});
-  assert.ok((await stageExit.boundingBox()).height>=44);
-  assert.equal(await stageExit.evaluate(e=>getComputedStyle(e).borderTopStyle),'solid');
+  await a.getByRole('button',{name:'Вернуться к карте курса',exact:true}).waitFor();
   assert.equal(await a.getByRole('button',{name:'Выйти из профиля',exact:true}).count(),0);
-  await a.getByRole('button',{name:'В лагерь',exact:true}).click();
+  await a.getByRole('button',{ name:'Вернуться к карте курса',exact:true }).click();
+  await a.getByRole('button',{name:'Вернуться в хаб',exact:true}).click();
   await a.getByRole('heading',{name:'Мой лагерь',exact:true}).waitFor();
   assert.equal(await a.getByRole('button',{name:'Профкарта',exact:true}).count(),1);
   await a.getByRole('button',{name:'Профкарта',exact:true}).click();
   await a.getByText('Откроется после курса',{exact:true}).waitFor();
   assert.equal(await a.locator('#camp-card-state').count(),1);
   await a.screenshot({path:output+'/07-camp-linear-mobile.png',fullPage:true});
-  await a.getByRole('button',{name:'Продолжить курс',exact:true}).click();
+  const openCampMap = async page => {
+    await page.getByRole('button', {name:'Открыть карту курса', exact:true}).click();
+    await page.getByRole('heading',{name:'Путь Мастера',exact:true}).waitFor();
+    await page.locator('.atlas-stop[aria-current="step"]').waitFor();
+    assert.equal(await page.getByLabel('Код входа',{exact:true}).count(),0);
+    assert.equal(new URL(page.url()).hash,'#course');
+  };
+  const previous = (await progress()).state.course;
+  await openCampMap(a);
+  assert.deepEqual((await progress()).state.course,previous);
+  await a.getByRole('button',{name:/^Этап 4: Башня мечты/}).click();
+
   await dream.waitFor();
   assert.equal(await a.getByRole('heading',{name:'Путь Мастера',exact:true}).count(),0);
   assert.equal(await a.getByLabel('Код входа',{exact:true}).count(),0);
   assert.equal(await dream.inputValue(),state.course.s4Dream);
-  record('Camp resumes exact saved step directly, one exit, no repeated login or map detour; incomplete card explains gate');
+  record('returning Camp opens map without touching progress or requiring login; picking the current stage preserves saved answer');
   assert.equal(await dream.inputValue(), state.course.s4Dream); await dream.fill('Создавать игры с небольшой командой');
   await until(async () => (await progress()).state.course.s4Dream === 'Создавать игры с небольшой командой');
   await a.frameLocator('iframe[title="Kinescope test player"]').getByRole('button', { name: 'До 0:42', exact: true }).click();
@@ -112,9 +122,10 @@ try {
   await until(async () => (await progress()).state.course.lessons[4]?.completed === true);
   assert.deepEqual((await progress()).state.course.completedStages, [0, 1, 2]); record('video completion does not complete the assignment');
   for (const width of [320, 390, 768, 1280]) { await b.setViewportSize({ width, height: 844 }); assert.ok(await b.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'overflow at ' + width); }
-  await b.getByRole('button',{name:'В лагерь',exact:true}).click();
+  await b.getByRole('button',{name:'Вернуться к карте курса',exact:true}).click();
+  await b.getByRole('button',{name:'Вернуться в хаб',exact:true}).click();
   await b.getByRole('button', { name: 'Выйти из профиля', exact: true }).click(); await b.getByRole('heading', { name: 'Мой лагерь',exact:true }).waitFor(); await b.getByRole('button',{name:'Войти по коду',exact:true}).click(); await b.getByRole('heading', { name: 'Продолжи свой путь' }).waitFor();
-  await b.getByLabel('Код входа', { exact: true }).fill(other.code); await b.getByRole('button', { name: 'Войти по коду', exact: true }).click(); await b.getByRole('heading', { name: 'Мой лагерь', exact: true }).waitFor(); await b.getByRole('button',{name:'Начать курс',exact:true}).click(); await b.getByRole('heading',{name:'Исследование земель',exact:true}).first().waitFor();
+  await b.getByLabel('Код входа', { exact: true }).fill(other.code); await b.getByRole('button', { name: 'Войти по коду', exact: true }).click(); await b.getByRole('heading',{name:'Путь Мастера',exact:true}).waitFor(); assert.equal(new URL(b.url()).hash,'#course'); await b.locator('.welcome-player iframe').waitFor(); await b.getByRole('button',{name:/^Этап 1: Интересы/}).click(); await b.getByRole('heading',{name:'Исследование земель',exact:true}).first().waitFor();
   await until(async () => !!(await store.get('progress:' + other.learnerId)));
   assert.equal((await store.get('progress:' + other.learnerId)).value.payload.state.course.s4Dream, '');
   record('logout and another pupil do not inherit previous answers');
@@ -125,9 +136,9 @@ try {
   const videoContext = await context(), videoPage = await videoContext.newPage();
   videoPage.on('pageerror', error => errors.push(String(error)));
   await login(videoPage, videoLearner.code);
-  await videoPage.getByRole('button',{name:'В лагерь',exact:true}).click();
+  await videoPage.getByRole('button',{name:'Вернуться в хаб',exact:true}).click();
   await videoPage.getByRole('heading',{name:'Мой лагерь',exact:true}).waitFor();
-  await videoPage.getByRole('button',{name:'Карта этапов',exact:true}).click();
+  await openCampMap(videoPage);
   await videoPage.getByRole('heading',{name:'Путь Мастера',exact:true}).waitFor();
   const welcome = videoPage.locator('section.welcome-media');
   const welcomeFrame = welcome.locator('iframe');
@@ -160,8 +171,8 @@ try {
   await videoPage.frameLocator('.welcome-player iframe').getByRole('button',{name:'Воспроизводится',exact:true}).waitFor();
   const posterAfter=await welcomeFrame.boundingBox();
   assert.deepEqual([posterBefore.width,posterBefore.height],[posterAfter.width,posterAfter.height]);
-  await videoPage.getByRole('button',{name:'В лагерь',exact:true}).click();
-  await videoPage.getByRole('button',{name:'Карта этапов',exact:true}).click();
+  await videoPage.getByRole('button',{name:'Вернуться в хаб',exact:true}).click();
+  await openCampMap(videoPage);
   await welcomePlay.waitFor();
   record('full-width welcome visible each time, no autoplay, keyboard start, stable 16:9 above map');
   await step1.click();
@@ -174,7 +185,7 @@ try {
   const videoProgress = (await store.get('progress:'+videoLearner.learnerId)).value.payload.state.course;
   assert.deepEqual(Object.keys(videoProgress.lessons), ['1']);
   assert.deepEqual(videoProgress.completedStages, []);
-  await videoPage.getByRole('button',{name:'Дальше',exact:true}).click();
+  await videoPage.getByRole('button',{name:'Погнали!',exact:true}).click();
   record('optional welcome and lesson 1 render wide; welcome does not gate lesson 1 or change progress');
   const personalityLearner = await provisionLearner(store, 'Синтетический урок личности');
   const personalityState = completedState();
@@ -184,7 +195,7 @@ try {
   await personalityPage.goto(base+'/#profile');
   await personalityPage.getByLabel('Код входа',{exact:true}).fill(personalityLearner.code);
   await personalityPage.getByRole('button',{name:'Войти по коду',exact:true}).click();
-  await personalityPage.getByRole('button',{name:'Продолжить курс',exact:true}).click();
+  await openCampMap(personalityPage); await personalityPage.getByRole('button',{name:/^Этап 2: Личность/}).click();
   await personalityPage.locator('summary').filter({hasText:'Видеоурок 2'}).waitFor();
   const personality = personalityPage.locator('iframe[title="Kinescope test player"]');
   assert.equal(await personality.getAttribute('data-requested-url'),'https://kinescope.io/embed/testvideo0002');
@@ -215,7 +226,7 @@ try {
   record('authenticated AI button saves a synthetic summary and prevents repeated paid clicks');
   await login(nextPage, aiLearner.code);
   await nextPage.setViewportSize({width:1280,height:900});
-  await nextPage.getByRole('button',{name:'В лагерь',exact:true}).click();
+  await nextPage.getByRole('button',{name:'Вернуться в хаб',exact:true}).click();
   await nextPage.getByRole('button',{name:'Профкарта',exact:true}).click();
   await nextPage.getByText(aiText, { exact: true }).waitFor();
   assert.equal(aiCalls, 1); record('AI summary restores in another browser session without another provider call');
@@ -227,7 +238,7 @@ try {
   await linearPage.goto(base+'/#profile');
   await linearPage.getByLabel('Код входа',{exact:true}).fill(linearLearner.code);
   await linearPage.getByRole('button',{name:'Войти по коду',exact:true}).click();
-  await linearPage.getByRole('button',{name:'Продолжить курс',exact:true}).click();
+  await linearPage.goto(base+'/#resume');
   await linearPage.getByRole('heading',{name:'Башня построена',exact:true}).waitFor();
   await linearPage.getByRole('button',{name:'Дальше',exact:true}).click();
   await linearPage.getByRole('heading',{name:'Хрустальный зал',exact:true}).first().waitFor();
@@ -237,7 +248,7 @@ try {
   await linearPage.getByRole('button',{name:'В лагерь',exact:true}).click();
   await linearPage.getByRole('heading',{name:'Мой лагерь',exact:true}).waitFor();
   await linearPage.screenshot({path:output+'/08-camp-linear-desktop.png',fullPage:true});
-  await linearPage.getByRole('button',{name:'Продолжить курс',exact:true}).click();
+  await linearPage.goto(base+'/#resume');
   await linearPage.getByRole('heading',{name:'Хрустальный зал',exact:true}).first().waitFor();
   assert.equal(await linearPage.getByLabel('Код входа',{exact:true}).count(),0);
   record('stage completion advances directly; return and continue work again on desktop');

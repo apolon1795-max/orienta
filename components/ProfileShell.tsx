@@ -8,16 +8,16 @@ import { GuideView } from './GuideView';
 import { CampHome } from './CampHome';
 import { Button } from './Button';
 import { ARCHETYPES, type TestResult, type CourseState } from '../types';
-import { allCourseStagesCompleted, courseHasProgress } from '../services/courseNavigation';
+import { allCourseStagesCompleted } from '../services/courseNavigation';
 
 type Props = {
  destination: 'inactive' | 'hub' | 'profile' | 'course' | 'resume' | 'profile-card'; local: FreeProgress;
- onCamp: () => void; onCourse: () => void; onMap: () => void; onProfileCard: () => void; onProfile: () => void; onInviteArrival: (learnerId: string) => void;
+ onCamp: () => void; onCourse: () => void; onProfileCard: () => void; onInviteArrival: (learnerId: string) => void;
  onCloudSession: (learnerId?: string) => void; onOpenTest: () => void; onOpenGuide: () => void; onResetLocal: () => void;
 };
 type CoursePackage = { script: string; css: string; lessons: Window['__ORIENTA_LESSONS'] };
 
-export const ProfileShell = ({ destination, local, onCamp, onCourse, onMap, onProfileCard, onProfile, onInviteArrival, onCloudSession, onOpenGuide, onOpenTest, onResetLocal }: Props) => {
+export const ProfileShell = ({ destination, local, onCamp, onCourse, onProfileCard, onInviteArrival, onCloudSession, onOpenGuide, onOpenTest, onResetLocal }: Props) => {
  const base = apiBase(import.meta.env.VITE_PROGRESS_API_URL);
  const client = useMemo(() => new ProfileSession(base), [base]);
  const [state, setState] = useState(client.state);
@@ -99,9 +99,9 @@ export const ProfileShell = ({ destination, local, onCamp, onCourse, onMap, onPr
   && (!client.snapshot?.payload?.testDraft?.step || client.snapshot.payload.testDraft.step === 'start');
  return <main className="adventure profile-camp-view">
    {state.learnerId && <ProgressAccount client={client} state={state} onExport={onExport} />}
-   <CampHome local={local} savedResult={savedResult} signedIn={!!state.learnerId} courseAvailable={state.courseAvailable} courseStarted={courseHasProgress(progress)} courseComplete={allCourseStagesCompleted(progress)} cardReady={!!savedResult && allCourseStagesCompleted(progress)}
-      onMap={onMap} onProfileCard={onProfileCard}
-      onCourse={state.learnerId ? onCourse : onProfile} onTest={onOpenTest} onGuide={savedResult ? () => setGuide(true) : onOpenGuide} onReset={onResetLocal}>
+   <CampHome local={local} savedResult={savedResult} signedIn={!!state.learnerId} courseAvailable={state.courseAvailable} courseComplete={allCourseStagesCompleted(progress)} cardReady={!!savedResult && allCourseStagesCompleted(progress)}
+      onProfileCard={onProfileCard}
+      onCourse={onCourse} onTest={onOpenTest} onGuide={savedResult ? () => setGuide(true) : onOpenGuide} onReset={onResetLocal}>
       {message && <p role="status">{message}</p>}
       {canTransfer && <details className="rounded-xl border p-4">
         <summary>Сохранить мой результат в профиле</summary>

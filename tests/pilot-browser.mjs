@@ -62,13 +62,15 @@ try {
     }
     await page.getByRole('heading',{name:'Мой лагерь',exact:true}).waitFor();
     assert.equal(await page.getByRole('heading',{name:'Мой лагерь',exact:true}).count(),1);
-    const courseButton=page.getByRole('button',{name:'Начать курс',exact:true});
+    const courseButton=page.getByRole('button',{name:'Открыть карту курса',exact:true});
     await courseButton.waitFor();
     assert.equal(await courseButton.isEnabled(),true);
     assert.equal(await page.getByLabel('Код входа',{exact:true}).count(),0);
     const content=page.waitForResponse(r=>r.url()===api+'/course-content'&&r.request().method()==='GET');
     await courseButton.click();
     assert.equal((await content).status(),200);
+    await page.getByRole('heading',{name:'Путь Мастера',exact:true}).waitFor();
+    await page.getByRole('button',{name:/^Этап 1: Интересы/}).click();
     await page.getByRole('heading',{name:'Исследование земель',exact:true}).first().waitFor();
     assert.equal(await page.getByLabel('Код входа',{exact:true}).count(),0);
     assert.deepEqual(sessionPosts,[{inviteCode:invite,code:privateCode,consent:true}]);

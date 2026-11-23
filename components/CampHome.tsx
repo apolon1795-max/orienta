@@ -5,12 +5,12 @@ import { adventureArt } from '../services/adventureArt';
 import type { TestResult } from '../types';
 
 type Props = {
- local: FreeProgress; savedResult?: TestResult | null; signedIn?: boolean; courseAvailable?: boolean; courseStarted?: boolean;
- courseComplete?: boolean; cardReady?: boolean; onMap?: () => void; onProfileCard?: () => void;
+ local: FreeProgress; savedResult?: TestResult | null; signedIn?: boolean; courseAvailable?: boolean;
+ courseComplete?: boolean; cardReady?: boolean; onProfileCard?: () => void;
  onCourse: () => void; onTest: () => void; onGuide: () => void; onReset: () => void;
  children?: React.ReactNode;
 };
-export const CampHome = ({ local, savedResult, signedIn, courseAvailable, courseStarted, courseComplete, cardReady, onCourse, onMap, onProfileCard, onTest, onGuide, onReset, children }: Props) => {
+export const CampHome = ({ local, savedResult, signedIn, courseAvailable, courseComplete, cardReady, onCourse, onProfileCard, onTest, onGuide, onReset, children }: Props) => {
  const [communityNotice, setCommunityNotice] = useState(false);
  const [cardNotice, setCardNotice] = useState(false);
  const result = savedResult || local.result;
@@ -22,7 +22,7 @@ export const CampHome = ({ local, savedResult, signedIn, courseAvailable, course
   : result ? 'Откроется после курса'
   : courseComplete ? 'Узнай свой архетип, чтобы открыть профкарту.'
   : 'Откроется, когда пройдёшь курс и узнаешь архетип.';
- const courseLabel = courseAvailable ? courseStarted ? 'Продолжить курс' : 'Начать курс' : 'Войти по коду';
+ const courseLabel = courseAvailable ? 'Открыть карту курса' : 'Войти по коду';
  return <section className="adventure-camp camp-home max-w-4xl mx-auto space-y-6">
    <header>
      {avatar && <img className="camp-avatar" src={avatar} width={86} height={86} decoding="async" alt="Твой герой" />}
@@ -33,8 +33,7 @@ export const CampHome = ({ local, savedResult, signedIn, courseAvailable, course
      <h2>Курс «Ориента»</h2>
      {courseComplete ? <p className="font-semibold">Все пять этапов пройдены</p> : null}
      {!courseAvailable && <p>{signedIn ? 'Доступ к курсу подключает наставник.' : 'Если у тебя есть код от наставника, войди и начни курс.'}</p>}
-     {(!signedIn || (courseAvailable && !courseComplete)) && <Button variant="fantasy" fullWidth onClick={onCourse}>{courseLabel}</Button>}
-     {courseAvailable && onMap && <button type="button" className="camp-map-link" onClick={onMap}>Карта этапов</button>}
+     {(!signedIn || courseAvailable) && <Button variant="fantasy" fullWidth onClick={onCourse}>{courseLabel}</Button>}
    </article>
    <div className="camp-destinations">
     <article className="camp-destination"><img src={import.meta.env.BASE_URL + 'design/archetype.webp'} alt="" width={72} height={72} loading="lazy" decoding="async"/><div>
