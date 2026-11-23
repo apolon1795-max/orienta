@@ -62,7 +62,7 @@ try {
   await a.goto(base + '/#course'); await a.screenshot({ path: output + '/01-access-mobile.png', fullPage: true });
   assert.equal(await a.getByRole('button', { name: 'Скачать ответы с устройства', exact: true }).count(), 0);
   await a.getByLabel('Код входа', { exact: true }).fill('неправильный код'); await a.getByRole('button', { name: 'Войти по коду', exact: true }).click();
-  await a.getByRole('alert').filter({ hasText: 'Не удалось войти' }).waitFor(); record('invalid code rejected without exposing another pupil');
+  await a.getByRole('alert').filter({ hasText: 'Код не подошёл' }).waitFor(); record('invalid code rejected without exposing another pupil');
   await login(a, learner.code); await a.getByRole('button', { name: /^Этап 4: Башня мечты/ }).click();
   const dream = a.getByRole('textbox', { name: 'Твоя работа мечты' });
   await dream.waitFor();

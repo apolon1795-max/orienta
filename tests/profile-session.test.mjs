@@ -57,3 +57,25 @@ test('optional health does not block restoring a logged-in profile',async()=>{
    assert.deepEqual(client.getSessionForCourse(),session);
  } finally {releaseHealth(ok({ok:true}));client.dispose();}
 });
+
+test('public login identifies only confirmed invalid codes, and distinguishes outages and ambiguous 401s',async()=>{
+ const scenarios=[
+  [401, {error:'invalid_code'}, /Код не подошёл/],
+  [401, {error:'session_expired'}, /проблема с подключением/],
+  [503, {error:'storage_unavailable'}, /проблема с подключением/],
+  [503, 'upstream not available', /проблема с подключением/],
+  [429, {error:'try_later'}, /Слишком много попыток/],
+ ];
+ for(const [status,data,message] of scenarios) {
+  const client=new ProfileSession('https://qa.invalid',async()=>new Response(typeof data==='string'?data:JSON.stringify(data),{status}),storage());
+  await client.signIn('synthetic');
+  assert.equal(client.state.status,'signed-out');
+  assert.match(client.state.message,message);
+ }
+ const inviteClient=new ProfileSession('https://qa.invalid',async()=>Response.json({error:'invalid_invite'},{status:401}),storage());
+ await inviteClient.joinPilot('synthetic','synthetic');
+ assert.match(inviteClient.state.message,/Приглашение не подошло/);
+ const offline=new ProfileSession('https://qa.invalid',async()=>{throw Error('fetch failed');},storage());
+ await offline.signIn('synthetic');
+ assert.match(offline.state.message,/проблема с подключением/);
+});

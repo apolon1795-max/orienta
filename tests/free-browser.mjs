@@ -58,7 +58,7 @@ try {
  await desktop.getByLabel('Код входа',{exact:true}).fill('ORI-0000-0000-0000-0000-0000-0000-0000-0000');
  const requestsBeforeLogin=apiRequests.length;
  await desktop.getByRole('button',{name:'Войти по коду',exact:true}).click();
- await desktop.getByRole('alert').filter({hasText:'Проверь код и соединение'}).waitFor();
+ await desktop.getByRole('alert').filter({hasText:'Не удалось войти: проблема с подключением к сервису.'}).waitFor();
  assert.ok(apiRequests.slice(requestsBeforeLogin).some(url=>url.endsWith('/session')));
  await desktop.getByRole('link',{name:'Мой лагерь',exact:true}).click();
  await desktop.getByRole('button',{name:'Архетип',exact:true}).click();

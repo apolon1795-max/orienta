@@ -31,7 +31,7 @@ export class ProfileSession {
     try {const data=await this.request(path,'POST',body,'');if(generation!==this.generation)return;
       if(!/^[A-Za-z0-9_-]{43}$/.test(data.token)||!/^[a-f0-9-]{36}$/.test(data.learnerId)||!Number.isFinite(data.expiresAt))throw Error('invalid_response');
       this.session={token:data.token,learnerId:data.learnerId,expiresAt:data.expiresAt};try{this.storage.setItem(KEY,JSON.stringify(this.session));}catch{this.publish({cacheAvailable:false});}this.accept(data, invited);
-    }catch(error:any){if(generation===this.generation)this.publish({status:'signed-out',message:invited && error.status===401?'Приглашение не подошло или запись на поток закрыта. Проверь код у наставника.':error.message==='telegram_not_linked'?'Сначала войди по коду и свяжи Telegram.':error.status===429?'Слишком много попыток. Подожди минуту.':'Не удалось войти. Проверь код и соединение; для Telegram заново открой мини-приложение.'});}
+    }catch(error:any){if(generation===this.generation)this.publish({status:'signed-out',message:error.status===401 && error.message==='invalid_code'?'Код не подошёл. Проверь символы или обратись к наставнику.':invited && error.status===401 && error.message==='invalid_invite'?'Приглашение не подошло или запись на поток закрыта. Проверь код у наставника.':error.message==='telegram_not_linked'?'Сначала войди по личному коду и свяжи Telegram.':error.status===429?'Слишком много попыток. Подожди минуту.':'Не удалось войти: проблема с подключением к сервису. Попробуй позже.'});}
   }
   signIn(code:string){return this.login('/session',{code});}
   joinPilot(inviteCode:string,code:string){return this.login('/session',{inviteCode,code,consent:true},true);}
