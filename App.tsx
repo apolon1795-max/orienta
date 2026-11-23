@@ -307,7 +307,7 @@ const App: React.FC<{ entry?: CourseEntry }> = ({ entry }) => {
 
     return (
       <div className="min-h-screen p-6 flex flex-col">
-         <Button variant="ghost" onClick={() => setView(AppView.DASHBOARD)} className="self-start pl-0 mb-8">
+         <Button variant="ghost" onClick={leaveCourse} className="self-start pl-0 mb-8">
             ← Назад
           </Button>
           
@@ -393,7 +393,7 @@ const App: React.FC<{ entry?: CourseEntry }> = ({ entry }) => {
       )}
       {view === AppView.AI_SUMMARY && entry?.mode && !profileReady && <section className="max-w-xl mx-auto p-6 space-y-4"><h1>Профкарта пока не готова</h1><p>Пройди пять этапов и узнай свой архетип. Твои ответы сохранены.</p><Button variant="secondary" onClick={leaveCourse}>В лагерь</Button></section>}
       {view === AppView.AI_SUMMARY && profileReady && (!CLOUD_API || syncState.courseAvailable) && <ProfileView state={userState}
-        onBack={entry?.mode ? leaveCourse : () => setView(entry ? AppView.COURSE : AppView.DASHBOARD)} backLabel={entry?.mode ? 'В лагерь' : undefined} onConsultation={() => setView(AppView.CONSULTATION)}
+        onBack={leaveCourse}
         onAi={handleGenerateAi} aiConfigured={syncState.aiAvailable === true} generating={isGeneratingAi} error={aiError} />}
       {view === AppView.CONSULTATION && renderConsultation()}
       {view === AppView.COMMUNITY && renderCommunity()}

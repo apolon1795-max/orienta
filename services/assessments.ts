@@ -12,9 +12,20 @@ export const scoreMotivation = (answers: number[]) => {
   });
   return result;
 };
+// Read answer positions as authored. Missing/invalid answers are excluded, not treated as choices.
+export const summarizeMotivationChoices = (answers: number[]) =>
+  MOTIVATION_QUESTIONS.flatMap(({ text, options }, index) => {
+    const selected = answers[index];
+    return Number.isInteger(selected) && selected >= 0 && selected < options.length
+      ? [{ index, question: text, choice: options[selected].text }]
+      : [];
+  });
+// Score rows are descending; stable sort preserves the authored order for equal scores.
+export const rankScores = (scores: Record<string, number>) => Object.entries(scores).sort((a, b) => b[1] - a[1]);
+
 // Include ties at the cutoff instead of manufacturing a precise order.
 export const leaders = (scores: Record<string, number>, count: number) => {
-  const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+  const sorted = rankScores(scores);
   const threshold = sorted[Math.min(count - 1, sorted.length - 1)]?.[1] || 0;
   return sorted.filter(([, value]) => value > 0 && value >= threshold);
 };

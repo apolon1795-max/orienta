@@ -73,7 +73,7 @@ try {
   await page.getByRole('spinbutton').fill('16');await click('Далее');for (const [i, gift] of ['Графический планшет','Камера','Путешествие'].entries()) { await page.getByRole('textbox').fill(gift); await click(i === 2 ? 'Сохранить подарки' : 'Следующий день рождения'); }
   await click('На карту');assert.deepEqual((await read()).course.completedStages,[0,1]);
   await page.getByRole('button',{name:/Этап 3: Навыки/}).click();await click('На Арену');
-  for(const answer of ['Разделю на шаги','Всех выслушаю','Сразу начну колдовать'])await click(answer);
+  for(const answer of ['Разделю на шаги','Всех выслушаю','Сразу попробую говорить'])await click(answer);
   await page.getByRole('checkbox',{name:'Без ограничения времени'}).check();await click('Начать Блиц');
   await page.screenshot({path:'output/playwright/03-crisis-mobile.png',fullPage:true});
   for(let i=0;i<4;i++)await page.locator('button').filter({hasText:i===0?'Возьму все на себя':i===1?'Разведу их':i===2?'Расскажу без слайдов':'Раздам интернет'}).click();

@@ -46,7 +46,7 @@ try {
   await until(async () => { try { return (await fetch(base)).ok; } catch { return false; } });
   browser = await chromium.launch({ headless: true, ...(process.env.ORIENTA_BROWSER_EXECUTABLE ? { executablePath: process.env.ORIENTA_BROWSER_EXECUTABLE } : {}) });
   const context = async () => {
-    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce', acceptDownloads: true });
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, acceptDownloads: true });
     await ctx.route('**/*', async route => {
       const url = route.request().url();
       if (url === 'https://player.kinescope.io/latest/iframe.player.js') return route.fulfill({ contentType: 'text/javascript', body: sdk });
@@ -68,10 +68,9 @@ try {
   const dream = a.getByRole('textbox', { name: 'Твоя работа мечты' });
   await dream.waitFor();
   assert.equal(await a.locator('.stage-chapter-header button').count(),1);
-  await a.getByRole('button',{name:'Вернуться к карте курса',exact:true}).waitFor();
+  await a.getByRole('button',{name:'В лагерь',exact:true}).waitFor();
   assert.equal(await a.getByRole('button',{name:'Выйти из профиля',exact:true}).count(),0);
-  await a.getByRole('button',{ name:'Вернуться к карте курса',exact:true }).click();
-  await a.getByRole('button',{name:'Вернуться в хаб',exact:true}).click();
+  await a.getByRole('button',{name:'В лагерь',exact:true}).click();
   await a.getByRole('heading',{name:'Мой лагерь',exact:true}).waitFor();
   assert.equal(await a.getByRole('button',{name:'Профкарта',exact:true}).count(),1);
   await a.getByRole('button',{name:'Профкарта',exact:true}).click();
@@ -123,8 +122,7 @@ try {
   await until(async () => (await progress()).state.course.lessons[4]?.completed === true);
   assert.deepEqual((await progress()).state.course.completedStages, [0, 1, 2]); record('video completion does not complete the assignment');
   for (const width of [320, 390, 768, 1280]) { await b.setViewportSize({ width, height: 844 }); assert.ok(await b.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'overflow at ' + width); }
-  await b.getByRole('button',{name:'Вернуться к карте курса',exact:true}).click();
-  await b.getByRole('button',{name:'Вернуться в хаб',exact:true}).click();
+  await b.getByRole('button',{name:'В лагерь',exact:true}).click();
   await b.getByRole('button', { name: 'Выйти из профиля', exact: true }).click(); await b.getByRole('heading', { name: 'Мой лагерь',exact:true }).waitFor(); await b.getByRole('button',{name:'Войти по коду',exact:true}).click(); await b.getByRole('heading', { name: 'Продолжи свой путь' }).waitFor();
   await b.getByLabel('Код входа', { exact: true }).fill(other.code); await b.getByRole('button', { name: 'Войти по коду', exact: true }).click(); await b.getByRole('heading',{name:'Путь Мастера',exact:true}).waitFor(); assert.equal(new URL(b.url()).hash,'#course'); await b.locator('.welcome-player iframe').waitFor(); await b.getByRole('button',{name:/^Этап 1: Интересы/}).click(); await b.getByRole('heading',{name:'Исследование земель',exact:true}).first().waitFor();
   await until(async () => !!(await store.get('progress:' + other.learnerId)));
@@ -137,7 +135,7 @@ try {
   const videoContext = await context(), videoPage = await videoContext.newPage();
   videoPage.on('pageerror', error => errors.push(String(error)));
   await login(videoPage, videoLearner.code);
-  await videoPage.getByRole('button',{name:'Вернуться в хаб',exact:true}).click();
+  await videoPage.getByRole('button',{name:'В лагерь',exact:true}).click();
   await videoPage.getByRole('heading',{name:'Мой лагерь',exact:true}).waitFor();
   await openCampMap(videoPage);
   await videoPage.getByRole('heading',{name:'Путь Мастера',exact:true}).waitFor();
@@ -172,7 +170,7 @@ try {
   await videoPage.frameLocator('.welcome-player iframe').getByRole('button',{name:'Воспроизводится',exact:true}).waitFor();
   const posterAfter=await welcomeFrame.boundingBox();
   assert.deepEqual([posterBefore.width,posterBefore.height],[posterAfter.width,posterAfter.height]);
-  await videoPage.getByRole('button',{name:'Вернуться в хаб',exact:true}).click();
+  await videoPage.getByRole('button',{name:'В лагерь',exact:true}).click();
   await openCampMap(videoPage);
   await welcomePlay.waitFor();
   record('full-width welcome visible each time, no autoplay, keyboard start, stable 16:9 above map');
@@ -186,7 +184,7 @@ try {
   const videoProgress = (await store.get('progress:'+videoLearner.learnerId)).value.payload.state.course;
   assert.deepEqual(Object.keys(videoProgress.lessons), ['1']);
   assert.deepEqual(videoProgress.completedStages, []);
-  await videoPage.getByRole('button',{name:'Погнали!',exact:true}).click();
+  await videoPage.getByRole('button',{name:'Дальше',exact:true}).click();
   record('optional welcome and lesson 1 render wide; welcome does not gate lesson 1 or change progress');
   const personalityLearner = await provisionLearner(store, 'Синтетический урок личности');
   const personalityState = completedState();
@@ -209,6 +207,28 @@ try {
   assert.deepEqual(personalityProgress.completedStages,[0]);
   await personalityPage.screenshot({path:output + '/10-lesson-2-mobile.png'});
   record('lesson 2 uses override slot, official embed and independently saved playback position');
+  const assertTopPrompt = async prompt => {
+    await prompt.waitFor();
+    assert.equal(await prompt.evaluate(e=>document.activeElement===e), true);
+    const box=await prompt.boundingBox();
+    assert.ok(box.y>=0 && box.y+box.height<=400, 'next prompt not near the top: '+JSON.stringify({box, metrics:await prompt.evaluate(e=>({y:scrollY,max:document.documentElement.scrollHeight-innerHeight,media:e.closest('.stage-panel')?.querySelector('details')?.getBoundingClientRect().height,innerHeight}))}));
+  };
+  const nextReflection = personalityPage.getByRole('button',{name:'Дальше',exact:true});
+  await nextReflection.tap();
+  await assertTopPrompt(personalityPage.getByRole('heading',{name:'Твоя Сила',exact:true}));
+  const reflection = personalityPage.locator('#reflection');
+  await reflection.tap();
+  await reflection.fill('');
+  const typedY = (await reflection.boundingBox()).y;
+  for (const char of 'Могу слушать других') await personalityPage.keyboard.insertText(char);
+  assert.equal(await reflection.inputValue(),'Могу слушать других');
+  await until(async()=>(await store.get('progress:'+personalityLearner.learnerId)).value.payload.state.course.s2Inputs.s==='Могу слушать других');
+  assert.equal(await reflection.evaluate(e=>document.activeElement===e),true);
+  assert.ok(Math.abs((await reflection.boundingBox()).y-typedY)<=2,'typing or saving must not reposition the active text box');
+  await nextReflection.tap();
+  await assertTopPrompt(personalityPage.getByRole('heading',{name:'Что даётся трудно',exact:true}));
+  assert.equal(await reflection.inputValue(),personalityState.course.s2Inputs.w);
+  record('mobile reflections preserve focused input during typing/cloud save, then focus the next prompt');
   const transferState=completedState(); transferState.testResult=null;
   const localArchetype=freshFreeProgress();
   localArchetype.draft.step='result'; localArchetype.draft.scores.Commander=5; localArchetype.result={scoreType:'Commander'};
@@ -264,7 +284,7 @@ try {
   record('authenticated AI button saves a synthetic summary and prevents repeated paid clicks');
   await login(nextPage, aiLearner.code);
   await nextPage.setViewportSize({width:1280,height:900});
-  await nextPage.getByRole('button',{name:'Вернуться в хаб',exact:true}).click();
+  await nextPage.getByRole('button',{name:'В лагерь',exact:true}).click();
   await nextPage.getByRole('button',{name:'Профкарта',exact:true}).click();
   await nextPage.getByText(aiText, { exact: true }).waitFor();
   assert.equal(aiCalls, 1); record('AI summary restores in another browser session without another provider call');
@@ -282,6 +302,13 @@ try {
   await linearPage.getByRole('heading',{name:'Хрустальный зал',exact:true}).first().waitFor();
   await until(async()=>(await store.get('progress:'+linearLearner.learnerId)).value.payload.state.course.activeStage===4);
   assert.equal(await linearPage.locator('.lesson-player, .lesson-native').count(),0,'unconfigured stage shows no video placeholder');
+  await linearPage.getByRole('button',{name:'Дальше',exact:true}).click();
+  const assessmentPrompt=linearPage.locator('.stage-panel h2');
+  await assertTopPrompt(assessmentPrompt);
+  const first=await assessmentPrompt.textContent();
+  await linearPage.getByRole('button',{name:'Очень нравится',exact:true}).tap();
+  await assertTopPrompt(assessmentPrompt);
+  assert.notEqual(await assessmentPrompt.textContent(),first);
   await linearPage.setViewportSize({width:1280,height:900});
   await linearPage.getByRole('button',{name:'В лагерь',exact:true}).click();
   await linearPage.getByRole('heading',{name:'Мой лагерь',exact:true}).waitFor();

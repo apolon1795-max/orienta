@@ -33,3 +33,10 @@
 .stage-chapter-header > .stage-camp-exit:focus-visible {
   outline:3px solid #345c43; outline-offset:3px;
 }
+
+.stage-panel, .stage-panel h2, .stage-panel h3 { scroll-margin-top: max(16px, env(safe-area-inset-top)); }
+
+/* Leave space below short mobile exercises so the viewport can actually reach their prompt. */
+@media(max-width:700px) {
+  .stage-panel[data-anchored-exercise="true"] > div:last-child { min-height:calc(100svh - 104px)!important; }
+}

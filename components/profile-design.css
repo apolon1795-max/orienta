@@ -84,3 +84,36 @@
  .atlas-ai { padding:20px 0; }
  .atlas-ai-text { font-size:11px; }
 }
+
+/* The protected profile footer shares the Camp's parchment and forest palette. */
+.hero-atlas .atlas-actions {
+  align-items:stretch;
+  margin-top:20px;
+  padding:clamp(16px,4vw,28px);
+  background:#f8edcf;
+  border:1px solid #b99c5d;
+  border-radius:16px;
+  color:#342c20;
+}
+.hero-atlas .atlas-export { display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr)); }
+.hero-atlas .atlas-actions [data-button-variant],
+.hero-atlas .atlas-mentor-link,
+.hero-atlas .atlas-nav [data-button-variant] {
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;
+  padding:10px 14px;border:1px solid #827043;border-radius:10px;
+  background:#fff6df;color:#344528;box-shadow:none;text-align:center;line-height:1.35;
+  text-decoration:none;font-family:inherit;font-size:inherit;font-weight:700;transform:none;
+}
+.hero-atlas .atlas-actions :is([data-button-variant="fantasy"],[data-button-variant="primary"]),
+.hero-atlas .atlas-mentor-link { background:#354a30;color:#fff6df;border-color:#354a30; }
+.hero-atlas .atlas-mentor-link { justify-self:start;align-self:flex-start;max-width:100%; }
+.hero-atlas .atlas-actions :is([data-button-variant],.atlas-mentor-link):hover:not(:disabled),
+.hero-atlas .atlas-nav [data-button-variant]:hover {background:#eddbb0;color:#304429;border-color:#827043;transform:none;}
+.hero-atlas :is(.atlas-actions,.atlas-nav) :is([data-button-variant],.atlas-mentor-link):focus-visible {outline:2px solid #354a30;outline-offset:3px;box-shadow:0 0 0 3px #fff6df;}
+.hero-atlas .atlas-actions [data-button-variant]:disabled {opacity:1;background:#e2dcce;color:#575348;border-color:#918a78;cursor:not-allowed;}
+.hero-atlas .atlas-ai-consent {border-color:#bcaa86;max-width:none;}
+.hero-atlas .atlas-error {color:#812f24;}
+.hero-atlas :is(.atlas-actions,.atlas-nav) svg {flex:none;}
+@media(max-width:540px) {
+  .hero-atlas .atlas-actions :is([data-button-variant],.atlas-mentor-link) {width:100%;}
+}

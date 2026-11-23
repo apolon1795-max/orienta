@@ -2,8 +2,9 @@ import React from 'react';
 import { Castle, Gem, CheckCircle } from 'lucide-react';
 import type { CourseState } from '../types';
 import { Button } from './Button';
+import { LessonAnswers, LessonBrief, LessonResult } from './LessonCopy';
 import { HOLLAND_QUESTIONS, INTEREST_TYPES, MOTIVATION_QUESTIONS, MOTIVATORS, WORKPLACES, WORK_PRIORITIES, WORK_STYLES } from '../data/assessments';
-import { leaders, scoreInterests, scoreMotivation } from '../services/assessments';
+import { leaders, scoreInterests, scoreMotivation, summarizeMotivationChoices } from '../services/assessments';
 
 type Props = { course: CourseState; onChange: React.Dispatch<React.SetStateAction<CourseState>>; onFinish: () => void; linear?: boolean };
 const Frame = ({ children }: { children: React.ReactNode }) => <div className="max-w-xl mx-auto px-6 py-10 space-y-6">{children}</div>;
@@ -12,12 +13,14 @@ export const DreamStage = ({ course: c, onChange, onFinish, linear = false }: Pr
   if (c.s4Phase === 'intro') return <Frame>
     <Castle className="w-14 h-14 text-amber-400" aria-hidden="true" />
     <h2 className="text-3xl font-serif text-white">Башня мечты</h2>
-    <p className="text-slate-200 leading-relaxed">Представь свою будущую работу: место, людей, задачи и обычный день. Затем выбери, какой формат тебе ближе. Ответы помогут сформулировать, что стоит проверить на практике.</p>
+    <LessonBrief theory="Иногда проще представить один обычный рабочий день, чем сразу выбрать профессию."
+      observe="В каком месте, ритме и с какими людьми тебе хотелось бы работать."
+      task="Опиши свой будущий рабочий день. Потом выбери место, то, что важнее всего, и удобный формат дня." />
     <Button variant="fantasy" onClick={() => update({ s4Phase: 'dream' })}>{linear ? 'Дальше' : 'Построить свою башню'}</Button>
   </Frame>;
   if (c.s4Phase === 'dream') return <Frame>
     <h2 className="text-2xl font-serif text-white"><label htmlFor="dream-work">Твоя работа мечты</label></h2>
-    <p id="dream-help" className="text-slate-200">Где ты работаешь, что делаешь, кто рядом? Какой график, доход и вечер после работы ты представляешь? Можно написать «пока не знаю» и то, что хочется попробовать.</p>
+    <p id="dream-help" className="text-slate-200">В окне башни виден обычный вторник на твоей будущей работе. Где ты, что делаешь, кто рядом? Во сколько заканчиваешь, сколько зарабатываешь и как проходит вечер? Если пока не знаешь, так и напиши.</p>
     <textarea id="dream-work" aria-describedby="dream-help" maxLength={1200} value={c.s4Dream} onChange={e => update({ s4Dream: e.target.value })} className="w-full min-h-48 p-4 bg-slate-800 border border-slate-600 rounded-xl text-white" />
     <Button disabled={c.s4Dream.trim().length < 2} onClick={() => update({ s4Phase: 'place' })}>{linear ? 'Дальше' : 'Далее'}</Button>
   </Frame>;
@@ -34,8 +37,9 @@ export const DreamStage = ({ course: c, onChange, onFinish, linear = false }: Pr
     </Frame>;
   }
   return <Frame><CheckCircle className="w-12 h-12 text-green-400" aria-hidden="true" /><h2 className="text-3xl font-serif text-white">Башня построена</h2>
-    <p className="text-slate-200 whitespace-pre-wrap">{c.s4Dream}</p>
-    <ul className="list-disc pl-5 text-slate-200 space-y-3"><li>{c.s4Place}</li><li>{c.s4Priority}</li><li>{c.s4Style}</li></ul>
+    <LessonResult reason="Сравни день, который ты описал, с тем, что выбрал дальше. Если они не совсем совпадают, это подсказка, что стоит уточнить. Назови одно условие и спроси у специалиста, бывает ли так в его работе.">
+      <LessonAnswers rows={[[ 'Твой рабочий день', c.s4Dream], ['Место', c.s4Place], ['Что важно', c.s4Priority], ['Формат дня', c.s4Style]]} />
+    </LessonResult>
     <Button variant="fantasy" onClick={onFinish}>{linear ? 'Дальше' : 'На карту'}</Button>{!linear && <Button variant="ghost" onClick={() => update({ s4Phase: 'dream' })}>Изменить образ работы</Button>}
   </Frame>;
 };
@@ -46,7 +50,9 @@ export const AssessmentStage = ({ course: c, onChange, onFinish, linear = false 
   const topInterests = leaders(interests, 2), topMotivation = leaders(motivation, 3);
   if (c.s5Phase === 'intro') return <Frame><Gem className="w-14 h-14 text-indigo-300" aria-hidden="true" />
     <h2 className="text-3xl font-serif text-white">Хрустальный зал</h2>
-    <p className="text-slate-200">Впереди два авторских опросника: 12 утверждений о профессиональных интересах по шести направлениям Холланда и 10 вопросов о мотивации. Это короткая игровая адаптация для исследования вариантов, её точность как диагностики не установлена.</p>
+    <LessonBrief theory="Кристалл не назовёт твою профессию. Зато два коротких опросника помогут собрать подсказки."
+      observe="Интересы: какие занятия тебе нравятся. Мотивация: что для тебя важнее в предложенных ситуациях. Это не диагностика и не проверка способностей."
+      task="Отметь, насколько тебе близки 12 утверждений об интересах. Потом выбери по одному ответу в 10 вопросах о мотивации." />
     <Button variant="fantasy" onClick={() => update({ s5Phase: 'holland', s5Index: Math.min(c.hollandAnswers.length, 11) })}>{linear ? 'Дальше' : 'Исследовать интересы'}</Button>
   </Frame>;
   if (c.s5Phase === 'holland' || c.s5Phase === 'motivation') {
@@ -66,20 +72,32 @@ export const AssessmentStage = ({ course: c, onChange, onFinish, linear = false 
   }
   if (c.s5Phase === 'holland_result') return <Frame>
     <h2 className="text-2xl font-serif text-white">Твои профессиональные интересы</h2>
-    <p className="text-slate-200">{topInterests.length ? 'Ведущие направления по ответам:' : 'Пока ни одно направление не выделилось. Это повод попробовать разные задачи, а не отсутствие способностей.'}</p>
-    {topInterests.map(([key, score]) => { const type = INTEREST_TYPES[key as keyof typeof INTEREST_TYPES]; return <p key={key} className="text-slate-200"><strong>{type.title} · {score}/4</strong><br />{type.description}</p>; })}
-    {topInterests.length > 2 && <p className="text-sm text-slate-300">На границе топ-2 одинаковые баллы: показаны все направления с равным результатом.</p>}
+    <LessonResult reason={topInterests.length
+      ? 'Эти направления набрали больше баллов по твоим отметкам. Ниже видно, за какие занятия. Это не список профессий, которые тебе подходят.'
+      : 'Пока ни одно направление не выделилось по ответам. Это повод попробовать разные задачи, а не отсутствие способностей.'}>
+      {topInterests.map(([key, score]) => {
+        const type = INTEREST_TYPES[key as keyof typeof INTEREST_TYPES];
+        const evidence = HOLLAND_QUESTIONS.flatMap((question, index) => question.type === key && c.hollandAnswers[index] > 0
+          ? [`«${question.text}»: ${c.hollandAnswers[index] === 2 ? 'очень нравится' : 'нравится'}`] : []);
+        return <p key={key}><strong>{type.title} · {score}/4</strong><br />{evidence.join('; ')}.</p>;
+      })}
+      {topInterests.length > 2 && <p>У нескольких направлений одинаковый результат, поэтому показаны все с равными баллами.</p>}
+    </LessonResult>
     <Button onClick={() => update({ s5Phase: 'motivation_intro', s5Index: 0 })}>{linear ? 'Дальше' : 'К мотивации'}</Button>
   </Frame>;
   if (c.s5Phase === 'motivation_intro') return <Frame><h2 className="text-2xl font-serif text-white">Что тебя мотивирует?</h2>
-    <p className="text-slate-200">Десять вопросов о том, что важно в работе. Выбирай ближайший вариант. Ответы сохраняются после каждого шага.</p>
+    <p className="text-slate-200">Выбери то, что ближе тебе сейчас. Здесь нет правильных ответов. Можно хотеть разного в разных ситуациях.</p>
     <Button onClick={() => update({ s5Phase: 'motivation', s5Index: Math.min(c.motivationAnswers.length, 9) })}>{linear ? 'Дальше' : 'Начать опросник мотивации'}</Button>
   </Frame>;
   return <Frame><CheckCircle className="w-12 h-12 text-green-400" aria-hidden="true" /><h2 className="text-3xl font-serif text-white">Оба опросника пройдены</h2>
-    <h3 className="text-xl text-white">Главные мотиваторы</h3>
-    <ul className="list-disc pl-5 text-slate-200 space-y-3">{topMotivation.map(([key, value]) => <li key={key}>{MOTIVATORS[key as keyof typeof MOTIVATORS]} · {value} баллов</li>)}</ul>
-    {topMotivation.length > 3 && <p className="text-sm text-slate-300">На границе топ-3 есть равные баллы. Показаны все такие мотиваторы.</p>}
-    <p className="text-slate-200">Теперь в Профкарте Героя будут все пять этапов. Она поможет выбрать профессиональную пробу и вопросы для разговора с наставником.</p>
+    <LessonResult reason="Ты выбрал, что важнее в каждой из десяти ситуаций. Ниже этот опросник группирует ответы по своему ключу. У категорий разное число возможностей набрать баллы, поэтому по цифрам нельзя сравнивать, что мотивирует тебя сильнее.">
+      <p><strong>Больше всего баллов по ключу:</strong> {topMotivation.length ? topMotivation.map(([key, value]) => `${MOTIVATORS[key as keyof typeof MOTIVATORS]} · ${value}`).join('; ') : 'пока не выделились'}.</p>
+      {topMotivation.length > 3 && <p>На границе первых трёх есть равные баллы, поэтому показаны все с таким результатом.</p>}
+      <details><summary>Твои ответы о мотивации</summary>
+        <LessonAnswers rows={summarizeMotivationChoices(c.motivationAnswers).map(({ question, choice }) => [question, choice])} />
+      </details>
+      <p>В профкарте ты увидишь интересы и мотивацию отдельно. Сверь подсказки со своими ответами и выбери, что хочешь проверить на практике.</p>
+    </LessonResult>
     <Button variant="fantasy" onClick={onFinish}>{linear ? 'Дальше' : 'На карту'}</Button>
   </Frame>;
 };

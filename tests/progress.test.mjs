@@ -54,7 +54,7 @@ test('invalid drafts reset safely; ties expose every highest archetype', () => {
 });
 test('profile includes every answer group and remains plain text', () => {
   const state=completedState(); const output=buildProfileText(state);
-  for(const v of ['IT и технологии','Творчество и медиа','Рисую и учусь','Графический планшет','Технарь','Смешанный','Башня мечты','Мотивация','Путешествие','Следующий шаг']) assert.ok(output.includes(v),v);
+  for(const v of ['IT и технологии','Творчество и медиа','Рисую и учусь','Графический планшет','Раздам интернет с телефона (Hotspot)','Смешанный','Башня мечты','Мотивация','Путешествие','Следующий шаг']) assert.ok(output.includes(v),v);
   state.course.s2Inputs.s='<script>alert(1)</script>'; assert.ok(buildProfileText(state).includes('<script>'));
 });
 test('navigation does not invalidate AI; changing an answer does', () => {

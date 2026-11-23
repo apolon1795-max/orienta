@@ -1,0 +1,11 @@
+.lesson-brief,.lesson-result {width:100%;min-width:0;text-align:left;overflow-wrap:anywhere}
+.lesson-brief {display:grid;gap:12px;margin:0 0 20px;padding:16px;background:#f4ecd8;border:1px solid #c2ad83;border-radius:12px}
+.lesson-brief dt,.lesson-answer-list dt {font-weight:700;color:#4a3922}
+.lesson-brief dd,.lesson-answer-list dd {margin:3px 0 0;color:#554733;line-height:1.6;white-space:pre-wrap}
+.lesson-result {margin:0 0 18px}
+.lesson-result h3 {margin:0 0 8px}
+.lesson-result p {margin:0 0 12px;color:#554733}
+.lesson-answer-list {display:grid;gap:0;margin:0}
+.lesson-answer-list > div {border-top:1px solid #d0bd98;padding:8px 0}
+.lesson-result details {margin:12px 0;border-top:1px solid #d0bd98;padding-top:10px}
+.lesson-result summary {cursor:pointer;font-weight:700;min-height:44px;align-content:center}

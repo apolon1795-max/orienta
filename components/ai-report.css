@@ -1,0 +1,10 @@
+.atlas-ai-report { max-width:75ch; font-size:16px; line-height:1.7; overflow-wrap:anywhere; }
+.atlas-ai-report h3 { font:700 21px/1.3 Georgia,'Times New Roman',serif; color:var(--atlas-accent); margin:1.3em 0 .55em; }
+.atlas-ai-report p { margin:0 0 .75em; white-space:pre-line; }
+.atlas-chapter .atlas-ai-report ul,.atlas-chapter .atlas-ai-report ol { padding:0 0 0 1.5em; margin:0 0 .85em; font:inherit; }
+.atlas-chapter .atlas-ai-report ul { list-style:disc; }
+.atlas-chapter .atlas-ai-report ol { list-style:decimal; }
+.atlas-ai-report ol li { margin-bottom:1em; }
+.atlas-ai-report ol li > p { margin:.28em 0 0; }
+@media(max-width:700px) { .atlas-ai-report { font-size:15px; } .atlas-ai-report h3 { font-size:19px; } }
+@media print { .atlas-ai-report { font-size:11px; } .atlas-ai-report h3 { font-size:14px; break-after:avoid; } }
