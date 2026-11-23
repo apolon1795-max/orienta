@@ -85,6 +85,7 @@ export const FreeEntry = () => {
   const openGuide = useCallback(() => go('guide'), [go]);
   const finished = useCallback((result: TestResult) => { setSaved(s => ({ ...s, result })); openGuide(); }, [openGuide]);
   const clear = () => { setSaved(freshFreeProgress()); setEpoch(e => e + 1); setReset(false); go('intro', true); };
+  const showGuide = view === 'guide' && !!saved.result;
   const configured = !!apiBase(import.meta.env.VITE_PROGRESS_API_URL);
   const profileRoute = configured && (['profile','course','resume','profile-card'].includes(view) || (view === 'hub' && hasCloudSession));
   const mountProfile = configured && (profileRoute || hasCloudSession);
@@ -97,10 +98,10 @@ export const FreeEntry = () => {
     {!profileRoute && <main className="adventure min-h-screen bg-slate-950 text-slate-100">
       <nav aria-label="Навигация Ориенты" className="adventure-nav max-w-4xl mx-auto flex flex-wrap gap-4 items-center justify-between p-5">
         <button className="font-serif text-amber-200 text-xl" onClick={() => go('intro')}>Ориента</button>
-        {view !== 'hub' && <button className="text-sm underline text-amber-200" onClick={openHub}>Мой лагерь</button>}
+        {view !== 'hub' && !showGuide && <button className="text-sm underline text-amber-200" onClick={openHub}>Мой лагерь</button>}
       </nav>
       {storageFailed && <p role="status" className="px-6 text-amber-200">Не удалось сохранить результат в браузере. Пока не закрывай вкладку.</p>}
-      {(view === 'intro' || (view === 'guide' && !saved.result)) && <section className="adventure-intro max-w-2xl mx-auto px-6 py-12 space-y-7">
+      {(view === 'intro' || (view === 'guide' && !showGuide)) && <section className="adventure-intro max-w-2xl mx-auto px-6 py-12 space-y-7">
         <h1 className="text-4xl sm:text-6xl font-serif">Какой ты герой?</h1>
         <img className="adventure-party" src={partyArt} width={1152} height={768} fetchPriority="high" alt="Четыре героя Ориенты: эльфийка, рыцарь, орк и тролль" />
         <p className="text-xl">Пять игровых ситуаций помогут заметить свои сильные стороны. Выбери персонажа, пройди приключение и узнай свой архетип.</p>
@@ -114,7 +115,7 @@ export const FreeEntry = () => {
         </details>
       </section>}
       {view === 'test' && <TestView key={epoch} initialDraft={saved.draft} onDraftChange={draftChanged} onResultCalculated={calculated} onComplete={finished} onOpenCamp={openHub} onCancel={openHub} onRequestRestart={() => setReset(true)} />}
-      {view === 'guide' && saved.result && <GuideView archetype={saved.result.scoreType} onBack={openHub} onStartCourse={openHub} actionLabel="В лагерь" />}
+      {showGuide && saved.result && <GuideView archetype={saved.result.scoreType} onBack={openHub} onStartCourse={openHub} actionLabel="В лагерь" />}
       {view === 'hub' && camp}
       {(['course','resume','profile-card','profile'].includes(view)) && !configured && <section className="max-w-xl mx-auto p-6 py-12 space-y-6">
         <h1>Курс «Ориента»</h1><p role="status">Вход в курс пока настраивается. Тест уже доступен.</p>
