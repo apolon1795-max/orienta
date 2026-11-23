@@ -29,6 +29,19 @@ export const WelcomeMedia = () => {
   </section>;
 };
 
+// The finale is deliberately optional and never writes lesson progress.
+export const FinaleMedia = () => {
+  const source = lessonSource(window.__ORIENTA_LESSONS?.[6]?.video, window.location.href);
+  if (source?.kind !== 'kinescope') return null;
+  return <section className="welcome-media print-hidden" aria-label="Финальное видео">
+    <div className="welcome-player">
+      <iframe title="Финальное видео"
+        src={source.url.replace('https://kinescope.io/', 'https://kinescope.io/embed/') + '?autoplay=0&playsinline=1&preload=false'}
+        loading="lazy" allow="fullscreen; picture-in-picture; encrypted-media" allowFullScreen tabIndex={0} />
+    </div>
+  </section>;
+};
+
 export const LessonMedia = ({ stage, progress, onProgress }: { stage: number; progress?: LessonProgress; onProgress?: (progress: LessonProgress) => void }) => {
   const title = `Видеоурок ${stage}`;
   const sourceValue = videos[stage - 1];
