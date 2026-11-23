@@ -219,3 +219,6 @@ body:has(.adventure){min-width:0}
   color:#3f5234; text-decoration:underline; text-underline-offset:4px;
 }
 .adventure .camp-home .camp-destination [data-button-variant] {margin-top:0;}
+
+.camp-archetype-transfer {display:grid;justify-items:start;gap:10px;margin-top:4px;}
+.camp-archetype-transfer > button {max-width:100%;}

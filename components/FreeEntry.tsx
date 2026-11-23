@@ -92,7 +92,7 @@ export const FreeEntry = () => {
 
   return <>
     {mountProfile && <Suspense fallback={profileRoute && <p role="status" className="p-6">Открываем Ориенту…</p>}>
-      <ProfileShell destination={profileRoute ? view as MemberView : 'inactive'} local={saved} onCamp={openHub} onCourse={openCourse} onProfileCard={openProfileCard} onInviteArrival={inviteArrival} onCloudSession={cloudSession} onOpenTest={openTest} onOpenGuide={openGuide} onResetLocal={() => setReset(true)} />
+      <ProfileShell destination={profileRoute ? view as MemberView : 'inactive'} local={saved} localOwner={draftOwner} onCamp={openHub} onCourse={openCourse} onProfileCard={openProfileCard} onInviteArrival={inviteArrival} onCloudSession={cloudSession} onOpenTest={openTest} onOpenGuide={openGuide} onResetLocal={() => setReset(true)} />
     </Suspense>}
     {!profileRoute && <main className="adventure min-h-screen bg-slate-950 text-slate-100">
       <nav aria-label="Навигация Ориенты" className="adventure-nav max-w-4xl mx-auto flex flex-wrap gap-4 items-center justify-between p-5">

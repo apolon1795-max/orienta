@@ -8,9 +8,9 @@ type Props = {
  local: FreeProgress; savedResult?: TestResult | null; signedIn?: boolean; courseAvailable?: boolean;
  courseComplete?: boolean; cardReady?: boolean; onProfileCard?: () => void;
  onCourse: () => void; onTest: () => void; onGuide: () => void; onReset: () => void;
- children?: React.ReactNode;
+ archetypeTransfer?: React.ReactNode; archetypeTransferBlocked?: boolean; children?: React.ReactNode;
 };
-export const CampHome = ({ local, savedResult, signedIn, courseAvailable, courseComplete, cardReady, onCourse, onProfileCard, onTest, onGuide, onReset, children }: Props) => {
+export const CampHome = ({ local, savedResult, signedIn, courseAvailable, courseComplete, cardReady, onCourse, onProfileCard, onTest, onGuide, onReset, archetypeTransfer, archetypeTransferBlocked, children }: Props) => {
  const [communityNotice, setCommunityNotice] = useState(false);
  const [cardNotice, setCardNotice] = useState(false);
  const result = savedResult || local.result;
@@ -18,6 +18,7 @@ export const CampHome = ({ local, savedResult, signedIn, courseAvailable, course
  const avatar = !savedResult && local.result ? adventureArt(local.draft.heroData.race, local.result.scoreType) : '';
  const testLabel = local.draft.step === 'start' ? 'Пройти тест' : 'Продолжить тест';
  const cardStatus = cardReady ? 'Готова к просмотру'
+  : courseComplete && archetypeTransferBlocked ? 'В этом профиле уже начат тест. Локальный архетип его не заменяет.'
   : courseComplete && result ? 'Сохрани архетип в профиле, чтобы открыть профкарту.'
   : result ? 'Откроется после курса'
   : courseComplete ? 'Узнай свой архетип, чтобы открыть профкарту.'
@@ -39,6 +40,7 @@ export const CampHome = ({ local, savedResult, signedIn, courseAvailable, course
     <article className="camp-destination"><img src={import.meta.env.BASE_URL + 'design/archetype.webp'} alt="" width={72} height={72} loading="lazy" decoding="async"/><div>
       <Button variant="secondary" onClick={result ? onGuide : onTest}>Архетип</Button>
       <p>{result ? result.title : testLabel}</p>
+      {archetypeTransfer}
     </div></article>
     <article className="camp-destination"><img src={import.meta.env.BASE_URL + 'design/course.webp'} alt="" width={72} height={72} loading="lazy" decoding="async"/><div>
       <Button variant="secondary" aria-describedby="camp-card-state" onClick={() => { if (cardReady && onProfileCard) onProfileCard(); else setCardNotice(true); }}>Профкарта</Button>

@@ -6,18 +6,20 @@ import type { CourseEntry } from '../services/courseEntry';
 import { ProgressAccess, ProgressAccount } from './ProgressAccount';
 import { GuideView } from './GuideView';
 import { CampHome } from './CampHome';
+import { ArchetypeTransfer } from './ArchetypeTransfer';
+import { archetypeTransferState } from '../services/archetypeTransfer';
 import { Button } from './Button';
 import { ARCHETYPES, type TestResult, type CourseState } from '../types';
 import { allCourseStagesCompleted } from '../services/courseNavigation';
 
 type Props = {
- destination: 'inactive' | 'hub' | 'profile' | 'course' | 'resume' | 'profile-card'; local: FreeProgress;
+ destination: 'inactive' | 'hub' | 'profile' | 'course' | 'resume' | 'profile-card'; local: FreeProgress; localOwner: string | null;
  onCamp: () => void; onCourse: () => void; onProfileCard: () => void; onInviteArrival: (learnerId: string) => void;
  onCloudSession: (learnerId?: string) => void; onOpenTest: () => void; onOpenGuide: () => void; onResetLocal: () => void;
 };
 type CoursePackage = { script: string; css: string; lessons: Window['__ORIENTA_LESSONS'] };
 
-export const ProfileShell = ({ destination, local, onCamp, onCourse, onProfileCard, onInviteArrival, onCloudSession, onOpenGuide, onOpenTest, onResetLocal }: Props) => {
+export const ProfileShell = ({ destination, local, localOwner, onCamp, onCourse, onProfileCard, onInviteArrival, onCloudSession, onOpenGuide, onOpenTest, onResetLocal }: Props) => {
  const base = apiBase(import.meta.env.VITE_PROGRESS_API_URL);
  const client = useMemo(() => new ProfileSession(base), [base]);
  const [state, setState] = useState(client.state);
@@ -27,7 +29,7 @@ export const ProfileShell = ({ destination, local, onCamp, onCourse, onProfileCa
  const [courseError, setCourseError] = useState('');
  const [courseRetry, setCourseRetry] = useState(0);
  const [guide, setGuide] = useState(false);
- const [transferDismissed, setTransferDismissed] = useState(false);
+ useEffect(() => { setMessage(''); }, [state.learnerId]);
  const host = useRef<HTMLDivElement>(null);
  const openProtected = ['course','resume','profile-card'].includes(destination);
  const courseHost = openProtected && state.learnerId ? course : null;
@@ -95,22 +97,25 @@ export const ProfileShell = ({ destination, local, onCamp, onCourse, onProfileCa
  const progress = client.snapshot?.payload?.state?.course as CourseState | undefined;
  const savedResult = result && Object.prototype.hasOwnProperty.call(ARCHETYPES, result.scoreType) ? result : null;
  if (guide && savedResult) return <div className="adventure"><GuideView archetype={savedResult.scoreType} onBack={() => setGuide(false)} onStartCourse={() => setGuide(false)} actionLabel="В лагерь" /></div>;
- const canTransfer = state.learnerId && local.result && !result && !transferDismissed
-  && (!client.snapshot?.payload?.testDraft?.step || client.snapshot.payload.testDraft.step === 'start');
+ const transfer = archetypeTransferState(local, localOwner, state.learnerId, client.snapshot?.payload);
+ const saveArchetype = async () => {
+   const learnerId = state.learnerId;
+   if (!learnerId || client.state.learnerId !== learnerId || transfer !== 'available') return;
+   try {
+     setMessage(''); await client.saveIntro(local);
+     if (client.state.learnerId === learnerId) setMessage('Архетип сохранён в профиле.');
+   } catch (error) {
+     if (client.state.learnerId === learnerId) setMessage((error as Error).message);
+   }
+ };
  return <main className="adventure profile-camp-view">
    {state.learnerId && <ProgressAccount client={client} state={state} onExport={onExport} />}
    <CampHome local={local} savedResult={savedResult} signedIn={!!state.learnerId} courseAvailable={state.courseAvailable} courseComplete={allCourseStagesCompleted(progress)} cardReady={!!savedResult && allCourseStagesCompleted(progress)}
-      onProfileCard={onProfileCard}
+      onProfileCard={onProfileCard} archetypeTransfer={transfer === 'hidden' ? null :
+        <ArchetypeTransfer key={state.learnerId} blocked={transfer === 'blocked'} ready={state.status === 'saved'} onSave={saveArchetype} />}
+      archetypeTransferBlocked={transfer === 'blocked'}
       onCourse={onCourse} onTest={onOpenTest} onGuide={savedResult ? () => setGuide(true) : onOpenGuide} onReset={onResetLocal}>
       {message && <p role="status">{message}</p>}
-      {canTransfer && <details className="rounded-xl border p-4">
-        <summary>Сохранить мой результат в профиле</summary>
-        <p className="my-3">Подтверди, что это твой результат. Псевдоним, архетип и ход теста сохранятся на сервере Ориенты в России и будут доступны по твоему коду. В Telegram и ИИ они не отправляются. Существующий результат не заменится.</p>
-        <div className="flex flex-wrap gap-3"><Button disabled={state.status !== 'saved'} onClick={async () => {
-          try { setMessage(''); await client.saveIntro(local); setMessage('Архетип сохранён в профиле.'); }
-          catch (error) { setMessage((error as Error).message); }
-        }}>Это мой результат, сохранить</Button><Button variant="secondary" onClick={() => setTransferDismissed(true)}>Не переносить</Button></div>
-      </details>}
    </CampHome>
  </main>;
 };

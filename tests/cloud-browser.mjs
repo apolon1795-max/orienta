@@ -10,6 +10,7 @@ import { startServer } from '../server/local.mjs';
 import { provisionLearner } from '../server/api.mjs';
 import { normalizeUserState } from '../services/progress.ts';
 import { createTestDraft } from '../services/testProgress.ts';
+import { FREE_INTRO_KEY, freshFreeProgress } from '../services/freeProgress.ts';
 import { completedState } from './fixtures.mjs';
 
 const output = 'output/cloud-browser'; await fs.mkdir(output, { recursive: true });
@@ -208,6 +209,43 @@ try {
   assert.deepEqual(personalityProgress.completedStages,[0]);
   await personalityPage.screenshot({path:output + '/10-lesson-2-mobile.png'});
   record('lesson 2 uses override slot, official embed and independently saved playback position');
+  const transferState=completedState(); transferState.testResult=null;
+  const localArchetype=freshFreeProgress();
+  localArchetype.draft.step='result'; localArchetype.draft.scores.Commander=5; localArchetype.result={scoreType:'Commander'};
+  for (const started of [false,true]) {
+    const person=await provisionLearner(store, 'Синтетический перенос архетипа');
+    const draft=createTestDraft(); if(started) draft.step='choose_name';
+    await store.compareAndSet('progress:'+person.learnerId,0,{payload:{state:transferState,testDraft:draft},mutationId:'transfer-fixture',updatedAt:1});
+    const transferContext=await context();
+    await transferContext.addInitScript(({key,value}) => localStorage.setItem(key,JSON.stringify(value)),{key:FREE_INTRO_KEY,value:localArchetype});
+    const transferPage=await transferContext.newPage();
+    await transferPage.goto(base+'/#profile');
+    await transferPage.getByLabel('Код входа',{exact:true}).fill(person.code);
+    await transferPage.getByRole('button',{name:'Войти по коду',exact:true}).click();
+    const archetypeTile=transferPage.locator('.camp-destination').filter({has:transferPage.getByRole('button',{name:'Архетип',exact:true})});
+    await archetypeTile.getByText('Командир',{exact:true}).waitFor();
+    const cta=archetypeTile.getByRole('button',{name:'Сохранить архетип в профиле',exact:true});
+    const confirm=archetypeTile.getByRole('button',{name:'Это мой результат, сохранить',exact:true});
+    const stored=()=>store.get('progress:'+person.learnerId);
+    assert.equal((await stored()).value.payload.state.testResult,null);
+    if(started) {
+      await archetypeTile.getByText('В профиле уже начат другой тест',{exact:false}).waitFor();
+      assert.equal(await cta.count(),0);
+      assert.equal((await stored()).value.payload.testDraft.step,'choose_name');
+    } else {
+      await cta.click(); await confirm.waitFor();
+      assert.equal((await stored()).value.payload.state.testResult,null,'opening consent does not write progress');
+      await archetypeTile.getByRole('button',{name:'Отмена',exact:true}).click();
+      assert.equal(await confirm.count(),0);
+      await cta.click(); await confirm.click();
+      await transferPage.getByRole('status').filter({hasText:'Архетип сохранён в профиле.'}).waitFor();
+      await transferPage.getByText('Готова к просмотру',{exact:true}).waitFor();
+      assert.equal((await stored()).value.payload.state.testResult.scoreType,'Commander');
+      assert.deepEqual((await stored()).value.payload.state.course,transferState.course);
+    }
+    await transferContext.close();
+  }
+  record('local-only Commander gets explicit Camp CTA, cancel is harmless, successful upload unlocks card, and a started cloud test is protected');
   const aiLearner = await provisionLearner(store, 'Синтетический ИИ-профиль');
   await store.compareAndSet('progress:' + aiLearner.learnerId, 0, { payload: { state: completedState(), testDraft: createTestDraft() }, mutationId: 'ai-browser-initial', updatedAt: Date.now() });
   const aiContext = await context(), nextContext = await context();

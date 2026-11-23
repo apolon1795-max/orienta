@@ -32,3 +32,37 @@ test('explicit Camp archetype transfer preserves an entitled user’s existing c
  await assert.rejects(client.saveIntro(candidate),/уже есть результат/);
  assert.equal(puts,1);
 });
+
+test('visible eligibility separates a saved local result from a cloud result and blocks other profile ownership', async () => {
+ const { archetypeTransferState } = await import('../services/archetypeTransfer.ts');
+ const state=completedState(); state.testResult=null;
+ const local=freshFreeProgress(); local.draft.step='result'; local.result={scoreType:'Commander'};
+ const cloud={state,testDraft:createTestDraft()};
+ const id='our-learner', other='other-learner';
+ assert.equal(archetypeTransferState(local,null,id,cloud),'available','anonymous browser result needs explicit confirmation');
+ assert.equal(archetypeTransferState(local,id,id,cloud),'available');
+ assert.equal(archetypeTransferState(local,other,id,cloud),'hidden','never offer another named profile\'s local result');
+ assert.equal(archetypeTransferState(local,null,undefined,cloud),'hidden','no saving while signed out');
+ assert.equal(archetypeTransferState(local,null,id,{...cloud,testDraft:{...cloud.testDraft,step:'choose_name'}}),'blocked');
+ assert.equal(archetypeTransferState(local,null,id,{...cloud,state:completedState()}),'hidden','existing cloud archetype wins');
+ assert.equal(archetypeTransferState({...local,draft:{...local.draft,step:'choose_name'}},null,id,cloud),'hidden');
+});
+
+test('an already started cloud archetype test is untouched even with the five course stages done', async () => {
+ const state=completedState(); state.testResult=null;
+ const draft=createTestDraft(); draft.step='choose_name';
+ const progress={revision:7,payload:{state,testDraft:draft}};
+ let writes=0;
+ const transport=async (url,init)=>{
+   if(url.endsWith('/session')) return Response.json({token:'A'.repeat(43),learnerId:'b'.repeat(36),expiresAt:Date.now()+60000,courseAvailable:true,progress});
+   if(init.method==='PUT') writes++;
+   throw Error('no write expected');
+ };
+ const storage=new Map();
+ const client=new ProfileSession('https://local.test',transport,{getItem:k=>storage.get(k),setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)});
+ const local=freshFreeProgress();local.draft.step='result';local.result={scoreType:'Commander'};
+ await client.signIn('code');
+ await assert.rejects(client.saveIntro(local),/уже есть результат или начатый тест/);
+ assert.equal(writes,0);
+ assert.deepEqual(client.snapshot.payload,JSON.parse(JSON.stringify(progress.payload)));
+});
