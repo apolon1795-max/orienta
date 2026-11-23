@@ -51,7 +51,7 @@ export const FreeEntry = () => {
     const changed = () => setView(currentView(hasResult.current));
     addEventListener('hashchange', changed); return () => removeEventListener('hashchange', changed);
   }, []);
-  useEffect(() => { if (typeof window !== 'undefined') window.scrollTo(0, 0); }, [view]);
+  useEffect(() => { if (view !== 'test' && typeof window !== 'undefined') window.scrollTo(0, 0); }, [view]);
   useEffect(() => {
     let persistent = false;
     const key = keyFor(draftOwner);

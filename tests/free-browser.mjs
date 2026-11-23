@@ -9,7 +9,7 @@ await fs.mkdir('output/free-browser',{recursive:true});
 try {
  for(let i=0;i<100;i++){try{if((await fetch(base)).ok)break;}catch{}await new Promise(r=>setTimeout(r,100));}
  browser=await chromium.launch({headless:true,...(process.env.ORIENTA_BROWSER_EXECUTABLE ? {executablePath:process.env.ORIENTA_BROWSER_EXECUTABLE} : {})});
- const context=await browser.newContext({viewport:{width:390,height:844},reducedMotion:'reduce'});
+ const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
  await context.route('**/*',route=>{
   const url=route.request().url();
   if(url.includes(':59999')){apiRequests.push(url);return route.abort();}
@@ -26,10 +26,24 @@ try {
  const click=async name=>page.getByRole('button',{name,exact:false}).click();
  await click('Пройти тест');await click('Начать игру');await click('Создать персонажа');await click('Человек');
  await page.getByRole('textbox',{name:'Имя героя'}).fill('Синтетический герой');await click('Подтвердить имя');await click('Отправиться в путь');
+ const prompt=page.locator('.adventure-question-copy');
+ const assertPrompt=async()=>{
+  const box=await prompt.boundingBox();
+  assert.ok(box.y>=0 && box.y+box.height<=400, 'question, not the artwork, should be at the top: '+JSON.stringify(box));
+  assert.equal(await prompt.evaluate(e=>document.activeElement===e),true,'focus follows new question, not a text input');
+ };
+ await assertPrompt();
  for(let i=0;i<5;i++){
   if(i===4)await click('Сжать артефакт');
-  await page.locator('button[aria-pressed]').first().click();await click('Продолжить приключение');
-  if(i===0){await page.reload();await page.getByText('Испытание 2 из 5',{exact:false}).waitFor();}
+  const selected=page.locator('.adventure-answer').nth(1);
+  await selected.scrollIntoViewIfNeeded();
+  const anchor=await selected.evaluate(e=>e.getBoundingClientRect().y);
+  await selected.tap();
+  assert.equal(await selected.getAttribute('aria-pressed'),'true');
+  assert.ok(Math.abs(await selected.evaluate(e=>e.getBoundingClientRect().y)-anchor)<=2,'selection must not move the same question');
+  await click('Продолжить приключение');
+  if(i<3)await assertPrompt();
+  if(i===0){await page.reload();await page.getByText('Испытание 2 из 5',{exact:false}).waitFor();await assertPrompt();}
  }
  await page.getByRole('button',{name:/Сорвать|Развернуть|Открыть.*свиток|Снять.*печать/}).click();
  await click('Подробнее о моём архетипе');await page.locator('#guide-action-btn').waitFor();

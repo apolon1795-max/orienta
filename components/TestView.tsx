@@ -1,6 +1,7 @@
 import './test-atlas.css';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { Button } from './Button';
+import { revealPrompt } from './questionPosition';
 import { adventureArt, partyArt, pigeonArt } from '../services/adventureArt';
 import { TestResult, ARCHETYPES } from '../types';
 import { readTestDraft, createTestDraft, getTestWinners, TestDraft } from '../services/testProgress';
@@ -170,11 +171,14 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResu
         else { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave)); } catch { /* Keep in-memory progress. */ } }
     }, [step, heroData, scores, history, onDraftChange]);
 
-    useEffect(() => {
-        if (scrollRef.current) {
-            scrollRef.current.scrollTo(0, 0);
+    useLayoutEffect(() => {
+        const prompt = scrollRef.current?.querySelector<HTMLElement>('.adventure-question-copy');
+        if (prompt) {
+            revealPrompt(prompt);
+        } else {
+            scrollRef.current?.scrollTo({ top: 0, behavior: 'instant' });
+            window.scrollTo({ top: 0, behavior: 'instant' });
         }
-        window.scrollTo(0, 0);
         setSelectedOptionId(null);
     }, [step]);
 
@@ -412,9 +416,7 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResu
                                 return (
                                     <button
                                         key={option.id} aria-pressed={isSelected}
-                                        onClick={(e) => {
-                                            setSelectedOptionId(option.id);
-                                        }}
+                                        onClick={() => setSelectedOptionId(option.id)}
                                         className={`adventure-answer ${isSelected ? 'is-selected' : ''}`}
                                     >
                                         <span className="answer-letter" aria-hidden="true">{'АБВГ'[idx]}</span>
