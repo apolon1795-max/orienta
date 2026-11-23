@@ -31,8 +31,8 @@ test('all five protected lessons use a consistent brief and explain outcome base
  try {
   const {CourseView}=await vite.ssrLoadModule('/components/CourseView.tsx');
   const fixture=completedState().course;
-  const render=(activeStage, props={})=>renderToStaticMarkup(React.createElement(CourseView,{
-    course:{...fixture,activeStage,...props},linear:true,onChange(){},onBack(){},onCompleteCourse(){},isGeneratingAi:false,
+  const render=(activeStage, props={}, overrides={})=>renderToStaticMarkup(React.createElement(CourseView,{
+    course:{...fixture,activeStage,...props},linear:true,onChange(){},onBack(){},onCompleteCourse(){},isGeneratingAi:false,...overrides,
   }));
   const fields=['s1Phase','s2Phase','s3Phase','s4Phase','s5Phase'];
   for(const [stage,field] of fields.entries()) {
@@ -42,6 +42,25 @@ test('all five protected lessons use a consistent brief and explain outcome base
     const done=render(stage,{[field]:'done'});
     assert.match(done,/<h3>Что получилось и почему<\/h3>/);
     assert.ok(canFinishStage(fixture,stage));
+  }
+  const courseMap=render(null);
+  assert.match(courseMap,/Что тебя ждёт.*Для неё нужны ответы курса и твой архетип/);
+  const firstMap=render(null,{completedStages:[]});
+  assert.match(firstMap,/<aside class="course-start-checklist"[^>]*>.*<button[^>]*>Начать этап 1<\/button>.*<\/aside>.*class="atlas-map"/);
+  assert.doesNotMatch(render(null,{completedStages:[0]}),/>Начать этап 1<\/button>/);
+  assert.doesNotMatch(courseMap,/>Начать этап 1<\/button>/);
+  for (const title of ['Исследование земель','Зеркало души','Турнир мастеров','Башня мечты','Хрустальный зал']) {
+    assert.match(courseMap,new RegExp('aria-label="Этап [1-5]: '+title));
+  }
+  const finalWithoutArchetype=render(5,{}, {needsArchetype:true});
+  assert.match(finalWithoutArchetype,/ответы курса останутся на месте/);
+  assert.match(finalWithoutArchetype,/>Пройти тест на архетип<\/button>/);
+  assert.match(render(5),/>Собрать профкарту<\/button>/);
+  for (const phase of ['crisis_intro','crisis']) {
+    const readiness=render(2,{s3Phase:phase,s3CrisisIdx:2});
+    assert.match(readiness,/Без ограничения времени/);
+    assert.match(readiness,/>Я готов<\/button>/);
+    assert.doesNotMatch(readiness,/СИТУАЦИЯ 3\/4/);
   }
   const interests=render(0);
   assert.match(interests,/Программист/);

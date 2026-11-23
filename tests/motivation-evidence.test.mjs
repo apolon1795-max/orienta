@@ -28,7 +28,7 @@ test('evidence precedes the descending raw points without recomputing progress o
   const before = structuredClone(state);
   const hash = courseFingerprint(state.course);
   const answers = state.course.motivationAnswers;
-  const scores = rankScores(scoreMotivation(answers)).map(([key, value]) => MOTIVATORS[key] + ': ' + value + ' баллов');
+  const scores = rankScores(scoreMotivation(answers)).map(([key, value]) => MOTIVATORS[key] + ': ' + value + (value === 3 ? ' балла' : ' баллов'));
   const original = profileSections(state);
   const evidence = profileSections(state, {motivationEvidence:true});
   const ledger = evidence.findIndex(s=>s.title==='Что ты выбрал в опроснике о мотивации');

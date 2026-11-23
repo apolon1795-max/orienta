@@ -4,6 +4,9 @@ import type { UserState, CourseState } from '../types.ts';
 import { ARCHETYPES } from '../types.ts';
 import { selectedSituationRows } from './courseScenarioText.ts';
 import { SPHERES_DATA, QUIZ_DATA, SKILLS_QUESTIONS, CRISIS_QUESTIONS } from '../data/course.ts';
+
+const scoreForm = new Intl.PluralRules('ru');
+const scoreUnit = (value: number) => ({ one: 'балл', few: 'балла', many: 'баллов', other: 'балла', zero: 'баллов', two: 'балла' })[scoreForm.select(value)];
 export const courseFingerprint = (c: CourseState) => JSON.stringify([
   c.s1SelectedSpheres, c.s1SelectedProfessions, c.s1QuizAnswers, c.s2Inputs, c.s2Values,
   c.s3Thinking, c.s3Team, c.s3Learning, c.s3CrisisAnswers, c.completedStages, c.s4Dream, c.s4Place, c.s4Priority, c.s4Style, c.hollandAnswers, c.motivationAnswers,
@@ -54,7 +57,7 @@ export const profileSections = (state: UserState, { motivationEvidence = false }
       motivationEvidence
         ? 'У тем разное число возможностей набрать баллы. Порядок показывает сумму по ключу, а не то, что для тебя важнее. Ноль не значит, что тема тебе не важна.'
         : 'Наиболее выраженные мотиваторы: ' + (motives || 'пока не выделены'),
-      ...rankScores(motivation).map(([key, value]) => MOTIVATORS[key as keyof typeof MOTIVATORS] + ': ' + value + ' баллов'),
+      ...rankScores(motivation).map(([key, value]) => MOTIVATORS[key as keyof typeof MOTIVATORS] + ': ' + value + ' ' + scoreUnit(value)),
       motivationEvidence
         ? 'Каждый вопрос предлагал выбрать один вариант из нескольких. Для разговора о том, что важно в работе, опирайся на свои ответы и реальные пробы.'
         : 'Баллы начислены по ключу авторских десяти вопросов. Равные результаты на границе топ-3 показаны вместе; это не нормативная оценка.',

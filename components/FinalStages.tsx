@@ -16,13 +16,13 @@ export const DreamStage = ({ course: c, onChange, onFinish, linear = false }: Pr
     <LessonBrief theory="Иногда проще представить один обычный рабочий день, чем сразу выбрать профессию."
       observe="В каком месте, ритме и с какими людьми тебе хотелось бы работать."
       task="Опиши свой будущий рабочий день. Потом выбери место, то, что важнее всего, и удобный формат дня." />
-    <Button variant="fantasy" onClick={() => update({ s4Phase: 'dream' })}>{linear ? 'Дальше' : 'Построить свою башню'}</Button>
+    <Button variant="fantasy" onClick={() => update({ s4Phase: 'dream' })}>Описать рабочий день</Button>
   </Frame>;
   if (c.s4Phase === 'dream') return <Frame>
     <h2 className="text-2xl font-serif text-white"><label htmlFor="dream-work">Твоя работа мечты</label></h2>
     <p id="dream-help" className="text-slate-200">В окне башни виден обычный вторник на твоей будущей работе. Где ты, что делаешь, кто рядом? Во сколько заканчиваешь, сколько зарабатываешь и как проходит вечер? Если пока не знаешь, так и напиши.</p>
     <textarea id="dream-work" aria-describedby="dream-help" maxLength={1200} value={c.s4Dream} onChange={e => update({ s4Dream: e.target.value })} className="w-full min-h-48 p-4 bg-slate-800 border border-slate-600 rounded-xl text-white" />
-    <Button disabled={c.s4Dream.trim().length < 2} onClick={() => update({ s4Phase: 'place' })}>{linear ? 'Дальше' : 'Далее'}</Button>
+    <Button disabled={c.s4Dream.trim().length < 2} onClick={() => update({ s4Phase: 'place' })}>Выбрать место работы</Button>
   </Frame>;
   const screens = {
     place: { title: 'Где бы ты хотел работать?', options: WORKPLACES, key: 's4Place', next: 'priority', back: 'dream' },
@@ -40,7 +40,7 @@ export const DreamStage = ({ course: c, onChange, onFinish, linear = false }: Pr
     <LessonResult reason="Сравни день, который ты описал, с тем, что выбрал дальше. Если они не совсем совпадают, это подсказка, что стоит уточнить. Назови одно условие и спроси у специалиста, бывает ли так в его работе.">
       <LessonAnswers rows={[[ 'Твой рабочий день', c.s4Dream], ['Место', c.s4Place], ['Что важно', c.s4Priority], ['Формат дня', c.s4Style]]} />
     </LessonResult>
-    <Button variant="fantasy" onClick={onFinish}>{linear ? 'Дальше' : 'На карту'}</Button>{!linear && <Button variant="ghost" onClick={() => update({ s4Phase: 'dream' })}>Изменить образ работы</Button>}
+    <Button variant="fantasy" onClick={onFinish}>{linear ? 'К «Хрустальному залу»' : 'На карту'}</Button>{!linear && <Button variant="ghost" onClick={() => update({ s4Phase: 'dream' })}>Изменить образ работы</Button>}
   </Frame>;
 };
 
@@ -53,7 +53,7 @@ export const AssessmentStage = ({ course: c, onChange, onFinish, linear = false 
     <LessonBrief theory="Кристалл не назовёт твою профессию. Зато два коротких опросника помогут собрать подсказки."
       observe="Интересы: какие занятия тебе нравятся. Мотивация: что для тебя важнее в предложенных ситуациях. Это не диагностика и не проверка способностей."
       task="Отметь, насколько тебе близки 12 утверждений об интересах. Потом выбери по одному ответу в 10 вопросах о мотивации." />
-    <Button variant="fantasy" onClick={() => update({ s5Phase: 'holland', s5Index: Math.min(c.hollandAnswers.length, 11) })}>{linear ? 'Дальше' : 'Исследовать интересы'}</Button>
+    <Button variant="fantasy" onClick={() => update({ s5Phase: 'holland', s5Index: Math.min(c.hollandAnswers.length, 11) })}>Начать опрос об интересах</Button>
   </Frame>;
   if (c.s5Phase === 'holland' || c.s5Phase === 'motivation') {
     const holland = c.s5Phase === 'holland', questions = holland ? HOLLAND_QUESTIONS : MOTIVATION_QUESTIONS;
@@ -83,11 +83,11 @@ export const AssessmentStage = ({ course: c, onChange, onFinish, linear = false 
       })}
       {topInterests.length > 2 && <p>У нескольких направлений одинаковый результат, поэтому показаны все с равными баллами.</p>}
     </LessonResult>
-    <Button onClick={() => update({ s5Phase: 'motivation_intro', s5Index: 0 })}>{linear ? 'Дальше' : 'К мотивации'}</Button>
+    <Button onClick={() => update({ s5Phase: 'motivation_intro', s5Index: 0 })}>К опросу о мотивации</Button>
   </Frame>;
   if (c.s5Phase === 'motivation_intro') return <Frame><h2 className="text-2xl font-serif text-white">Что тебя мотивирует?</h2>
     <p className="text-slate-200">Выбери то, что ближе тебе сейчас. Здесь нет правильных ответов. Можно хотеть разного в разных ситуациях.</p>
-    <Button onClick={() => update({ s5Phase: 'motivation', s5Index: Math.min(c.motivationAnswers.length, 9) })}>{linear ? 'Дальше' : 'Начать опросник мотивации'}</Button>
+    <Button onClick={() => update({ s5Phase: 'motivation', s5Index: Math.min(c.motivationAnswers.length, 9) })}>Начать опрос о мотивации</Button>
   </Frame>;
   return <Frame><CheckCircle className="w-12 h-12 text-green-400" aria-hidden="true" /><h2 className="text-3xl font-serif text-white">Оба опросника пройдены</h2>
     <LessonResult reason="Ты выбрал, что важнее в каждой из десяти ситуаций. Ниже этот опросник группирует ответы по своему ключу. У категорий разное число возможностей набрать баллы, поэтому по цифрам нельзя сравнивать, что мотивирует тебя сильнее.">
@@ -98,6 +98,6 @@ export const AssessmentStage = ({ course: c, onChange, onFinish, linear = false 
       </details>
       <p>В профкарте ты увидишь интересы и мотивацию отдельно. Сверь подсказки со своими ответами и выбери, что хочешь проверить на практике.</p>
     </LessonResult>
-    <Button variant="fantasy" onClick={onFinish}>{linear ? 'Дальше' : 'На карту'}</Button>
+    <Button variant="fantasy" onClick={onFinish}>{linear ? 'К профкарте' : 'На карту'}</Button>
   </Frame>;
 };

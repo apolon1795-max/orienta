@@ -24,6 +24,7 @@ export { apiBase } from './apiBase.ts';
 
 export class ProgressSync {
   private session: Session | null = null;
+  private confirmedPayload = '';
   private cache: Cache = { revision: 0, saved: '', pending: null, queued: null };
   private remote: CloudSnapshot | null = null;
   private ready = false;
@@ -75,6 +76,7 @@ export class ProgressSync {
     } catch { this.publish('error', 'Не удалось подключиться. Ответы на устройстве сохранены. Попробуй ещё раз.'); }
   }
   private readCache() {
+    this.confirmedPayload = '';
     this.cache = { revision: 0, saved: '', pending: null, queued: null };
     if (!this.session) return;
     try {
@@ -127,6 +129,7 @@ export class ProgressSync {
   }
   async profileIdentity(): Promise<{ telegramLinked: boolean }> { return this.request('/profile-identity'); }
   private receive(remote: CloudSnapshot) {
+    this.confirmedPayload = JSON.stringify(remote.payload);
     this.paused = false; this.remote = null;
     const pending = this.cache.pending;
     // An acknowledged mutation may have lost its HTTP response before a page reload.
@@ -159,6 +162,11 @@ export class ProgressSync {
     this.publish(this.paused ? 'offline' : 'pending');
     clearTimeout(this.timer); this.timer = setTimeout(() => { void this.flush(); }, this.options.delay ?? 1000);
   }
+  hasConfirmedProgress(learnerId: string, payload: ProgressPayload) {
+    return this.session?.learnerId === learnerId && this.session.expiresAt > Date.now() && this.ready
+      && this.state.status === 'saved' && !this.state.dirty
+      && this.confirmedPayload === JSON.stringify(clean(payload));
+  }
   async flush() {
     clearTimeout(this.timer);
     if (!this.ready || !this.session || this.busy || this.remote || this.paused) return;
@@ -173,6 +181,7 @@ export class ProgressSync {
       const data = await this.request('/progress', 'PUT', operation);
       if (generation !== this.generation) return;
       const progress = normalizeSnapshot(data.progress);
+      this.confirmedPayload = progress.mutationId === operation.mutationId ? JSON.stringify(progress.payload) : '';
       this.cache.revision = progress.revision; this.cache.saved = JSON.stringify(operation.payload); this.cache.pending = null;
       this.persist(); this.publish(this.cache.queued ? 'pending' : 'saved');
     } catch (error: any) {
@@ -227,6 +236,7 @@ export class ProgressSync {
   useCloudCopy() {
     if (!this.remote) return;
     const remote = this.remote;
+    this.confirmedPayload = JSON.stringify(remote.payload);
     this.cache = { revision: remote.revision, saved: JSON.stringify(remote.payload), pending: null, queued: null };
     this.remote = null; this.options.restore(remote.payload || { state: normalizeUserState(null), testDraft: normalizeTestDraft(null) });
     this.persist(); this.publish('saved');

@@ -184,7 +184,7 @@ try {
   const videoProgress = (await store.get('progress:'+videoLearner.learnerId)).value.payload.state.course;
   assert.deepEqual(Object.keys(videoProgress.lessons), ['1']);
   assert.deepEqual(videoProgress.completedStages, []);
-  await videoPage.getByRole('button',{name:'Дальше',exact:true}).click();
+  await videoPage.getByRole('button',{name:'Начать исследование',exact:true}).click();
   record('optional welcome and lesson 1 render wide; welcome does not gate lesson 1 or change progress');
   const personalityLearner = await provisionLearner(store, 'Синтетический урок личности');
   const personalityState = completedState();
@@ -298,11 +298,11 @@ try {
   await linearPage.getByRole('button',{name:'Войти по коду',exact:true}).click();
   await linearPage.goto(base+'/#resume');
   await linearPage.getByRole('heading',{name:'Башня построена',exact:true}).waitFor();
-  await linearPage.getByRole('button',{name:'Дальше',exact:true}).click();
+  await linearPage.getByRole('button',{name:'К «Хрустальному залу»',exact:true}).click();
   await linearPage.getByRole('heading',{name:'Хрустальный зал',exact:true}).first().waitFor();
   await until(async()=>(await store.get('progress:'+linearLearner.learnerId)).value.payload.state.course.activeStage===4);
   assert.equal(await linearPage.locator('.lesson-player, .lesson-native').count(),0,'unconfigured stage shows no video placeholder');
-  await linearPage.getByRole('button',{name:'Дальше',exact:true}).click();
+  await linearPage.getByRole('button',{name:'Начать опрос об интересах',exact:true}).click();
   const assessmentPrompt=linearPage.locator('.stage-panel h2');
   await assertTopPrompt(assessmentPrompt);
   const first=await assessmentPrompt.textContent();

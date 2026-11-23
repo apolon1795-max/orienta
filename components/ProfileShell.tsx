@@ -10,16 +10,16 @@ import { ArchetypeTransfer } from './ArchetypeTransfer';
 import { archetypeTransferState } from '../services/archetypeTransfer';
 import { Button } from './Button';
 import { ARCHETYPES, type TestResult, type CourseState } from '../types';
-import { allCourseStagesCompleted } from '../services/courseNavigation';
+import { allCourseStagesCompleted, courseHasProgress } from '../services/courseNavigation';
 
 type Props = {
  destination: 'inactive' | 'hub' | 'profile' | 'course' | 'resume' | 'profile-card'; local: FreeProgress; localOwner: string | null;
- onCamp: () => void; onCourse: () => void; onProfileCard: () => void; onInviteArrival: (learnerId: string) => void;
+ onCamp: () => void; onCourse: () => void; onResume: () => void; onProfileCard: () => void; onInviteArrival: (learnerId: string) => void;
  onCloudSession: (learnerId?: string) => void; onOpenTest: () => void; onOpenGuide: () => void; onResetLocal: () => void;
 };
 type CoursePackage = { script: string; css: string; lessons: Window['__ORIENTA_LESSONS'] };
 
-export const ProfileShell = ({ destination, local, localOwner, onCamp, onCourse, onProfileCard, onInviteArrival, onCloudSession, onOpenGuide, onOpenTest, onResetLocal }: Props) => {
+export const ProfileShell = ({ destination, local, localOwner, onCamp, onCourse, onResume, onProfileCard, onInviteArrival, onCloudSession, onOpenGuide, onOpenTest, onResetLocal }: Props) => {
  const base = apiBase(import.meta.env.VITE_PROGRESS_API_URL);
  const client = useMemo(() => new ProfileSession(base), [base]);
  const [state, setState] = useState(client.state);
@@ -70,7 +70,10 @@ export const ProfileShell = ({ destination, local, localOwner, onCamp, onCourse,
    const url = URL.createObjectURL(new Blob([courseHost.script], { type:'text/javascript' }));
    const style = document.createElement('style'); style.textContent = courseHost.css; document.head.appendChild(style);
    window.__ORIENTA_API = base; window.__ORIENTA_LESSONS = courseHost.lessons;
-   const entry: CourseEntry = { session: client.getSessionForCourse(), back: leaveCourse, mode: destination === 'profile-card' ? 'profile-card' : destination === 'resume' ? 'continue' : 'map' };
+   const savedCourse = client.snapshot?.payload?.state?.course as CourseState | undefined;
+   const mode = destination === 'profile-card' ? 'profile-card'
+     : destination === 'resume' && courseHasProgress(savedCourse) ? 'continue' : 'map';
+   const entry: CourseEntry = { session: client.getSessionForCourse(), back: leaveCourse, mode };
    void import(/* @vite-ignore */ url).then(mod => {
      if (!stopped && host.current) cleanup = mod.mount(host.current, entry);
    }).catch(() => { if (!stopped) setCourseError('Не удалось открыть модуль. Проверь подключение и повтори.'); });
@@ -110,11 +113,11 @@ export const ProfileShell = ({ destination, local, localOwner, onCamp, onCourse,
  };
  return <main className="adventure profile-camp-view">
    {state.learnerId && <ProgressAccount client={client} state={state} onExport={onExport} />}
-   <CampHome local={local} savedResult={savedResult} signedIn={!!state.learnerId} courseAvailable={state.courseAvailable} courseComplete={allCourseStagesCompleted(progress)} cardReady={!!savedResult && allCourseStagesCompleted(progress)}
+   <CampHome local={local} savedResult={savedResult} signedIn={!!state.learnerId} courseAvailable={state.courseAvailable} courseStarted={courseHasProgress(progress)} courseComplete={allCourseStagesCompleted(progress)} cardReady={!!savedResult && allCourseStagesCompleted(progress)}
       onProfileCard={onProfileCard} archetypeTransfer={transfer === 'hidden' ? null :
         <ArchetypeTransfer key={state.learnerId} blocked={transfer === 'blocked'} ready={state.status === 'saved'} onSave={saveArchetype} />}
-      archetypeTransferBlocked={transfer === 'blocked'}
-      onCourse={onCourse} onTest={onOpenTest} onGuide={savedResult ? () => setGuide(true) : onOpenGuide} onReset={onResetLocal}>
+      transfer={transfer}
+      onCourse={onCourse} onResume={onResume} onTest={onOpenTest} onGuide={savedResult ? () => setGuide(true) : onOpenGuide} onReset={onResetLocal}>
       {message && <p role="status">{message}</p>}
    </CampHome>
  </main>;

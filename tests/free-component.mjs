@@ -15,7 +15,7 @@ try {
  assert.doesNotMatch(html, /PRIVATE_COURSE_SENTINEL/);
  globalThis.location = { hash: '#hub' };
  const hub = renderToString(React.createElement(FreeEntry));
- assert.match(hub, /Мой лагерь/); assert.match(hub, /Курс «Ориента»/); assert.match(hub, /Сообщество · скоро/); assert.match(hub, /только в этом браузере/);
+ assert.match(hub, /Мой лагерь/); assert.match(hub, /Твой следующий шаг/); assert.match(hub, /Сообщество · скоро/); assert.match(hub, /только в этом браузере/); assert.match(hub, /href="https:\/\/t\.me\/Daniil_Borisov"/);
  const { freshFreeProgress, readFreeProgress } = await vite.ssrLoadModule('/services/freeProgress.ts');
  const completed = freshFreeProgress(); completed.draft.step = 'result'; completed.draft.scores.Commander = 5; completed.draft.heroData.name = 'Пробный герой'; completed.result = { scoreType: 'Commander' };
  globalThis.localStorage = { getItem: () => JSON.stringify(completed) };
@@ -23,28 +23,32 @@ try {
  const restored = renderToString(React.createElement(FreeEntry));
  assert.match(restored, /Мой лагерь/); assert.match(restored, /Командир/); assert.match(restored, /Пробный герой/);
  const { CampHome } = await vite.ssrLoadModule('/components/CampHome.tsx');
- const camp = (props = {}) => renderToString(React.createElement(CampHome, { local: freshFreeProgress(), ...props }));
- const assertOneCourseMap = html => {
-   assert.equal((html.match(/Открыть карту курса/g) ?? []).length, 1);
-   assert.doesNotMatch(html, /Карта этапов|Начать курс|Продолжить курс/);
+ const camp = (props = {}) => renderToString(React.createElement(CampHome, { local: freshFreeProgress(), onTest() {}, onCourse() {}, onSignIn() {}, ...props }));
+ const assertOnePrimary = (html, label) => {
+   assert.equal((html.match(/data-button-variant="fantasy"/g) ?? []).length, 1);
+   assert.ok(html.includes('>' + label + '</button>'), 'Expected primary action ' + label);
  };
- assertOneCourseMap(camp({ signedIn: true, courseAvailable: true }));
- assertOneCourseMap(camp({ signedIn: true, courseAvailable: true, courseComplete: true }));
- assert.doesNotMatch(camp({ signedIn: true }), /Открыть карту курса|Войти по коду/);
- assert.match(camp(), /Войти по коду/);
+ assertOnePrimary(camp(), 'Пройти тест на архетип');
+ assert.match(camp(), /У меня есть код/);
+ const isSaved = { signedIn: true, savedResult: completed.result, courseAvailable: true };
+ assertOnePrimary(camp(isSaved), 'Открыть карту курса');
+ assertOnePrimary(camp({ ...isSaved, courseStarted: true }), 'Продолжить курс');
+ assertOnePrimary(camp({ ...isSaved, courseComplete: true, cardReady: true, onProfileCard() {} }), 'Открыть профкарту');
+ assert.doesNotMatch(camp({ ...isSaved, courseAvailable: false }), /data-button-variant="fantasy"|Войти по коду/);
  const { ArchetypeTransfer } = await vite.ssrLoadModule('/components/ArchetypeTransfer.tsx');
- const mountTransfer = (blocked, savedResult) => renderToString(React.createElement(CampHome, {
-   local: readFreeProgress({ getItem: () => JSON.stringify(completed) }), signedIn: true, courseAvailable: true, courseComplete: true, savedResult, cardReady: !!savedResult,
-   archetypeTransfer: !savedResult && React.createElement(ArchetypeTransfer, { blocked, ready: true, onSave: async () => {} }),
-   archetypeTransferBlocked: blocked,
- }));
- const available = mountTransfer(false);
- assert.match(available, /<article[^>]*>[^]*Командир[^]*Архетип сохранён только в этом браузере[^]*<button[^>]*>Сохранить архетип в профиле<\/button>[^]*<\/article>/);
+ const mountTransfer = (transfer, savedResult) => camp({
+   local: readFreeProgress({ getItem: () => JSON.stringify(completed) }), signedIn: true, courseAvailable: true, courseComplete: true,
+   savedResult, cardReady: !!savedResult, onProfileCard() {}, transfer,
+   archetypeTransfer: !savedResult && React.createElement(ArchetypeTransfer, { blocked: transfer === 'blocked', ready: true, onSave: async () => {} }),
+ });
+ const available = mountTransfer('available');
+ assertOnePrimary(available, 'Сохранить архетип в профиле');
+ assert.match(available, /Архетип сохранён только в этом браузере/);
  assert.doesNotMatch(available, /<details|Это мой результат, сохранить/);
- const blocked = mountTransfer(true);
+ const blocked = mountTransfer('blocked');
  assert.match(blocked, /В профиле уже начат другой тест/);
  assert.doesNotMatch(blocked, /Сохранить архетип в профиле/);
- const saved = mountTransfer(false, completed.result);
+ const saved = mountTransfer('hidden', completed.result);
  assert.match(saved, /Готова к просмотру/);
  assert.doesNotMatch(saved, /Сохранить архетип в профиле/);
  const { ProgressAccess } = await vite.ssrLoadModule('/components/ProgressAccount.tsx');

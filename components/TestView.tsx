@@ -140,9 +140,10 @@ interface TestViewProps {
   onDraftChange?: (draft: TestDraft) => void;
   onRequestRestart?: () => void;
   onOpenCamp?: () => void;
+  courseCompletion?: boolean;
 }
 
-export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResultCalculated, initialDraft, onDraftChange, onRequestRestart, onOpenCamp }) => {
+export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResultCalculated, initialDraft, onDraftChange, onRequestRestart, onOpenCamp, courseCompletion }) => {
     const [initial] = useState(() => {
       if (initialDraft) return initialDraft;
       try { return readTestDraft(window.localStorage); } catch { return createTestDraft(); }
@@ -302,7 +303,7 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResu
                         </div>
                         <div className="pt-6 w-full max-w-md space-y-3">
                             <Button onClick={handleStart} variant="fantasy" fullWidth>Начать игру</Button>
-                            <button onClick={onCancel} className="text-slate-500 hover:text-white underline text-sm">Вернуться к началу</button>
+                            {!courseCompletion && <button onClick={onCancel} className="text-slate-500 hover:text-white underline text-sm">Вернуться к началу</button>}
                         </div>
                     </div>
                 );
@@ -505,7 +506,7 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResu
                         <section className="archetype-chapter"><h3><Sparkles aria-hidden="true" />Твоя сильная сторона</h3>{result.description.map((desc:string,i:number)=><p key={i}>{desc}</p>)}</section>
                         <section className="archetype-chapter"><h3><Compass aria-hidden="true" />Как сложился результат</h3><div className="archetype-score-grid">{Object.keys(Archetype).map(key=><div className="archetype-score" key={key}><span>{ARCHETYPES[key].title}</span><strong>{scores[key] || 0} / 5</strong></div>)}</div><p className="test-atlas-note">Каждый подтверждённый ответ даёт один балл одному архетипу. Всего пять ответов.</p>{getTestWinners(scores).length > 1 && <p className="archetype-tie">Равные баллы: {getTestWinners(scores).map(k=>ARCHETYPES[k].title).join(' и ')}. Это смешанный результат, а не двойное начисление. На обложке показан {result.title.toLowerCase()} по неизменному порядку архетипов игры.</p>}</section>
                         <section className="archetype-chapter"><h3><BookOpen aria-hidden="true" />Профессии для исследования</h3><p>{result.professions}</p><p className="test-atlas-note">Это игровые подсказки для знакомства с профессиями, не диагноз и не ограничение твоего выбора.</p></section>
-                        <section className="archetype-next"><h3>Твой путь продолжается</h3><p>Открыт полный доступ к Гайду! В нём — идеи для следующих шагов.</p>{onOpenCamp && <Button variant="fantasy" fullWidth onClick={onOpenCamp}>Перейти в мой лагерь</Button>}<Button onClick={handleComplete} variant={onOpenCamp ? "outline" : "fantasy"} fullWidth><BookOpen size={20} aria-hidden="true" />Подробнее о моём архетипе</Button><button type="button" className="archetype-restart" onClick={handleRestart}>Пройти тест заново</button></section>
+                        <section className="archetype-next"><h3>Твой путь продолжается</h3><p>{courseCompletion ? 'Сохрани архетип в своём профиле, чтобы вернуться к финалу и собрать профкарту.' : 'Открыт полный доступ к Гайду! В нём — идеи для следующих шагов.'}</p>{onOpenCamp && <Button variant="fantasy" fullWidth onClick={onOpenCamp}>Перейти в мой лагерь</Button>}<Button onClick={handleComplete} variant={onOpenCamp ? "outline" : "fantasy"} fullWidth><BookOpen size={20} aria-hidden="true" />{courseCompletion ? 'Сохранить и вернуться к финалу' : 'Подробнее о моём архетипе'}</Button><button type="button" className="archetype-restart" onClick={handleRestart}>Пройти тест заново</button></section>
                     </div>
                 </section>;
 
@@ -528,6 +529,7 @@ export const TestView: React.FC<TestViewProps> = ({ onComplete, onCancel, onResu
                 className={`adventure-test-content relative z-10 w-full max-w-2xl mx-auto flex-1 flex flex-col p-6 transition-all duration-500 ${isTransitioning ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'}`}
                 style={{ overflowY: 'auto' }}
             >
+                {courseCompletion && <Button variant="secondary" className="self-start mb-4" onClick={onCancel}>К финалу без сохранения результата</Button>}
                 {step !== Step.Start && step !== Step.Result && (
                     <button
                         onClick={handleBack}

@@ -78,6 +78,7 @@ export const FreeEntry = () => {
     chooseDraftOwner(learnerId); go('intro', true);
   }, [chooseDraftOwner, go]);
   const openCourse = useCallback(() => go('course'), [go]);
+  const openResume = useCallback(() => go('resume'), [go]);
   const openProfileCard = useCallback(() => go('profile-card'), [go]);
   const openProfile = useCallback(() => go('profile'), [go]);
   const openTest = useCallback(() => go('test'), [go]);
@@ -88,11 +89,11 @@ export const FreeEntry = () => {
   const configured = !!apiBase(import.meta.env.VITE_PROGRESS_API_URL);
   const profileRoute = configured && (['profile','course','resume','profile-card'].includes(view) || (view === 'hub' && hasCloudSession));
   const mountProfile = configured && (profileRoute || hasCloudSession);
-  const camp = <CampHome local={saved} onCourse={openCourse} onGuide={openGuide} onTest={openTest} onReset={() => setReset(true)} />;
+  const camp = <CampHome local={saved} onCourse={openCourse} onSignIn={openProfile} onGuide={openGuide} onTest={openTest} onReset={() => setReset(true)} />;
 
   return <>
     {mountProfile && <Suspense fallback={profileRoute && <p role="status" className="p-6">Открываем Ориенту…</p>}>
-      <ProfileShell destination={profileRoute ? view as MemberView : 'inactive'} local={saved} localOwner={draftOwner} onCamp={openHub} onCourse={openCourse} onProfileCard={openProfileCard} onInviteArrival={inviteArrival} onCloudSession={cloudSession} onOpenTest={openTest} onOpenGuide={openGuide} onResetLocal={() => setReset(true)} />
+      <ProfileShell destination={profileRoute ? view as MemberView : 'inactive'} local={saved} localOwner={draftOwner} onCamp={openHub} onCourse={openCourse} onResume={openResume} onProfileCard={openProfileCard} onInviteArrival={inviteArrival} onCloudSession={cloudSession} onOpenTest={openTest} onOpenGuide={openGuide} onResetLocal={() => setReset(true)} />
     </Suspense>}
     {!profileRoute && <main className="adventure min-h-screen bg-slate-950 text-slate-100">
       <nav aria-label="Навигация Ориенты" className="adventure-nav max-w-4xl mx-auto flex flex-wrap gap-4 items-center justify-between p-5">

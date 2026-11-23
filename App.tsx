@@ -30,6 +30,9 @@ const StorageIndicator = ({ available }: { available: boolean }) => (
 );
 const App: React.FC<{ entry?: CourseEntry }> = ({ entry }) => {
   const [view, setView] = useState<AppView>(entry?.mode === 'profile-card' ? AppView.AI_SUMMARY : entry ? AppView.COURSE : AppView.LANDING);
+  const [returnToFinal, setReturnToFinal] = useState<{learnerId: string | null} | null>(null);
+  const [archetypeSave, setArchetypeSave] = useState<{learnerId: string; payload: ProgressPayload} | null>(null);
+  const [showCourseFinal, setShowCourseFinal] = useState(false);
   const [mapOnEntry, setMapOnEntry] = useState(!!entry && entry.mode !== 'continue');
   const [courseRestored, setCourseRestored] = useState(!entry || !CLOUD_API);
   const [userState, setUserState] = useState<UserState>(() => {
@@ -87,7 +90,23 @@ const App: React.FC<{ entry?: CourseEntry }> = ({ entry }) => {
     window.addEventListener('online', retry); window.addEventListener('pagehide', flush); document.addEventListener('visibilitychange', hidden);
     return () => { window.removeEventListener('online', retry); window.removeEventListener('pagehide', flush); document.removeEventListener('visibilitychange', hidden); };
   }, [sync]);
-  const profileReady = allCourseStagesCompleted(userState.course) && !!userState.testResult;
+  const courseComplete = allCourseStagesCompleted(userState.course);
+  const profileReady = courseComplete && !!userState.testResult;
+  const backToFinal = useCallback(() => {
+    setArchetypeSave(null);
+    setReturnToFinal(null);
+    setShowCourseFinal(true);
+    setMapOnEntry(false);
+    setView(AppView.COURSE);
+  }, []);
+  useEffect(() => {
+    if (!returnToFinal) return;
+    if (syncState.learnerId && syncState.learnerId !== returnToFinal.learnerId) {
+      backToFinal();
+      return;
+    }
+    if (archetypeSave && sync.hasConfirmedProgress(archetypeSave.learnerId, archetypeSave.payload)) backToFinal();
+  }, [archetypeSave, backToFinal, returnToFinal, sync, syncState]);
   const updateUserState = useCallback((updates: Partial<UserState>) => {
     setUserState(prev => ({ ...prev, ...updates, lastUpdated: Date.now() }));
   }, []);
@@ -123,12 +142,13 @@ const App: React.FC<{ entry?: CourseEntry }> = ({ entry }) => {
   const directResume = entry?.mode === 'continue';
   const changeCourse = useCallback<React.Dispatch<React.SetStateAction<CourseState>>>(update => {
     setMapOnEntry(false);
+    setShowCourseFinal(false);
     updateCourse(previous => {
       const base = directResume && previous.activeStage === null ? { ...previous, activeStage: resumeCourseStage(previous) } : previous;
       return typeof update === 'function' ? update(base) : update;
     });
   }, [updateCourse, directResume]);
-  const renderCourse = mapOnEntry ? { ...userState.course, activeStage: null } : directResume && userState.course.activeStage === null
+  const renderCourse = showCourseFinal && courseComplete ? { ...userState.course, activeStage: 5 } : mapOnEntry ? { ...userState.course, activeStage: null } : directResume && userState.course.activeStage === null
     ? { ...userState.course, activeStage: resumeCourseStage(userState.course) } : userState.course;
   const viewedStage = renderCourse.activeStage;
   const stageMedia = viewedStage !== null && viewedStage < 5 ? <LessonMedia key={viewedStage} stage={viewedStage + 1}
@@ -137,8 +157,26 @@ const App: React.FC<{ entry?: CourseEntry }> = ({ entry }) => {
       ? ({ ...prev, activeStage: directResume && prev.activeStage === null ? viewedStage : prev.activeStage, lessons: { ...prev.lessons, [stage]: progress } }) : prev); }} /> : null;
   const handleRetakeTest = () => setConfirmation('test');
   const handleGenerateSummary = () => {
-    if (profileReady) setView(AppView.AI_SUMMARY);
-    else if (userState.course.completedStages.length === 5 && !userState.testResult) setNotice('Для итоговой профкарты нужен архетип. Его можно открыть или получить в лагере. Твой прогресс в курсе сохранён.');
+    if (!courseComplete || (CLOUD_API && !syncState.courseAvailable)) return;
+    if (profileReady) { setView(AppView.AI_SUMMARY); return; }
+    const learnerId = sync.state.learnerId || null;
+    if (CLOUD_API && !learnerId) return;
+    setNotice(null);
+    setReturnToFinal({learnerId});
+    setView(AppView.TEST);
+  };
+  const completeFinalArchetype = (result: TestResult) => {
+    const learnerId = sync.state.learnerId;
+    if (!returnToFinal || !courseComplete || userState.testResult || archetypeSave
+      || (CLOUD_API && (!learnerId || learnerId !== returnToFinal.learnerId || !sync.state.courseAvailable || ['signed-out','checking','error'].includes(sync.state.status)))) return;
+    const state = { ...userState, testResult: result, aiSummary: null, summarySource: undefined, lastUpdated: Date.now() };
+    if (!CLOUD_API) { setUserState(state); backToFinal(); return; }
+    if (!learnerId) return;
+    const payload = { state, testDraft: testDraft.current };
+    setArchetypeSave({ learnerId, payload });
+    setUserState(state);
+    sync.offer(payload);
+    void sync.flush();
   };
   const handleGenerateAi = async () => {
     if (!profileReady || aiInFlight.current) return;
@@ -346,7 +384,7 @@ const App: React.FC<{ entry?: CourseEntry }> = ({ entry }) => {
     <div data-view={view} className={`min-h-screen text-slate-200 font-sans selection:bg-indigo-500/30 ${[AppView.LANDING, AppView.ONBOARDING, AppView.DASHBOARD].includes(view) ? "journey-lobby" : ""}`}>
       <ProgressAccount recoveryOnly={!!entry?.mode} client={entry ? {
         signIn: code => sync.signIn(code), joinPilot: (invite, code) => sync.joinPilot(invite, code), signInTelegram: init => sync.signInTelegram(init), registerFree: code => sync.registerFree(code),
-        signOut: async () => { await sync.signOut(); entry.back(); }, linkTelegram: init => sync.linkTelegram(init), retry: () => sync.retry(), useCloudCopy: () => sync.useCloudCopy()
+        signOut: async () => { await sync.signOut(); entry.back(); }, linkTelegram: init => sync.linkTelegram(init), retry: () => sync.retry(), useCloudCopy: () => { sync.useCloudCopy(); if (returnToFinal) backToFinal(); }
       } : sync} state={syncState} onExport={handleExport} />
       {!entry && CLOUD_API && syncState.learnerId && freeCandidate && !userState.testResult && testDraft.current.step === 'start' && !userState.course.completedStages.length && <section aria-label="Перенос вводной в профиль" className="max-w-5xl mx-auto m-4 p-6 border border-amber-400/40 rounded-xl bg-slate-900 space-y-4 print-hidden">
         <h2 className="text-xl font-serif">Сохранить архетип в этом профиле?</h2>
@@ -368,13 +406,22 @@ const App: React.FC<{ entry?: CourseEntry }> = ({ entry }) => {
           onStartCourse={handleOpenCourse}
         />
       )}
-      {view === AppView.TEST && (
+      {view === AppView.TEST && archetypeSave && <section className="max-w-xl mx-auto p-6 space-y-4" aria-labelledby="archetype-save-title">
+        <h1 id="archetype-save-title" className="text-2xl font-serif">Сохранение архетипа</h1>
+        <p role="status">{syncState.status === 'conflict' ? 'Выбери, какую версию открыть. Копию своих ответов можно скачать.' :
+          syncState.status === 'offline' ? 'Облако пока недоступно. Повтори сохранение, чтобы вернуться к финалу.' :
+          syncState.status === 'saved' ? 'Не удалось подтвердить этот результат. Открой курс заново и проверь сохранение.' :
+          'Подтверждаем сохранение в твоём профиле…'}</p>
+        {(syncState.status === 'offline' || syncState.status === 'saved') && <Button variant="secondary" onClick={leaveCourse}>В лагерь</Button>}
+      </section>}
+      {view === AppView.TEST && !archetypeSave && (
         <TestView 
           key={testResetKey}
           initialDraft={testDraft.current} onDraftChange={handleDraftChange} onRequestRestart={handleRetakeTest}
-          onComplete={handleTestComplete} 
-          onCancel={() => setView(AppView.DASHBOARD)} 
-          onResultCalculated={handleTestCalculated}
+          onComplete={returnToFinal ? completeFinalArchetype : handleTestComplete}
+          onCancel={returnToFinal ? backToFinal : () => setView(AppView.DASHBOARD)}
+          onResultCalculated={returnToFinal ? undefined : handleTestCalculated}
+          courseCompletion={!!returnToFinal}
         />
       )}
       {view === AppView.COURSE && (!CLOUD_API || syncState.courseAvailable) && (
@@ -384,6 +431,7 @@ const App: React.FC<{ entry?: CourseEntry }> = ({ entry }) => {
           course={renderCourse}
           onChange={changeCourse}
           onCompleteCourse={handleGenerateSummary}
+          needsArchetype={!userState.testResult}
           onBack={leaveCourse}
           isGeneratingAi={isGeneratingAi}
           linear={!!entry?.mode}
@@ -391,7 +439,7 @@ const App: React.FC<{ entry?: CourseEntry }> = ({ entry }) => {
         />
         </>
       )}
-      {view === AppView.AI_SUMMARY && entry?.mode && !profileReady && <section className="max-w-xl mx-auto p-6 space-y-4"><h1>Профкарта пока не готова</h1><p>Пройди пять этапов и узнай свой архетип. Твои ответы сохранены.</p><Button variant="secondary" onClick={leaveCourse}>В лагерь</Button></section>}
+      {view === AppView.AI_SUMMARY && entry?.mode && !profileReady && <section className="max-w-xl mx-auto p-6 space-y-4"><h1>Профкарта пока не готова</h1><p>{courseComplete ? 'Пять этапов пройдены. Чтобы собрать профкарту, узнай свой архетип.' : 'Пройди пять этапов и узнай свой архетип. Твои ответы сохранены.'}</p>{courseComplete && !userState.testResult && <Button onClick={handleGenerateSummary}>Пройти тест на архетип</Button>}<Button variant="secondary" onClick={leaveCourse}>В лагерь</Button></section>}
       {view === AppView.AI_SUMMARY && profileReady && (!CLOUD_API || syncState.courseAvailable) && <ProfileView state={userState}
         onBack={leaveCourse}
         onAi={handleGenerateAi} aiConfigured={syncState.aiAvailable === true} generating={isGeneratingAi} error={aiError} />}

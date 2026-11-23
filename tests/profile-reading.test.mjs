@@ -22,7 +22,7 @@ test('both score tables descend and preserve authored order across equal scores,
     ]) {
       const lines=sections.find(section=>section.title.startsWith(prefix)).lines.slice(1,-1);
       const originalKeys=Object.keys(labels);
-      const rowKeys=lines.map(line=>originalKeys.find(key=>line===labels[key]+': '+scores[key]+suffix));
+      const rowKeys=lines.map(line=>originalKeys.find(key=>line===labels[key]+': '+scores[key]+(suffix === '/4' ? suffix : [' баллов',' балл',' балла'].find(word => line.endsWith(word)))));
       assert.equal(rowKeys.length, originalKeys.length);
       assert.equal(new Set(rowKeys).size, originalKeys.length);
       assert.ok(rowKeys.every(Boolean));

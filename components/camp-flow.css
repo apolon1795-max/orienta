@@ -1,0 +1,26 @@
+.camp-checklist { margin:0; padding:0; list-style:none; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+.camp-checklist li { min-width:0; display:flex; align-items:center; gap:9px; padding:10px; background:#f7ebcf; border:1px solid #bda673; border-radius:12px; }
+.camp-checklist-number { display:grid; place-items:center; flex:0 0 29px; height:29px; border-radius:50%; border:1px solid #9f8554; color:#47381f; font-weight:700; }
+.camp-checklist li[data-complete="true"] .camp-checklist-number { background:#35513b; color:#fff4dc; border-color:#35513b; }
+.camp-checklist strong,.camp-checklist small { display:block; font-family:Arial,sans-serif; line-height:1.28; overflow-wrap:anywhere; }
+.camp-checklist strong { color:#3f3626; font-size:15px; }
+.camp-checklist small { color:#5b4b31; font-size:12px; margin-top:3px; }
+.camp-home .camp-course-primary .camp-map-link { margin-top:4px; }
+@media(max-width:560px) {
+  .camp-home .camp-checklist { grid-template-columns:1fr; gap:5px; }
+  .camp-home .camp-checklist li { padding:6px 8px; gap:8px; border-radius:9px; }
+  .camp-home .camp-checklist-number { flex-basis:25px; height:25px; }
+  .camp-home .camp-checklist li > span:last-child { display:flex; align-items:baseline; flex-wrap:wrap; gap:3px 8px; }
+  .camp-home .camp-checklist small { margin-top:0; }
+}
+
+/* Keep the original leafy paper around the card, never behind its heading. */
+.adventure .camp-home > .camp-title {
+  padding:clamp(12px,3vw,22px);
+  background:#f8edcf;
+  color:#49341b;
+  border:1px solid #bda673;
+  border-radius:14px;
+  overflow-wrap:anywhere;
+}
+.adventure .camp-home > .camp-title p { color:#544531; }
