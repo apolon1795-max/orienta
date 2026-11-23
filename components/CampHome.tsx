@@ -51,6 +51,8 @@ export const CampHome = ({ local, savedResult, signedIn, courseAvailable, course
       {communityNotice && <p role="status">Сообщество скоро откроется</p>}
     </div></article>
    </div>
+   <a className="inline-flex items-center justify-center px-6 py-3 text-sm font-semibold" style={{ width: 'min(100%, 14rem)', textDecoration: 'none' }}
+     data-button-variant="secondary" href="https://t.me/Daniil_Borisov" target="_blank" rel="noopener noreferrer">Техподдержка</a>
    {children}
    {!signedIn && <aside className="text-sm"><p>Результат теста хранится только в этом браузере. На общем устройстве его можно удалить.</p>
       {(local.result || local.draft.step !== 'start') && <button type="button" className="underline" onClick={onReset}>Удалить результат теста</button>}
